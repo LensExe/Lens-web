@@ -1,0 +1,5 @@
+/* Shared design system (Tailwind + Awesomic tokens + keyframes). */
+@import "../../../packages/ui/src/styles/globals.css";
+
+/* Scan the shared UI package so its Tailwind classes are generated here. */
+@source "../../../packages/ui/src";
