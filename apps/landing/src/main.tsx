@@ -18,17 +18,27 @@ const queryClient = new QueryClient({
   },
 });
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider delayDuration={200}>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
-          <Toaster />
-        </TooltipProvider>
-      </QueryClientProvider>
-    </ThemeProvider>
-  </StrictMode>
-);
+// Start the MSW mock API before rendering when mocking is enabled (UI phase).
+// Dynamic import keeps MSW out of the bundle when disabled.
+async function enableMocking() {
+  if (import.meta.env.VITE_API_MOCKING !== "enabled") return;
+  const { worker } = await import("./msw/browser");
+  await worker.start({ onUnhandledRequest: "bypass" });
+}
+
+enableMocking().then(() => {
+  createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider delayDuration={200}>
+            <BrowserRouter>
+              <App />
+            </BrowserRouter>
+            <Toaster />
+          </TooltipProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
+    </StrictMode>
+  );
+});

@@ -1,11 +1,8 @@
-import { delay } from "@lens/ui";
-import { mockReports } from "@/mock/reports";
+import { api } from "@/lib/api";
 import type { ReportData } from "@/types";
-// import { api } from "@/lib/api"; // LATER: uncomment for the real backend
 
-// Layer 3 — Service / API.
+// Layer 3 — Service / API. Thin HTTP call; the mock backend (src/msw) answers it.
+
 export async function getReports(): Promise<ReportData> {
-  await delay();
-  return mockReports;
-  // LATER: return (await api.get<ReportData>("/admin/reports")).data;
+  return (await api.get<ReportData>("/admin/reports")).data;
 }

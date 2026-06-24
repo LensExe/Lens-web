@@ -12,4 +12,4 @@
 
 **Key feature later:** photographer `approval_status` gate — new photographers are `pending` and hidden from public until approved here.
 
-**Data:** admin owns its own `types/services/queries/mock/stores` (users, approvals, reports, system stats). Mock only in `services/`.
+**Data:** admin owns its own `types/services/queries/msw/mock/stores` (users, approvals, reports, system stats). Services call HTTP (axios); MSW (`src/msw/`) mocks `/api/*` from `src/mock/` and owns the in-memory stores + logic. Mock seed imported ONLY by `src/msw/handlers.ts`. See root §4b for the layers + the `VITE_API_MOCKING` toggle.

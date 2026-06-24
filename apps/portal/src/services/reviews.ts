@@ -1,14 +1,12 @@
-import { delay } from "@lens/ui";
-import { mockReviews } from "@/mock/reviews";
+import { api } from "@/lib/api";
 import type { Review } from "@/types";
-// import { api } from "@/lib/api"; // LATER: uncomment for the real backend
 
-// Layer 3 — Service / API. The ONLY place mock data is touched.
+// Layer 3 — Service / API. Thin HTTP call; the mock backend (src/msw) answers it.
 
 export async function getReviewsByPhotographer(
   photographerId: string
 ): Promise<Review[]> {
-  await delay();
-  return mockReviews.filter((r) => r.photographerId === photographerId); // CURRENT: mock
-  // LATER: return (await api.get<Review[]>(`/photographers/${photographerId}/reviews`)).data;
+  return (
+    await api.get<Review[]>(`/photographers/${photographerId}/reviews`)
+  ).data;
 }

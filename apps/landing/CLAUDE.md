@@ -17,4 +17,4 @@
 
 **Motion:** this is the bold one (§7/§7b of root) — hero has the lazy Three.js particle accent, GSAP parallax, animate-text headline, Lenis smooth scroll, magnetic CTAs, React Bits effects. Keep heavy effects code-split (deep `@lens/ui/...` imports in lazy sections). The photographer grid stays clean.
 
-**Data:** landing's own `types/services/queries/mock` (public photographers). Mock only in `services/`.
+**Data:** landing's own `types/services/queries/msw/mock` (public photographers). Services call HTTP (axios); MSW (`src/msw/`) mocks `/api/*` from `src/mock/`. Mock seed imported ONLY by `src/msw/handlers.ts`. See root §4b for the layers + the `VITE_API_MOCKING` toggle.

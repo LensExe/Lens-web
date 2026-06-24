@@ -34,8 +34,14 @@
     "@types/three": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "babel-plugin-react-compiler": "catalog:",
+    "msw": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
   }
 }

@@ -16,6 +16,6 @@
 
 **Motion:** minimal (work surface). Fast, clear, data-first. Gentle transitions only — no hero effects, no parallax.
 
-**Data:** portal owns its own `types/services/queries/mock/stores` (bookings, profile, portfolio, messages). Do NOT import data from `@lens/ui` or other apps. Mock only in `services/`.
+**Data:** portal owns its own `types/services/queries/msw/mock/stores` (bookings, profile, portfolio, messages). Do NOT import data from `@lens/ui` or other apps. Services call HTTP (axios); MSW (`src/msw/`) mocks `/api/*` from `src/mock/` and owns the in-memory stores + logic. Mock seed imported ONLY by `src/msw/handlers.ts`. See root §4b for the layers + the `VITE_API_MOCKING` toggle.
 
 **Build order:** public browse ✓ → photographer profile → booking flow → client dashboard → photographer dashboard → messaging.

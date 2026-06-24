@@ -44,16 +44,17 @@ apps/<app>/
    ├─ routes/        # pages (VIEW layer)
    ├─ components/     # app-specific components (layout, sections)
    ├─ types/          # app domain types
-   ├─ services/       # API functions (Layer 3) — currently return mock
+   ├─ services/       # API functions (Layer 3) — thin axios calls
    ├─ queries/        # TanStack Query hooks (Layer 2)
-   ├─ mock/           # mock data (imported ONLY by services)
+   ├─ msw/            # mock backend: handlers.ts + browser.ts (Layer 4)
+   ├─ mock/           # mock data / DB seed (imported ONLY by msw/handlers.ts)
    ├─ stores/         # Zustand (UI state only)
-   └─ lib/api.ts      # axios instance (this app's base URL)
+   └─ lib/api.ts      # axios instance (baseURL: VITE_API_URL ?? "/api")
 ```
 
 ### 2a. Shared vs per-app — THE key rule
 - **`@lens/ui` holds ONLY the design system**: UI primitives, effects, theme, generic motion hooks, `cn`/`delay`/`formatPrice`, and the global CSS/design tokens. **No data, no business logic, no app routes.**
-- **Everything about DATA lives inside each app**: `types`, `services` (API), `queries`, `mock`, `stores`. Each app owns its endpoints/types — do NOT push them into `@lens/ui`.
+- **Everything about DATA lives inside each app**: `types`, `services` (API), `queries`, `msw` (mock backend), `mock`, `stores`. Each app owns its endpoints/types — do NOT push them into `@lens/ui`.
 - Apps consume the design system via the barrel: `import { Button, ThemeToggle, useReveal, cn } from "@lens/ui"`.
 - **Code-splitting matters:** heavy effects used only in lazy-loaded sections must be imported from the **deep path** (`import Masonry from "@lens/ui/components/effects/Masonry"`), NOT the barrel — otherwise the bundler pulls them into the initial chunk. Light/eager usage can use the barrel.
 
@@ -86,25 +87,25 @@ Use `pnpm --filter <app> <cmd>` for anything app-scoped. Turbo only rebuilds app
 - **Forms & validation:** react-hook-form + zod, with Vietnamese error messages.
 - **Icons:** lucide-react.
 - **Dates:** date-fns.
-- **Data fetching:** TanStack Query + axios, from day one (3-layer architecture below). Service layer returns mock now; axios wired but not calling a real backend yet.
+- **Data fetching:** TanStack Query + axios, from day one (layered architecture below). Services make real HTTP calls; in the UI phase those `/api/*` requests are intercepted by **MSW** (mock backend) instead of hitting a real server.
 
-## 4b. Data architecture — STRICT 3-layer separation (per app)
-Data flows through three layers **inside each app**. Never skip or merge them. This lets us swap mock → real API by editing ONLY the service layer later.
+## 4b. Data architecture — STRICT layered separation (per app)
+Data flows through these layers **inside each app**. Never skip or merge them. Because services already make real HTTP calls, going live is a config flip (no service edits) — see the toggle below.
 
 ```
-View (component) → Query layer (TanStack hooks) → Service layer (API functions) → mock
+View (component) → Query layer (TanStack hooks) → Service layer (axios) → [ MSW mock backend → mock seed ]
 ```
 - **Layer 1 — View** (`src/routes`, `src/components`): only renders UI and calls query hooks. No fetch, no axios, no mock imports, no data transformation.
 - **Layer 2 — Query hooks** (`src/queries/`): the ONLY layer the View talks to. Wraps `useQuery`/`useMutation`, defines query keys/caching.
-- **Layer 3 — Service** (`src/services/`): the actual data functions. **NOW:** import from `src/mock/`, `await delay()` (from `@lens/ui`), return mock. **LATER:** replace the mock return with a real axios call — keep both lines side by side so the swap is one edit. Example:
+- **Layer 3 — Service** (`src/services/`): thin functions that call the HTTP API via the axios instance in `src/lib/api.ts`. NO mock imports, NO business logic. Example:
 ```ts
 export async function getPhotographers() {
-  await delay();                 // fake latency
-  return mockPhotographers;      // CURRENT: mock
-  // LATER: return (await api.get('/photographers')).data;
+  return (await api.get<Photographer[]>("/photographers")).data;
 }
 ```
-`mock/` is imported ONLY by `services/`, nowhere else.
+- **Layer 4 — MSW mock backend** (`src/msw/`): `handlers.ts` plays the role of the server — it answers `/api/*` requests, owns the in-memory stores, and holds the backend-like logic (sorting, filtering, status changes, persistence) plus `await delay()` for fake latency. `browser.ts` exports the worker. **`src/mock/` (the DB seed) is imported ONLY by `src/msw/handlers.ts`, nowhere else.**
+
+**Mock toggle (env):** `main.tsx` starts the MSW worker only when `VITE_API_MOCKING=enabled` (dynamic import, so MSW stays out of the bundle when off). The worker script is `public/mockServiceWorker.js` (regenerate with `pnpm --filter <app> exec msw init public`). **To use a real backend:** set `VITE_API_MOCKING=disabled` and `VITE_API_URL=<server>` — no code changes. In-memory state resets on full page reload.
 
 ## 5. Roles, apps & auth redirect
 - **Landing** — public marketing homepage + **auth** only. On login, check role and redirect to the right app via env URLs (`VITE_PORTAL_URL`, `VITE_ADMIN_URL`). UI phase has no real auth — the login screen picks a role and redirects. Landing's browse/discovery CTAs link out to the portal.
@@ -116,9 +117,9 @@ export async function getPhotographers() {
 > Note: browse/profile live in **portal** (as public routes), not landing. Landing keeps a small photographer mock only for the homepage "featured" showcase; portal owns the full browse data + filters.
 
 ## 6. Hard rules (never break)
-- **Shared vs per-app (§2a):** `@lens/ui` = design system only. Data (types/services/queries/mock/stores) lives in each app.
-- **Data layering:** Views NEVER touch data directly. View → query hook → service → mock. Components must not import mock, axios, or fetch.
-- **Mock only in the service layer.** `src/mock/` imported ONLY by `src/services/`.
+- **Shared vs per-app (§2a):** `@lens/ui` = design system only. Data (types/services/queries/msw/mock/stores) lives in each app.
+- **Data layering:** Views NEVER touch data directly. View → query hook → service (axios) → MSW handler → mock seed. Components must not import mock, axios, or fetch.
+- **Mock only in the MSW backend.** `src/mock/` imported ONLY by `src/msw/handlers.ts`. Services call HTTP via `src/lib/api.ts` — they must NOT import `src/mock/`.
 - **One source per primitive:** every button/input/dialog comes from `@lens/ui` (shadcn). Don't duplicate primitives.
 - **One animation per effect:** animate a given element with ONE library only.
 - **Code-split heavy effects** via deep `@lens/ui/...` imports in lazy sections (§2a).
@@ -158,4 +159,4 @@ Each app deploys **independently** (its own `dist/`), to any host (Vercel / VPS 
 No test setup in the UI phase (correctness judged visually). Add **Vitest** in Phase 2 when there's real logic (booking rules, payments).
 
 ## 12. Phase 2 (NOT now — noted for context)
-Backend: **Supabase** (auth for 3 roles + Postgres + Storage). Going live = edit ONLY each app's `src/services/*` to replace mock returns with real axios calls. Add role-based route protection. Photographer `approval_status` gate: new photographers are `pending` and hidden from public until an admin approves. Payments: integrate a gateway later.
+Backend: **Supabase** (auth for 3 roles + Postgres + Storage). Going live = set `VITE_API_MOCKING=disabled` + `VITE_API_URL` per app (the MSW mock backend in `src/msw/` stops intercepting; services already call real HTTP — no service edits). Add role-based route protection. Photographer `approval_status` gate: new photographers are `pending` and hidden from public until an admin approves. Payments: integrate a gateway later.

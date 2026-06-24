@@ -12,6 +12,29 @@ dist
 dist-ssr
 *.local
 
+# Build caches
+.turbo
+
+# Claude Code tooling (local agent assets, not product code)
+.claude
+skills-lock.json
+
+# Env files — hold per-environment config (and later real API URLs/secrets).
+# Managed on the host (Vercel dashboard), NOT committed. Keep .env.example only.
+.env
+.env.*
+!.env.example
+
+# Vercel CLI
+.vercel
+
+# Secrets / credentials (defensive — never commit these)
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -32,15 +32,16 @@ Vercel deploy từ GitHub/GitLab/Bitbucket, nên repo phải nằm trên đó tr
 4. Mở **Environment Variables** (scope **Production**), thêm:
    - `VITE_PORTAL_URL` = URL portal (chưa có thì điền tạm, Bước 3 quay lại sửa)
    - `VITE_ADMIN_URL` = URL admin
+   - `VITE_API_MOCKING` = `enabled` (bật mock backend MSW — bắt buộc, vì `.env` không commit)
 5. Bấm **Deploy**.
 
 ### Bước 2 — Tạo 2 project còn lại
 Lặp lại Bước 1, mỗi lần **Add New Project → import cùng repo `lens`**, chỉ khác Root Directory + env:
 
-| Project       | Root Directory | Env vars (Production)                 |
-| ------------- | -------------- | ------------------------------------- |
-| lens-portal   | `apps/portal`  | `VITE_LANDING_URL`, `VITE_ADMIN_URL`  |
-| lens-admin    | `apps/admin`   | `VITE_LANDING_URL`, `VITE_PORTAL_URL` |
+| Project       | Root Directory | Env vars (Production)                                       |
+| ------------- | -------------- | ---------------------------------------------------------- |
+| lens-portal   | `apps/portal`  | `VITE_LANDING_URL`, `VITE_ADMIN_URL`, `VITE_API_MOCKING`   |
+| lens-admin    | `apps/admin`   | `VITE_LANDING_URL`, `VITE_PORTAL_URL`, `VITE_API_MOCKING`  |
 
 > Vercel cho phép nhiều project trỏ cùng 1 repo — cứ import lại bình thường.
 
@@ -76,15 +77,17 @@ Mỗi `vercel.json` đã cấu hình:
 - **SPA rewrites** (`/(.*) → /index.html`) → route client không 404 khi F5.
 
 ### Biến môi trường (set theo từng project, scope Production)
-Các app chỉ liên kết nhau qua URL public. Thay default `localhost` trong `.env` mỗi app bằng URL deploy thật:
+**`.env` KHÔNG commit lên git** (đã gitignore) — toàn bộ env production set trên dashboard. File `.env.example` trong mỗi app liệt kê các biến cần có; local dev thì `cp .env.example .env`.
 
-| Project  | Biến cần set                          |
-| -------- | ------------------------------------- |
-| landing  | `VITE_PORTAL_URL`, `VITE_ADMIN_URL`   |
-| portal   | `VITE_LANDING_URL`, `VITE_ADMIN_URL`  |
-| admin    | `VITE_LANDING_URL`, `VITE_PORTAL_URL` |
+| Project  | Biến cần set (Production)                                   |
+| -------- | ---------------------------------------------------------- |
+| landing  | `VITE_PORTAL_URL`, `VITE_ADMIN_URL`, `VITE_API_MOCKING`    |
+| portal   | `VITE_LANDING_URL`, `VITE_ADMIN_URL`, `VITE_API_MOCKING`   |
+| admin    | `VITE_LANDING_URL`, `VITE_PORTAL_URL`, `VITE_API_MOCKING`  |
 
-(Không có secret — chỉ là URL site. Biến `VITE_` nhúng lúc build → đổi xong phải redeploy.)
+- `VITE_*_URL` = URL deploy thật của các app (vd `https://lens-web-portal.vercel.app`).
+- `VITE_API_MOCKING` = `enabled` → bật mock backend MSW. **Bắt buộc** ở phase UI: thiếu nó thì app deploy gọi `/api/*` mà không ai trả lời → trắng dữ liệu. (Khi có backend thật: đổi thành `disabled` + thêm `VITE_API_URL`.)
+- Không có secret — chỉ URL + cờ. Biến `VITE_` nhúng lúc build → đổi xong phải **Redeploy**.
 
 ---
 
