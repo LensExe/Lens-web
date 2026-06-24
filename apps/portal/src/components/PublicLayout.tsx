@@ -19,7 +19,7 @@ import {
   ThemeToggle,
   cn,
 } from "@lens/ui";
-import { currentUser, hasRole } from "@/lib/session";
+import { clearSession, currentUser, hasRole } from "@/lib/session";
 import type { UserRole } from "@/types";
 
 const LANDING_URL = import.meta.env.VITE_LANDING_URL ?? "http://localhost:5173";
@@ -85,7 +85,11 @@ function AccountMenu() {
 
         {/* Logout */}
         <div className="border-t border-border p-1.5">
-          <a href={LANDING_URL} className={cn(itemClass, "text-destructive hover:text-destructive")}>
+          <a
+            href={LANDING_URL}
+            onClick={clearSession}
+            className={cn(itemClass, "text-destructive hover:text-destructive")}
+          >
             <LogOut className="size-4" />
             Đăng xuất
           </a>

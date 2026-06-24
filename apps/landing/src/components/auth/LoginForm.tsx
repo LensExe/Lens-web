@@ -3,8 +3,10 @@ import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button, Input, cn } from "@lens/ui";
 
-// UI phase: no real auth. Pick a role, "log in", and redirect to the
-// matching app. URLs come from env so dev/prod just work.
+// UI phase: no real auth. Pick a role, "log in", and redirect to the matching
+// app — carrying the role in the URL hash (#role=) so the destination signs in
+// as that account. The hash is never sent to the server and the portal strips
+// it on arrival. URLs come from env so dev/prod just work.
 const PORTAL_URL = import.meta.env.VITE_PORTAL_URL ?? "http://localhost:5174";
 const ADMIN_URL = import.meta.env.VITE_ADMIN_URL ?? "http://localhost:5175";
 
@@ -15,6 +17,21 @@ const roles: { value: Role; label: string }[] = [
   { value: "photographer", label: "Nhiếp ảnh gia" },
   { value: "admin", label: "Quản trị" },
 ];
+
+// Demo credentials per role — autofilled when a role is picked (UI phase only).
+const demoAccounts: Record<Role, { email: string; password: string }> = {
+  client: { email: "khachhang@lens.vn", password: "demo1234" },
+  photographer: { email: "nhiepanhgia@lens.vn", password: "demo1234" },
+  admin: { email: "admin@lens.vn", password: "demo1234" },
+};
+
+// Where each role lands after login (and the account it signs in as).
+// Portal roles (client/photographer) land on the portal root (browse); the
+// account menu there reflects the signed-in role. Admin goes to the admin app.
+function destinationFor(role: Role): string {
+  if (role === "admin") return ADMIN_URL;
+  return `${PORTAL_URL}/#role=${role}`;
+}
 
 /** Shared login form — used by the auth modal and the `/login` page. */
 export function LoginForm({
@@ -29,11 +46,20 @@ export function LoginForm({
   showSwitchLink?: boolean;
 }) {
   const [role, setRole] = useState<Role>("client");
+  const [email, setEmail] = useState(demoAccounts.client.email);
+  const [password, setPassword] = useState(demoAccounts.client.password);
+
+  // Picking a role autofills its demo credentials.
+  const selectRole = (value: Role) => {
+    setRole(value);
+    setEmail(demoAccounts[value].email);
+    setPassword(demoAccounts[value].password);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Role-based redirect: admin → admin app, others → portal.
-    window.location.href = role === "admin" ? ADMIN_URL : PORTAL_URL;
+    // Redirect to the matching app, carrying the role so it signs in correctly.
+    window.location.href = destinationFor(role);
   };
 
   return (
@@ -52,14 +78,26 @@ export function LoginForm({
           <label htmlFor="email" className="text-sm font-medium">
             Email
           </label>
-          <Input id="email" type="email" placeholder="ban@example.com" defaultValue="demo@lens.vn" />
+          <Input
+            id="email"
+            type="email"
+            placeholder="ban@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
         </div>
 
         <div className="space-y-2">
           <label htmlFor="password" className="text-sm font-medium">
             Mật khẩu
           </label>
-          <Input id="password" type="password" placeholder="••••••••" defaultValue="demo1234" />
+          <Input
+            id="password"
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
         </div>
 
         <div className="space-y-2">
@@ -69,7 +107,7 @@ export function LoginForm({
               <button
                 key={r.value}
                 type="button"
-                onClick={() => setRole(r.value)}
+                onClick={() => selectRole(r.value)}
                 className={cn(
                   "rounded-xl border px-3 py-2 text-sm transition-colors",
                   role === r.value
@@ -103,7 +141,8 @@ export function LoginForm({
       )}
 
       <p className="mt-4 text-center text-xs text-muted-foreground">
-        Giai đoạn UI: chọn vai trò sẽ chuyển tới ứng dụng tương ứng (Portal / Admin).
+        Giai đoạn UI: chọn vai trò sẽ tự điền tài khoản demo và đăng nhập vào
+        ứng dụng tương ứng (Portal / Admin).
       </p>
     </div>
   );

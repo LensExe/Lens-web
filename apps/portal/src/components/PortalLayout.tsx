@@ -10,7 +10,7 @@ import {
   ThemeToggle,
   cn,
 } from "@lens/ui";
-import { currentUser, hasRole } from "@/lib/session";
+import { clearSession, currentUser, hasRole } from "@/lib/session";
 import type { UserRole } from "@/types";
 
 type NavGroup = {
@@ -132,7 +132,7 @@ export function PortalLayout() {
           <div className="flex shrink-0 items-center gap-2">
             <ThemeToggle />
             <Button variant="outline" className="rounded-full" asChild>
-              <a href={LANDING_URL}>
+              <a href={LANDING_URL} onClick={clearSession}>
                 <LogOut className="size-4" />
                 <span className="hidden sm:inline">Đăng xuất</span>
               </a>
