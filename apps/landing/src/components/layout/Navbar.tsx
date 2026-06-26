@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { Aperture, Menu } from "lucide-react";
-import { Button } from "@lens/ui";
+import { Menu } from "lucide-react";
+import { Button, Logo } from "@lens/ui";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@lens/ui";
 import { ThemeToggle } from "@lens/ui";
 import { portalBrowse } from "@/lib/links";
@@ -20,11 +20,8 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-5">
-        <Link to="/" className="flex items-center gap-2">
-          <span className="flex size-9 items-center justify-center rounded-2xl bg-foreground text-background">
-            <Aperture className="size-5" />
-          </span>
-          <span className="text-xl font-semibold tracking-tight">Lens</span>
+        <Link to="/" className="flex items-center" aria-label="Lens">
+          <Logo className="h-7" />
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">

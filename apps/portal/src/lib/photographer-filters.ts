@@ -22,10 +22,10 @@ export const CITY_OPTIONS = [
   "Hải Phòng",
 ];
 
-// Price range (VND) for the slider filter.
-export const PRICE_MIN = 1_000_000;
-export const PRICE_MAX = 7_000_000;
-export const PRICE_STEP = 500_000;
+// Price range (VND) for the slider filter — student-friendly tier (150k–800k/buổi).
+export const PRICE_MIN = 100_000;
+export const PRICE_MAX = 1_000_000;
+export const PRICE_STEP = 50_000;
 
 export const RATING_OPTIONS = [
   { value: "4.5", label: "4.5★ trở lên" },

@@ -11,7 +11,7 @@ export const mockBookings: Booking[] = [
     style: "Chân dung",
     date: "2026-07-02",
     location: "Hồ Tây, Hà Nội",
-    price: 2500000,
+    price: 300000,
     status: "confirmed",
   },
   {
@@ -23,7 +23,7 @@ export const mockBookings: Booking[] = [
     style: "Cưới",
     date: "2026-08-15",
     location: "Nhà thờ Đức Bà, TP. HCM",
-    price: 6000000,
+    price: 800000,
     status: "pending",
   },
   {
@@ -35,7 +35,7 @@ export const mockBookings: Booking[] = [
     style: "Du lịch",
     date: "2026-05-20",
     location: "Đồi chè Cầu Đất, Đà Lạt",
-    price: 5200000,
+    price: 680000,
     status: "completed",
   },
   {
@@ -47,7 +47,7 @@ export const mockBookings: Booking[] = [
     style: "Thời trang",
     date: "2026-06-28",
     location: "Studio Q1, TP. HCM",
-    price: 4500000,
+    price: 580000,
     status: "confirmed",
   },
   {
@@ -59,7 +59,7 @@ export const mockBookings: Booking[] = [
     style: "Sản phẩm",
     date: "2026-04-10",
     location: "Studio Cầu Giấy, Hà Nội",
-    price: 3200000,
+    price: 400000,
     status: "cancelled",
   },
 ];

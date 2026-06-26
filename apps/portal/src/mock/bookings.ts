@@ -18,7 +18,7 @@ export const seedBookings: Booking[] = [
     style: "Cưới",
     date: iso(10),
     location: "Hồ Gươm, Hà Nội",
-    price: 6_000_000,
+    price: 800_000,
     status: "confirmed",
   },
   {
@@ -30,7 +30,7 @@ export const seedBookings: Booking[] = [
     style: "Du lịch",
     date: iso(21),
     location: "Bà Nà Hills, Đà Nẵng",
-    price: 1_800_000,
+    price: 200_000,
     status: "pending",
   },
   {
@@ -42,7 +42,7 @@ export const seedBookings: Booking[] = [
     style: "Chân dung",
     date: iso(-14),
     location: "Phố cổ, Hà Nội",
-    price: 2_500_000,
+    price: 300_000,
     status: "completed",
   },
   {
@@ -54,7 +54,7 @@ export const seedBookings: Booking[] = [
     style: "Ẩm thực",
     date: iso(-32),
     location: "Quận 1, TP. Hồ Chí Minh",
-    price: 3_200_000,
+    price: 400_000,
     status: "cancelled",
   },
 ];

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { Aperture, AtSign, Globe, MessageCircle } from "lucide-react";
+import { AtSign, Globe, MessageCircle } from "lucide-react";
+import { Logo } from "@lens/ui";
 import { portalBrowse } from "@/lib/links";
 import { useAuthModal } from "@/components/auth/auth-modal-context";
 
@@ -37,11 +38,8 @@ export function Footer() {
       <div className="mx-auto max-w-[1200px] px-5 py-14">
         <div className="grid grid-cols-2 gap-10 md:grid-cols-5">
           <div className="col-span-2">
-            <Link to="/" className="flex items-center gap-2">
-              <span className="flex size-9 items-center justify-center rounded-2xl bg-foreground text-background">
-                <Aperture className="size-5" />
-              </span>
-              <span className="text-xl font-semibold tracking-tight">Lens</span>
+            <Link to="/" className="flex items-center" aria-label="Lens">
+              <Logo className="h-7" />
             </Link>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
               Nền tảng kết nối bạn với những nhiếp ảnh gia tài năng trên khắp Việt Nam.

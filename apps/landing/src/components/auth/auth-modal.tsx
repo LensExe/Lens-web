@@ -1,10 +1,10 @@
 import { useState, type ReactNode } from "react";
-import { Aperture } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogTitle,
+  Logo,
   Tabs,
   TabsContent,
   TabsList,
@@ -40,11 +40,8 @@ export function AuthModalProvider({ children }: { children: ReactNode }) {
             Chọn vai trò và tiếp tục vào nền tảng Lens.
           </DialogDescription>
 
-          <div className="flex items-center gap-2">
-            <span className="flex size-9 items-center justify-center rounded-2xl bg-foreground text-background">
-              <Aperture className="size-5" />
-            </span>
-            <span className="text-xl font-semibold tracking-tight">Lens</span>
+          <div className="flex items-center">
+            <Logo className="h-7" />
           </div>
 
           <Tabs

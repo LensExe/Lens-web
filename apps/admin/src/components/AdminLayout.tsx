@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { LogOut, Menu, ShieldCheck } from "lucide-react";
+import { LogOut, Menu } from "lucide-react";
 import {
   Button,
+  Logo,
   Sheet,
   SheetContent,
   SheetTitle,
@@ -47,11 +48,9 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 
 function Brand() {
   return (
-    <div className="flex h-16 items-center gap-2 border-b border-border px-5">
-      <span className="flex size-8 items-center justify-center rounded-xl bg-foreground text-background">
-        <ShieldCheck className="size-4" />
-      </span>
-      <span className="font-semibold tracking-tight">Lens Admin</span>
+    <div className="flex h-16 items-center gap-2 border-b border-border px-5" aria-label="Lens Admin">
+      <Logo className="h-6" />
+      <span className="text-sm font-medium text-muted-foreground">Admin</span>
     </div>
   );
 }

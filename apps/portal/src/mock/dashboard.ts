@@ -21,7 +21,7 @@ export const myPhotographer: Photographer = {
   cover: img("giahan-cover", 1200, 600),
   city: "Hà Nội",
   styles: ["Chân dung", "Gia đình"],
-  pricePerSession: 3_500_000,
+  pricePerSession: 450_000,
   rating: 4.9,
   reviewCount: 96,
   bio: "Nhiếp ảnh gia chân dung và gia đình tại Hà Nội. Tôi yêu ánh sáng tự nhiên và những khoảnh khắc đời thường, chân thật. Mỗi buổi chụp là một câu chuyện riêng của bạn.",
@@ -53,7 +53,7 @@ export const incomingBookings: Booking[] = [
     style: "Chân dung",
     date: iso(4),
     location: "Hồ Tây, Hà Nội",
-    price: 3_500_000,
+    price: 450_000,
     status: "pending",
   },
   {
@@ -65,7 +65,7 @@ export const incomingBookings: Booking[] = [
     style: "Gia đình",
     date: iso(7),
     location: "Công viên Thống Nhất, Hà Nội",
-    price: 4_200_000,
+    price: 550_000,
     status: "pending",
   },
   {
@@ -77,7 +77,7 @@ export const incomingBookings: Booking[] = [
     style: "Chân dung",
     date: iso(12),
     location: "Phố cổ, Hà Nội",
-    price: 3_500_000,
+    price: 450_000,
     status: "confirmed",
   },
   {
@@ -89,7 +89,7 @@ export const incomingBookings: Booking[] = [
     style: "Gia đình",
     date: iso(18),
     location: "Bát Tràng, Hà Nội",
-    price: 5_000_000,
+    price: 650_000,
     status: "confirmed",
   },
   {
@@ -101,7 +101,7 @@ export const incomingBookings: Booking[] = [
     style: "Chân dung",
     date: iso(-9),
     location: "Hoàng thành Thăng Long, Hà Nội",
-    price: 3_500_000,
+    price: 450_000,
     status: "completed",
   },
   {
@@ -113,7 +113,7 @@ export const incomingBookings: Booking[] = [
     style: "Gia đình",
     date: iso(-23),
     location: "Cầu Long Biên, Hà Nội",
-    price: 4_200_000,
+    price: 550_000,
     status: "completed",
   },
   {
@@ -125,7 +125,7 @@ export const incomingBookings: Booking[] = [
     style: "Chân dung",
     date: iso(-3),
     location: "Vườn hoa Lý Thái Tổ, Hà Nội",
-    price: 3_500_000,
+    price: 450_000,
     status: "cancelled",
   },
 ];

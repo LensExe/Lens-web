@@ -44,6 +44,9 @@ export { ScrollVelocity } from "./components/effects/ScrollVelocity";
 export { default as Stack } from "./components/effects/Stack";
 export { default as TiltedCard } from "./components/effects/TiltedCard";
 
+// Brand
+export { Logo } from "./components/brand/Logo";
+
 // Theme
 export { ThemeProvider } from "./components/theme/theme-provider";
 export { ThemeToggle } from "./components/theme/ThemeToggle";

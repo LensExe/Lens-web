@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
-import { Aperture, LogOut, Menu } from "lucide-react";
+import { LogOut, Menu } from "lucide-react";
 import {
   Button,
+  Logo,
   Sheet,
   SheetContent,
   SheetTitle,
@@ -51,11 +52,9 @@ const LANDING_URL = import.meta.env.VITE_LANDING_URL ?? "http://localhost:5173";
 
 function Brand() {
   return (
-    <Link to="/" className="flex h-16 items-center gap-2 border-b border-border px-5">
-      <span className="flex size-8 items-center justify-center rounded-xl bg-foreground text-background">
-        <Aperture className="size-4" />
-      </span>
-      <span className="font-semibold tracking-tight">Lens Portal</span>
+    <Link to="/" className="flex h-16 items-center gap-2 border-b border-border px-5" aria-label="Lens Portal">
+      <Logo className="h-6" />
+      <span className="text-sm font-medium text-muted-foreground">Portal</span>
     </Link>
   );
 }

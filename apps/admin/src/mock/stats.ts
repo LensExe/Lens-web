@@ -4,10 +4,10 @@ import type { ActivityItem, OverviewStats } from "@/types";
 const minsAgo = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
 
 export const mockStats: OverviewStats = {
-  totalUsers: 1284,
-  totalPhotographers: 156,
-  totalBookings: 3742,
-  monthlyRevenue: 486_000_000,
+  totalUsers: 482,
+  totalPhotographers: 38,
+  totalBookings: 314,
+  monthlyRevenue: 39_000_000,
 };
 
 export const mockActivity: ActivityItem[] = [
