@@ -28,9 +28,13 @@ export function ClientOverview() {
   const { data: bookings = [], isLoading } = useMyBookings();
   const today = todayISO();
   const upcoming = bookings.filter(
-    (b) => b.date >= today && (b.status === "pending" || b.status === "confirmed")
+    (b) =>
+      b.date >= today &&
+      (b.status === "pending" ||
+        b.status === "confirmed" ||
+        b.status === "held")
   );
-  const completed = bookings.filter((b) => b.status === "completed");
+  const completed = bookings.filter((b) => b.status === "released");
 
   return (
     <div className="mx-auto max-w-[860px] px-5 py-8 md:py-10">

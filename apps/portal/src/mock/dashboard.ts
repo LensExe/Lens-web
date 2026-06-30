@@ -1,10 +1,11 @@
 import { photo as img } from "@lens/ui";
-import type { Booking, Photographer } from "@/types";
+import type { Photographer } from "@/types";
 
-// Mock data for the SIGNED-IN photographer's dashboard. Imported ONLY by the
-// service layer. The logged-in user (see lib/session.ts) wears two hats: as a
-// client she books others (mock/bookings.ts), and as a photographer she owns
-// the profile below and receives the booking requests in `incomingBookings`.
+// Profile of the SIGNED-IN photographer demo account (see lib/session.ts):
+// Lý Gia Hân, id "me". She is also pulled into the public roster
+// (mock/photographers.ts) so the signed-in photographer is a real, browsable
+// account. Her incoming booking requests are NOT here — they live in the single
+// bookings table (mock/bookings.ts), queried by photographerId === "me".
 
 const iso = (daysFromNow: number) => {
   const d = new Date();
@@ -39,93 +40,10 @@ export const myPhotographer: Photographer = {
   ],
   // Days she has marked herself free. Seeded by toggling availability later.
   availableDates: [iso(2), iso(3), iso(6), iso(9), iso(13), iso(16), iso(20), iso(27)],
+  // Her own service packages (editable in the dashboard).
+  packages: [
+    { id: "basic", name: "Gói cơ bản", duration: "1 giờ chụp · 15 ảnh chỉnh sửa", price: 450_000 },
+    { id: "standard", name: "Gói tiêu chuẩn", duration: "2 giờ chụp · 35 ảnh chỉnh sửa", price: 800_000 },
+    { id: "premium", name: "Gói cao cấp", duration: "Nửa ngày · 70 ảnh + 1 album", price: 1_350_000 },
+  ],
 };
-
-// Booking requests OTHER clients have sent to her. Mix of statuses and dates so
-// the dashboard, status filters, and accept/decline flow all have data.
-export const incomingBookings: Booking[] = [
-  {
-    id: "in-1",
-    clientId: "c-anh",
-    clientName: "Nguyễn Thuý An",
-    photographerId: "me",
-    photographerName: "Lý Gia Hân",
-    style: "Chân dung",
-    date: iso(4),
-    location: "Hồ Tây, Hà Nội",
-    price: 450_000,
-    status: "pending",
-  },
-  {
-    id: "in-2",
-    clientId: "c-binh",
-    clientName: "Trần Văn Bình",
-    photographerId: "me",
-    photographerName: "Lý Gia Hân",
-    style: "Gia đình",
-    date: iso(7),
-    location: "Công viên Thống Nhất, Hà Nội",
-    price: 550_000,
-    status: "pending",
-  },
-  {
-    id: "in-3",
-    clientId: "c-chi",
-    clientName: "Phạm Mai Chi",
-    photographerId: "me",
-    photographerName: "Lý Gia Hân",
-    style: "Chân dung",
-    date: iso(12),
-    location: "Phố cổ, Hà Nội",
-    price: 450_000,
-    status: "confirmed",
-  },
-  {
-    id: "in-4",
-    clientId: "c-dung",
-    clientName: "Lê Tiến Dũng",
-    photographerId: "me",
-    photographerName: "Lý Gia Hân",
-    style: "Gia đình",
-    date: iso(18),
-    location: "Bát Tràng, Hà Nội",
-    price: 650_000,
-    status: "confirmed",
-  },
-  {
-    id: "in-5",
-    clientId: "c-em",
-    clientName: "Hoàng Thị Em",
-    photographerId: "me",
-    photographerName: "Lý Gia Hân",
-    style: "Chân dung",
-    date: iso(-9),
-    location: "Hoàng thành Thăng Long, Hà Nội",
-    price: 450_000,
-    status: "completed",
-  },
-  {
-    id: "in-6",
-    clientId: "c-phong",
-    clientName: "Vũ Hồng Phong",
-    photographerId: "me",
-    photographerName: "Lý Gia Hân",
-    style: "Gia đình",
-    date: iso(-23),
-    location: "Cầu Long Biên, Hà Nội",
-    price: 550_000,
-    status: "completed",
-  },
-  {
-    id: "in-7",
-    clientId: "c-giang",
-    clientName: "Đỗ Thu Giang",
-    photographerId: "me",
-    photographerName: "Lý Gia Hân",
-    style: "Chân dung",
-    date: iso(-3),
-    location: "Vườn hoa Lý Thái Tổ, Hà Nội",
-    price: 450_000,
-    status: "cancelled",
-  },
-];

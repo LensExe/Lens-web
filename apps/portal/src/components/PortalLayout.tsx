@@ -37,8 +37,9 @@ const groups: NavGroup[] = [
     links: [
       { to: "/dashboard", label: "Bảng điều khiển" },
       { to: "/dashboard/portfolio", label: "Hồ sơ năng lực" },
+      { to: "/dashboard/packages", label: "Gói dịch vụ" },
       { to: "/dashboard/availability", label: "Lịch trống" },
-      { to: "/dashboard/bookings", label: "Yêu cầu đặt lịch" },
+      { to: "/dashboard/bookings", label: "Quản lý đặt lịch" },
     ],
   },
   {

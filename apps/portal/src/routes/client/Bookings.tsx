@@ -13,7 +13,8 @@ const FILTERS: { value: FilterValue; label: string }[] = [
   { value: "all", label: "Tất cả" },
   { value: "pending", label: BOOKING_STATUS_META.pending.label },
   { value: "confirmed", label: BOOKING_STATUS_META.confirmed.label },
-  { value: "completed", label: BOOKING_STATUS_META.completed.label },
+  { value: "held", label: BOOKING_STATUS_META.held.label },
+  { value: "released", label: BOOKING_STATUS_META.released.label },
   { value: "cancelled", label: BOOKING_STATUS_META.cancelled.label },
 ];
 

@@ -1,5 +1,10 @@
 import { z } from "zod";
-import type { BookingStatus } from "@/types";
+import type {
+  BookingStatus,
+  PaymentMethod,
+  Photographer,
+  PhotographerPackage,
+} from "@/types";
 
 /** VN label + subtle tinted pill style per booking status. */
 export const BOOKING_STATUS_META: Record<
@@ -11,10 +16,14 @@ export const BOOKING_STATUS_META: Record<
     className: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
   },
   confirmed: {
-    label: "Đã xác nhận",
+    label: "Chờ thanh toán",
     className: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
   },
-  completed: {
+  held: {
+    label: "Sàn đang giữ tiền",
+    className: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400",
+  },
+  released: {
     label: "Hoàn thành",
     className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
   },
@@ -40,12 +49,54 @@ export const SESSION_PACKAGES: SessionPackage[] = [
 
 export const TIME_SLOTS = ["08:00", "10:00", "14:00", "16:00"];
 
-/** Price for a package, rounded to a clean 100k VND. */
+// Price for a package. Rounded to a clean 10k VND — fine enough that the basic
+// package (×1) always equals the photographer's listed price (which is a
+// multiple of 10k), instead of jumping to the nearest 100k.
 export function packagePrice(base: number, packageId: string): number {
   const pkg = SESSION_PACKAGES.find((p) => p.id === packageId);
   if (!pkg) return base;
-  return Math.round((base * pkg.multiplier) / 100_000) * 100_000;
+  return Math.round((base * pkg.multiplier) / 10_000) * 10_000;
 }
+
+/** Default packages derived from a base price, for photographers who haven't
+ *  set up their own yet. */
+export function defaultPackages(base: number): PhotographerPackage[] {
+  return SESSION_PACKAGES.map((t) => ({
+    id: t.id,
+    name: t.name,
+    duration: t.duration,
+    price: packagePrice(base, t.id),
+  }));
+}
+
+/** The packages a photographer offers — their own if configured, else defaults. */
+export function resolvePackages(
+  p: Pick<Photographer, "packages" | "pricePerSession">
+): PhotographerPackage[] {
+  return p.packages && p.packages.length > 0
+    ? p.packages
+    : defaultPackages(p.pricePerSession);
+}
+
+/** Platform commission taken from the photographer's payout on release. */
+export const COMMISSION_RATE = 0.1;
+
+/** Platform fee for a booking, rounded to a clean 1k VND. */
+export function commissionAmount(price: number): number {
+  return Math.round((price * COMMISSION_RATE) / 1_000) * 1_000;
+}
+
+/** What the photographer actually receives after the platform fee. */
+export function photographerPayout(price: number): number {
+  return price - commissionAmount(price);
+}
+
+/** VN label per mock payment method. */
+export const PAYMENT_METHODS: { id: PaymentMethod; label: string; hint: string }[] = [
+  { id: "bank", label: "Chuyển khoản ngân hàng", hint: "Quét mã QR hoặc chuyển khoản thủ công" },
+  { id: "card", label: "Thẻ tín dụng / ghi nợ", hint: "Visa, Mastercard, JCB" },
+  { id: "momo", label: "Ví MoMo", hint: "Thanh toán qua ứng dụng MoMo" },
+];
 
 export const bookingSchema = z.object({
   packageId: z.string().min(1, "Vui lòng chọn gói chụp"),

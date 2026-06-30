@@ -1,5 +1,6 @@
 import { photo as img } from "@lens/ui";
 import type { Photographer } from "@/types";
+import { myPhotographer } from "@/mock/dashboard";
 
 // Mock photographers (Vietnamese). Imported ONLY by the service layer.
 // `img` returns real placeholder photos (loremflickr); seeds ending in `-av`
@@ -266,7 +267,12 @@ const DATE_POOL = Array.from({ length: 35 }, (_, i) => {
 const availabilityFor = (index: number): string[] =>
   DATE_POOL.filter((_, day) => (day + index * 2) % 3 === 0);
 
-export const mockPhotographers: Photographer[] = basePhotographers.map((p, i) => ({
-  ...p,
-  availableDates: availabilityFor(i),
-}));
+// The signed-in photographer (id "me") is a real, browsable roster member, so
+// the dashboard profile and her public profile are one and the same account.
+export const mockPhotographers: Photographer[] = [
+  myPhotographer,
+  ...basePhotographers.map((p, i) => ({
+    ...p,
+    availableDates: availabilityFor(i),
+  })),
+];

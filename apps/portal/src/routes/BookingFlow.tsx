@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
@@ -30,10 +30,9 @@ import {
 import { usePhotographer } from "@/queries/usePhotographers";
 import { useCreateBooking } from "@/queries/useBookings";
 import {
-  SESSION_PACKAGES,
   TIME_SLOTS,
   bookingSchema,
-  packagePrice,
+  resolvePackages,
   type BookingFormValues,
 } from "@/lib/booking";
 import { CITY_OPTIONS } from "@/lib/photographer-filters";
@@ -103,6 +102,26 @@ export function BookingFlow() {
 
   const values = watch();
 
+  // Reset scroll on every step change / success BEFORE paint, so the swap never
+  // shows the new screen at the old scroll position and then jump.
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [step, createBooking.isSuccess]);
+
+  // "Tiếp tục" and "Xác nhận đặt lịch" share the same button position, so React
+  // reuses the DOM node. A fast double-click on "Tiếp tục" would land its 2nd
+  // click on the morphed submit button and book instantly, skipping the review.
+  // Arm the confirm button only after a short settle window on the review step.
+  const [confirmArmed, setConfirmArmed] = useState(false);
+  useEffect(() => {
+    if (step !== 2) {
+      setConfirmArmed(false);
+      return;
+    }
+    const t = setTimeout(() => setConfirmArmed(true), 400);
+    return () => clearTimeout(t);
+  }, [step]);
+
   if (isLoading) {
     return (
       <div className="mx-auto max-w-[900px] px-5 py-10">
@@ -126,8 +145,10 @@ export function BookingFlow() {
     );
   }
 
-  const base = photographer.pricePerSession;
-  const price = values.packageId ? packagePrice(base, values.packageId) : 0;
+  const packages = resolvePackages(photographer);
+  const price = values.packageId
+    ? (packages.find((p) => p.id === values.packageId)?.price ?? 0)
+    : 0;
   const availableSet = new Set(photographer.availableDates);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -148,6 +169,13 @@ export function BookingFlow() {
   };
 
   const onSubmit = (v: BookingFormValues) => {
+    // Guard: only the final review step may actually create the booking. If the
+    // form is submitted earlier (e.g. Enter in a field), advance instead of
+    // skipping the review and jumping straight to the success screen.
+    if (step < 2) {
+      setStep((s) => Math.min(s + 1, 2));
+      return;
+    }
     createBooking.mutate({
       photographerId: photographer.id,
       photographerName: photographer.name,
@@ -166,7 +194,7 @@ export function BookingFlow() {
   // Success screen
   if (createBooking.isSuccess) {
     return (
-      <div className="mx-auto max-w-[560px] px-5 py-16 text-center">
+      <div className="mx-auto max-w-[560px] px-5 py-16 text-center duration-300 animate-in fade-in-0 slide-in-from-bottom-2">
         <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-ember/10 text-ember">
           <CheckCircle2 className="size-9" />
         </span>
@@ -252,7 +280,7 @@ export function BookingFlow() {
               <div>
                 <h2 className="mb-3 text-base font-semibold">Chọn gói chụp</h2>
                 <div className="grid gap-3 sm:grid-cols-3">
-                  {SESSION_PACKAGES.map((pkg) => {
+                  {packages.map((pkg) => {
                     const active = values.packageId === pkg.id;
                     return (
                       <button
@@ -268,7 +296,7 @@ export function BookingFlow() {
                       >
                         <p className="font-medium">{pkg.name}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">{pkg.duration}</p>
-                        <p className="mt-2 font-semibold">{formatPrice(packagePrice(base, pkg.id))}</p>
+                        <p className="mt-2 font-semibold">{formatPrice(pkg.price)}</p>
                       </button>
                     );
                   })}
@@ -370,7 +398,7 @@ export function BookingFlow() {
             <div className="rounded-2xl border border-border bg-card p-5">
               <h2 className="text-base font-semibold">Xác nhận thông tin</h2>
               <div className="mt-4 space-y-0.5">
-                <SummaryRow label="Gói chụp" value={SESSION_PACKAGES.find((p) => p.id === values.packageId)?.name ?? "—"} />
+                <SummaryRow label="Gói chụp" value={packages.find((p) => p.id === values.packageId)?.name ?? "—"} />
                 <SummaryRow label="Ngày & giờ" value={`${formatDateVN(values.date)} · ${values.timeSlot}`} />
                 <SummaryRow label="Địa điểm" value={locationLabel} />
                 <SummaryRow label="Liên hệ" value={`${values.contactName} · ${values.contactPhone}`} />
@@ -402,7 +430,11 @@ export function BookingFlow() {
                 Tiếp tục
               </Button>
             ) : (
-              <Button type="submit" className="rounded-full" disabled={createBooking.isPending}>
+              <Button
+                type="submit"
+                className="rounded-full"
+                disabled={createBooking.isPending || !confirmArmed}
+              >
                 {createBooking.isPending && <Loader2 className="size-4 animate-spin" />}
                 Xác nhận đặt lịch
               </Button>

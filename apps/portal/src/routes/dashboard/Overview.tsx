@@ -1,9 +1,20 @@
 import { Link } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
-import { ArrowRight, CalendarCheck, CalendarClock, Inbox, Star, Wallet } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarCheck,
+  CalendarClock,
+  CalendarDays,
+  ImageIcon,
+  Inbox,
+  Package,
+  Star,
+  Wallet,
+} from "lucide-react";
 import { Skeleton, formatPrice } from "@lens/ui";
 import { RequestCard } from "@/components/dashboard/RequestCard";
 import { useIncomingBookings, useMyPhotographerProfile } from "@/queries/useDashboard";
+import { photographerPayout } from "@/lib/booking";
 import { currentUser } from "@/lib/session";
 
 const todayISO = () => {
@@ -24,6 +35,34 @@ function StatCard({ icon: Icon, value, label }: { icon: LucideIcon; value: strin
   );
 }
 
+function ShortcutCard({
+  to,
+  icon: Icon,
+  title,
+  hint,
+}: {
+  to: string;
+  icon: LucideIcon;
+  title: string;
+  hint: string;
+}) {
+  return (
+    <Link
+      to={to}
+      className="group flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:bg-muted/40"
+    >
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+        <Icon className="size-5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-medium leading-tight">{title}</p>
+        <p className="truncate text-sm text-muted-foreground">{hint}</p>
+      </div>
+      <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+    </Link>
+  );
+}
+
 export function DashboardOverview() {
   const { data: bookings = [], isLoading } = useIncomingBookings();
   const { data: profile } = useMyPhotographerProfile();
@@ -31,10 +70,14 @@ export function DashboardOverview() {
 
   const pending = bookings.filter((b) => b.status === "pending");
   const upcoming = bookings.filter(
-    (b) => b.date >= today && b.status === "confirmed"
+    (b) => b.date >= today && (b.status === "confirmed" || b.status === "held")
   );
-  const completed = bookings.filter((b) => b.status === "completed");
-  const revenue = completed.reduce((sum, b) => sum + b.price, 0);
+  const completed = bookings.filter((b) => b.status === "released");
+  // Escrow: photographer earns the payout (after platform fee) on release.
+  const revenue = completed.reduce(
+    (sum, b) => sum + photographerPayout(b.price),
+    0
+  );
 
   return (
     <div className="mx-auto max-w-[860px] px-5 py-8 md:py-10">
@@ -72,7 +115,38 @@ export function DashboardOverview() {
         </div>
       )}
 
-      <section className="mt-9">
+      {/* Quick management shortcuts */}
+      <section className="mt-8">
+        <h2 className="mb-3 text-lg font-semibold">Quản lý nhanh</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <ShortcutCard
+            to="/dashboard/bookings"
+            icon={Inbox}
+            title="Quản lý đặt lịch"
+            hint={pending.length > 0 ? `${pending.length} chờ duyệt` : "Toàn bộ lịch chụp"}
+          />
+          <ShortcutCard
+            to="/dashboard/packages"
+            icon={Package}
+            title="Gói dịch vụ"
+            hint="Thiết lập gói chụp"
+          />
+          <ShortcutCard
+            to="/dashboard/availability"
+            icon={CalendarDays}
+            title="Lịch trống"
+            hint="Cập nhật ngày rảnh"
+          />
+          <ShortcutCard
+            to="/dashboard/portfolio"
+            icon={ImageIcon}
+            title="Hồ sơ năng lực"
+            hint="Ảnh & giới thiệu"
+          />
+        </div>
+      </section>
+
+      <section className="mt-8">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-lg font-semibold">
             <CalendarClock className="size-5 text-muted-foreground" />

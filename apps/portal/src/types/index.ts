@@ -30,6 +30,18 @@ export interface Photographer {
   portfolio: string[];
   /** Upcoming dates the photographer is free, as ISO `yyyy-MM-dd` strings. */
   availableDates: string[];
+  /** Service packages this photographer offers. Empty/absent → default tiers. */
+  packages?: PhotographerPackage[];
+}
+
+/** A bookable service package configured by a photographer. */
+export interface PhotographerPackage {
+  id: string;
+  name: string;
+  /** Short description, e.g. "2 giờ chụp". */
+  duration: string;
+  /** Price for this package (VND). */
+  price: number;
 }
 
 export type UserRole = "client" | "photographer" | "admin";
@@ -43,10 +55,14 @@ export interface User {
   city: string;
 }
 
+// Escrow lifecycle: the client pays in full once the photographer confirms; the
+// platform HOLDS the money, then RELEASES it to the photographer after the
+// client confirms the photos were delivered.
 export type BookingStatus =
-  | "pending"
-  | "confirmed"
-  | "completed"
+  | "pending" // client requested, awaiting photographer
+  | "confirmed" // photographer accepted, awaiting payment
+  | "held" // client paid in full, platform holds the money in escrow
+  | "released" // client confirmed delivery, money released to photographer (done)
   | "cancelled";
 
 export interface Booking {
@@ -61,6 +77,14 @@ export interface Booking {
   location: string;
   price: number;
   status: BookingStatus;
+}
+
+/** Mock payment methods offered at the payment step (UI phase only). */
+export type PaymentMethod = "bank" | "card" | "momo";
+
+/** Payload sent when a client pays in full for a confirmed booking. */
+export interface PaymentInput {
+  method: PaymentMethod;
 }
 
 /** Payload sent when a client creates a booking request. */

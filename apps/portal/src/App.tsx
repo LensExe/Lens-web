@@ -7,10 +7,12 @@ import { PhotographerProfile } from "@/routes/PhotographerProfile";
 import { BookingFlow } from "@/routes/BookingFlow";
 import { ClientOverview } from "@/routes/client/Overview";
 import { ClientBookings } from "@/routes/client/Bookings";
+import { ClientPayment } from "@/routes/client/Payment";
 import { ClientReviews } from "@/routes/client/Reviews";
 import { DashboardOverview } from "@/routes/dashboard/Overview";
 import { DashboardBookings } from "@/routes/dashboard/Bookings";
 import { DashboardPortfolio } from "@/routes/dashboard/Portfolio";
+import { DashboardPackages } from "@/routes/dashboard/Packages";
 import { DashboardAvailability } from "@/routes/dashboard/Availability";
 import { Messages } from "@/routes/Messages";
 import { Placeholder } from "@/components/Placeholder";
@@ -30,12 +32,14 @@ function App() {
         {/* Client area — visible to both clients and photographers */}
         <Route path="client" element={<ClientOverview />} />
         <Route path="client/bookings" element={<ClientBookings />} />
+        <Route path="client/bookings/:id/pay" element={<ClientPayment />} />
         <Route path="client/reviews" element={<ClientReviews />} />
 
         {/* Photographer area — photographers only */}
         <Route element={<RequireRole allow={["photographer"]} />}>
           <Route path="dashboard" element={<DashboardOverview />} />
           <Route path="dashboard/portfolio" element={<DashboardPortfolio />} />
+          <Route path="dashboard/packages" element={<DashboardPackages />} />
           <Route path="dashboard/availability" element={<DashboardAvailability />} />
           <Route path="dashboard/bookings" element={<DashboardBookings />} />
         </Route>

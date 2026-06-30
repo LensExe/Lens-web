@@ -1,6 +1,10 @@
-import { CalendarDays, Check, MapPin, X } from "lucide-react";
+import { CalendarDays, Check, Clock, MapPin, ShieldCheck, Wallet, X } from "lucide-react";
 import { Avatar, AvatarFallback, Button, cn, formatPrice, toast } from "@lens/ui";
-import { BOOKING_STATUS_META } from "@/lib/booking";
+import {
+  BOOKING_STATUS_META,
+  commissionAmount,
+  photographerPayout,
+} from "@/lib/booking";
 import { useUpdateBookingStatus } from "@/queries/useDashboard";
 import type { Booking } from "@/types";
 
@@ -81,6 +85,41 @@ export function RequestCard({ booking }: { booking: Booking }) {
             <Check className="size-4" />
             Xác nhận
           </Button>
+        </div>
+      )}
+
+      {booking.status === "confirmed" && (
+        <div className="mt-4 flex items-start gap-2 border-t border-border pt-4 text-sm text-muted-foreground">
+          <Clock className="mt-0.5 size-4 shrink-0 text-blue-600 dark:text-blue-400" />
+          <p>Bạn đã xác nhận. Đang chờ khách thanh toán để giữ lịch.</p>
+        </div>
+      )}
+
+      {/* Escrow: money held by the platform, released after delivery. */}
+      {booking.status === "held" && (
+        <div className="mt-4 flex items-start gap-2 border-t border-border pt-4 text-sm text-muted-foreground">
+          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-violet-600 dark:text-violet-400" />
+          <p>
+            Tiền đang được sàn giữ. Bạn sẽ nhận{" "}
+            <span className="font-medium text-foreground">
+              {formatPrice(photographerPayout(booking.price))}
+            </span>{" "}
+            (đã trừ phí sàn {formatPrice(commissionAmount(booking.price))}) sau
+            khi khách xác nhận đã nhận ảnh.
+          </p>
+        </div>
+      )}
+
+      {booking.status === "released" && (
+        <div className="mt-4 flex items-start gap-2 border-t border-border pt-4 text-sm text-muted-foreground">
+          <Wallet className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <p>
+            Đã nhận{" "}
+            <span className="font-medium text-foreground">
+              {formatPrice(photographerPayout(booking.price))}
+            </span>{" "}
+            (đã trừ phí sàn {formatPrice(commissionAmount(booking.price))}).
+          </p>
         </div>
       )}
     </div>

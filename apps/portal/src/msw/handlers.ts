@@ -4,19 +4,24 @@ import { mockPhotographers } from "@/mock/photographers";
 import { mockReviews } from "@/mock/reviews";
 import { mockConversations, mockMessages } from "@/mock/messages";
 import { seedBookings } from "@/mock/bookings";
-import { incomingBookings, myPhotographer } from "@/mock/dashboard";
+import { myPhotographer } from "@/mock/dashboard";
 import type {
   Booking,
   BookingInput,
   BookingStatus,
   Conversation,
   Message,
+  Photographer,
 } from "@/types";
 
-// Mock backend for portal. Handlers play the role of the server: read the mock
-// data ("database seed") and own the in-memory state + business logic that used
-// to live in the services (sorting, persistence, status changes). State resets
-// on a full reload — good enough to make actions feel real within a session.
+// Mock backend for portal. Handlers play the role of the server: own the
+// business logic (sorting, filtering, status changes) and the "database".
+//
+// Bookings are a SINGLE table persisted to localStorage so they survive a full
+// reload — which is what a role switch (re-login) is. That makes the cross-role
+// flow real: log in as a client, book a photographer, then log in as that
+// photographer and the request is waiting. (Availability/conversations are
+// lighter and still reset on reload.) Clear localStorage to reseed.
 
 const todayISO = () => {
   const d = new Date();
@@ -33,10 +38,58 @@ const byUpcomingFirst = (a: Booking, b: Booking) => {
   return af ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date);
 };
 
-// ── In-memory stores (the "database") ────────────────────────────────────────
-let clientBookings: Booking[] = [...seedBookings];
-let requestStore: Booking[] = [...incomingBookings];
+// UI-phase auth stand-in: the signed-in user's id, sent by the axios client (see
+// lib/api.ts) as a header. Lets handlers scope data to the current user.
+const userIdOf = (request: Request) => request.headers.get("X-User-Id") ?? "";
+
+// ── Bookings "table" — persisted to localStorage (survives reload) ───────────
+const BOOKINGS_DB_KEY = "lens.bookings.v1";
+const loadBookings = (): Booking[] => {
+  try {
+    const raw = localStorage.getItem(BOOKINGS_DB_KEY);
+    if (raw) return JSON.parse(raw) as Booking[];
+  } catch {
+    /* storage blocked — fall back to a fresh seed */
+  }
+  return seedBookings.map((b) => ({ ...b }));
+};
+let bookings: Booking[] = loadBookings();
+const saveBookings = () => {
+  try {
+    localStorage.setItem(BOOKINGS_DB_KEY, JSON.stringify(bookings));
+  } catch {
+    /* storage blocked — state still lives in memory for this session */
+  }
+};
+
+// ── Signed-in photographer profile — persisted (survives reload) so edits stick.
+const PROFILE_DB_KEY = "lens.profile.v1";
+const loadProfile = (): Photographer => {
+  try {
+    const raw = localStorage.getItem(PROFILE_DB_KEY);
+    if (raw) return JSON.parse(raw) as Photographer;
+  } catch {
+    /* storage blocked — fall back to the seed */
+  }
+  return { ...myPhotographer };
+};
+let profile: Photographer = loadProfile();
+const saveProfile = () => {
+  try {
+    localStorage.setItem(PROFILE_DB_KEY, JSON.stringify(profile));
+  } catch {
+    /* storage blocked */
+  }
+};
+
+// ── In-memory stores (reset on reload) ───────────────────────────────────────
 let availableDates: string[] = [...myPhotographer.availableDates];
+
+// The photographer's profile + her live availability, as the public sees it.
+const profileWithDates = (): Photographer => ({
+  ...profile,
+  availableDates: [...availableDates].sort(),
+});
 let conversations: Conversation[] = mockConversations.map((c) => ({ ...c }));
 const threads: Record<string, Message[]> = Object.fromEntries(
   Object.entries(mockMessages).map(([id, msgs]) => [
@@ -49,16 +102,19 @@ export const handlers = [
   // ── Photographers (public discovery) ──────────────────────────────────────
   http.get("/api/photographers", async ({ request }) => {
     await delay();
+    // Reflect the signed-in photographer's edits in the public roster too.
+    const roster = mockPhotographers.map((p) =>
+      p.id === "me" ? profileWithDates() : p
+    );
     const featured = new URL(request.url).searchParams.get("featured");
     const data =
-      featured === "true"
-        ? mockPhotographers.filter((p) => p.featured)
-        : mockPhotographers;
+      featured === "true" ? roster.filter((p) => p.featured) : roster;
     return HttpResponse.json(data);
   }),
 
   http.get("/api/photographers/:id", async ({ params }) => {
     await delay();
+    if (params.id === "me") return HttpResponse.json(profileWithDates());
     const found = mockPhotographers.find((p) => p.id === params.id);
     return HttpResponse.json(found ?? null);
   }),
@@ -70,10 +126,13 @@ export const handlers = [
     );
   }),
 
-  // ── Client's own bookings ─────────────────────────────────────────────────
-  http.get("/api/bookings", async () => {
+  // ── Bookings the signed-in user made AS A CLIENT ──────────────────────────
+  http.get("/api/bookings", async ({ request }) => {
     await delay();
-    return HttpResponse.json([...clientBookings].sort(byUpcomingFirst));
+    const userId = userIdOf(request);
+    return HttpResponse.json(
+      bookings.filter((b) => b.clientId === userId).sort(byUpcomingFirst)
+    );
   }),
 
   http.post("/api/bookings", async ({ request }) => {
@@ -81,7 +140,7 @@ export const handlers = [
     const input = (await request.json()) as BookingInput;
     const booking: Booking = {
       id: `bk-${Date.now()}`,
-      clientId: "me",
+      clientId: userIdOf(request),
       clientName: input.contactName,
       photographerId: input.photographerId,
       photographerName: input.photographerName,
@@ -91,37 +150,137 @@ export const handlers = [
       price: input.price,
       status: "pending",
     };
-    clientBookings = [booking, ...clientBookings];
+    // One row in the shared table → instantly visible to the photographer too.
+    bookings = [booking, ...bookings];
+    saveBookings();
     return HttpResponse.json(booking, { status: 201 });
+  }),
+
+  // Client pays in full → platform holds the money in escrow (status "held").
+  http.post("/api/bookings/:id/pay", async ({ params, request }) => {
+    await delay();
+    const userId = userIdOf(request);
+    const booking = bookings.find(
+      (b) => b.id === params.id && b.clientId === userId
+    );
+    if (!booking) {
+      return HttpResponse.json(
+        { message: "Không tìm thấy lịch đặt" },
+        { status: 404 }
+      );
+    }
+    if (booking.status !== "confirmed") {
+      return HttpResponse.json(
+        { message: "Chỉ có thể thanh toán cho lịch đã được xác nhận" },
+        { status: 409 }
+      );
+    }
+    const updated: Booking = { ...booking, status: "held" };
+    bookings = bookings.map((b) => (b.id === booking.id ? updated : b));
+    saveBookings();
+    return HttpResponse.json(updated);
+  }),
+
+  // Client confirms delivery → escrow releases to the photographer ("released").
+  http.post("/api/bookings/:id/confirm-receipt", async ({ params, request }) => {
+    await delay();
+    const userId = userIdOf(request);
+    const booking = bookings.find(
+      (b) => b.id === params.id && b.clientId === userId
+    );
+    if (!booking) {
+      return HttpResponse.json(
+        { message: "Không tìm thấy lịch đặt" },
+        { status: 404 }
+      );
+    }
+    if (booking.status !== "held") {
+      return HttpResponse.json(
+        { message: "Chỉ có thể xác nhận khi sàn đang giữ tiền" },
+        { status: 409 }
+      );
+    }
+    const updated: Booking = { ...booking, status: "released" };
+    bookings = bookings.map((b) => (b.id === booking.id ? updated : b));
+    saveBookings();
+    return HttpResponse.json(updated);
+  }),
+
+  // Client cancels a held booking → escrow refunds in full (status "cancelled").
+  http.post("/api/bookings/:id/cancel", async ({ params, request }) => {
+    await delay();
+    const userId = userIdOf(request);
+    const booking = bookings.find(
+      (b) => b.id === params.id && b.clientId === userId
+    );
+    if (!booking) {
+      return HttpResponse.json(
+        { message: "Không tìm thấy lịch đặt" },
+        { status: 404 }
+      );
+    }
+    if (booking.status !== "held" && booking.status !== "confirmed") {
+      return HttpResponse.json(
+        { message: "Không thể huỷ lịch ở trạng thái này" },
+        { status: 409 }
+      );
+    }
+    const updated: Booking = { ...booking, status: "cancelled" };
+    bookings = bookings.map((b) => (b.id === booking.id ? updated : b));
+    saveBookings();
+    return HttpResponse.json(updated);
   }),
 
   // ── Signed-in photographer: profile, incoming requests, availability ───────
   http.get("/api/me/photographer", async () => {
     await delay();
-    return HttpResponse.json({
-      ...myPhotographer,
-      availableDates: [...availableDates].sort(),
-    });
+    return HttpResponse.json(profileWithDates());
   }),
 
-  http.get("/api/me/bookings", async () => {
+  // Photographer edits her own profile (bio, price, styles, portfolio, …).
+  http.patch("/api/me/photographer", async ({ request }) => {
     await delay();
-    return HttpResponse.json([...requestStore].sort(byUpcomingFirst));
+    const p = (await request.json()) as Partial<Photographer>;
+    profile = {
+      ...profile,
+      ...(p.name !== undefined && { name: p.name }),
+      ...(p.bio !== undefined && { bio: p.bio }),
+      ...(p.city !== undefined && { city: p.city }),
+      ...(p.pricePerSession !== undefined && { pricePerSession: p.pricePerSession }),
+      ...(p.experienceYears !== undefined && { experienceYears: p.experienceYears }),
+      ...(p.styles !== undefined && { styles: p.styles }),
+      ...(p.portfolio !== undefined && { portfolio: p.portfolio }),
+      ...(p.packages !== undefined && { packages: p.packages }),
+    };
+    saveProfile();
+    return HttpResponse.json(profileWithDates());
+  }),
+
+  // Booking requests sent TO the signed-in photographer.
+  http.get("/api/me/bookings", async ({ request }) => {
+    await delay();
+    const userId = userIdOf(request);
+    return HttpResponse.json(
+      bookings.filter((b) => b.photographerId === userId).sort(byUpcomingFirst)
+    );
   }),
 
   http.patch("/api/me/bookings/:id", async ({ params, request }) => {
     await delay();
+    const userId = userIdOf(request);
     const { status } = (await request.json()) as { status: BookingStatus };
-    requestStore = requestStore.map((b) =>
-      b.id === params.id ? { ...b, status } : b
+    const booking = bookings.find(
+      (b) => b.id === params.id && b.photographerId === userId
     );
-    const updated = requestStore.find((b) => b.id === params.id);
-    if (!updated) {
+    if (!booking) {
       return HttpResponse.json(
         { message: "Không tìm thấy yêu cầu đặt lịch" },
         { status: 404 }
       );
     }
+    const updated: Booking = { ...booking, status };
+    bookings = bookings.map((b) => (b.id === booking.id ? updated : b));
+    saveBookings();
     return HttpResponse.json(updated);
   }),
 

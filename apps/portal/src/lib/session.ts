@@ -2,6 +2,8 @@ import { avatar } from "@lens/ui";
 import type { UserRole } from "@/types";
 
 export interface SessionUser {
+  /** Stable id sent to the mock backend so data is scoped to this user. */
+  id: string;
   name: string;
   email: string;
   avatar: string;
@@ -21,6 +23,7 @@ type PortalRole = "client" | "photographer";
 // credentials autofilled on the landing login form.
 const DEMO_USERS: Record<PortalRole, SessionUser> = {
   client: {
+    id: "u-khachhang",
     name: "Trần Khách Hàng",
     email: "khachhang@lens.vn",
     avatar: avatar("client-av"),
@@ -28,6 +31,8 @@ const DEMO_USERS: Record<PortalRole, SessionUser> = {
     role: "client",
   },
   photographer: {
+    // Matches her id in the photographer roster + dashboard (mock).
+    id: "me",
     name: "Lý Gia Hân",
     email: "nhiepanhgia@lens.vn",
     avatar: avatar("giahan-av"),

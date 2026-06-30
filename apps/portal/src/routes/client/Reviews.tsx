@@ -17,7 +17,7 @@ const formatDate = (iso: string) => {
 
 export function ClientReviews() {
   const { data: bookings = [], isLoading } = useMyBookings();
-  const reviewable = bookings.filter((b) => b.status === "completed");
+  const reviewable = bookings.filter((b) => b.status === "released");
 
   return (
     <div className="mx-auto max-w-[860px] px-5 py-8 md:py-10">

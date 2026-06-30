@@ -5,8 +5,9 @@ import {
   getMyPhotographerProfile,
   toggleAvailability,
   updateBookingStatus,
+  updateMyPhotographerProfile,
 } from "@/services/dashboard";
-import type { BookingStatus } from "@/types";
+import type { BookingStatus, Photographer } from "@/types";
 
 // Layer 2 — Query hooks for the photographer dashboard.
 export const dashboardKeys = {
@@ -19,6 +20,19 @@ export function useMyPhotographerProfile() {
   return useQuery({
     queryKey: dashboardKeys.profile,
     queryFn: getMyPhotographerProfile,
+  });
+}
+
+export function useUpdateMyPhotographerProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: Partial<Photographer>) =>
+      updateMyPhotographerProfile(patch),
+    onSuccess: (updated) => {
+      qc.setQueryData(dashboardKeys.profile, updated);
+      // The public roster/profile show this photographer too — refresh them.
+      qc.invalidateQueries({ queryKey: ["photographers"] });
+    },
   });
 }
 

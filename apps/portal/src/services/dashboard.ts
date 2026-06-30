@@ -8,6 +8,12 @@ export async function getMyPhotographerProfile(): Promise<Photographer> {
   return (await api.get<Photographer>("/me/photographer")).data;
 }
 
+export async function updateMyPhotographerProfile(
+  patch: Partial<Photographer>
+): Promise<Photographer> {
+  return (await api.patch<Photographer>("/me/photographer", patch)).data;
+}
+
 export async function getIncomingBookings(): Promise<Booking[]> {
   return (await api.get<Booking[]>("/me/bookings")).data;
 }
