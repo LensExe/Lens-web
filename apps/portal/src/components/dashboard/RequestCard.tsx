@@ -1,4 +1,5 @@
-import { CalendarDays, Check, Clock, MapPin, ShieldCheck, Wallet, X } from "lucide-react";
+import { Link } from "react-router-dom";
+import { CalendarDays, Check, Clock, Images, MapPin, ShieldCheck, Wallet, X } from "lucide-react";
 import { Avatar, AvatarFallback, Button, cn, formatPrice, toast } from "@lens/ui";
 import {
   BOOKING_STATUS_META,
@@ -6,6 +7,8 @@ import {
   photographerPayout,
 } from "@/lib/booking";
 import { useUpdateBookingStatus } from "@/queries/useDashboard";
+import { useGallery } from "@/queries/useStorage";
+import { CollaboratorDialog } from "@/components/dashboard/CollaboratorDialog";
 import type { Booking } from "@/types";
 
 const initialsOf = (name: string) =>
@@ -18,7 +21,10 @@ const formatDate = (iso: string) => {
 export function RequestCard({ booking }: { booking: Booking }) {
   const status = BOOKING_STATUS_META[booking.status];
   const { mutate, isPending } = useUpdateBookingStatus();
+  const { data: gallery } = useGallery(booking.id);
   const isActionable = booking.status === "pending";
+  // Collaboration closes once photos are delivered (matches the backend guard).
+  const canCollaborate = !gallery?.photos.length;
 
   const decide = (next: "confirmed" | "cancelled") =>
     mutate(
@@ -41,9 +47,11 @@ export function RequestCard({ booking }: { booking: Booking }) {
           <AvatarFallback>{initialsOf(booking.clientName)}</AvatarFallback>
         </Avatar>
 
-        <div className="min-w-0 flex-1">
+        <Link to={`/dashboard/bookings/${booking.id}`} className="group/detail min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate font-semibold">{booking.clientName}</p>
+            <p className="truncate font-semibold group-hover/detail:underline">
+              {booking.clientName}
+            </p>
             <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", status.className)}>
               {status.label}
             </span>
@@ -59,7 +67,7 @@ export function RequestCard({ booking }: { booking: Booking }) {
               {booking.location}
             </span>
           </div>
-        </div>
+        </Link>
 
         <div className="shrink-0 text-right">
           <p className="font-semibold">{formatPrice(booking.price)}</p>
@@ -89,37 +97,54 @@ export function RequestCard({ booking }: { booking: Booking }) {
       )}
 
       {booking.status === "confirmed" && (
-        <div className="mt-4 flex items-start gap-2 border-t border-border pt-4 text-sm text-muted-foreground">
-          <Clock className="mt-0.5 size-4 shrink-0 text-blue-600 dark:text-blue-400" />
-          <p>Bạn đã xác nhận. Đang chờ khách thanh toán để giữ lịch.</p>
+        <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="flex items-start gap-2 text-sm text-muted-foreground">
+            <Clock className="mt-0.5 size-4 shrink-0 text-blue-600 dark:text-blue-400" />
+            Bạn đã xác nhận. Đang chờ khách thanh toán để giữ lịch.
+          </p>
+          <CollaboratorDialog booking={booking} />
         </div>
       )}
 
       {/* Escrow: money held by the platform, released after delivery. */}
       {booking.status === "held" && (
-        <div className="mt-4 flex items-start gap-2 border-t border-border pt-4 text-sm text-muted-foreground">
-          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-violet-600 dark:text-violet-400" />
-          <p>
+        <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="flex items-start gap-2 text-sm text-muted-foreground">
+            <ShieldCheck className="mt-0.5 size-4 shrink-0 text-violet-600 dark:text-violet-400" />
             Tiền đang được sàn giữ. Bạn sẽ nhận{" "}
             <span className="font-medium text-foreground">
               {formatPrice(photographerPayout(booking.price))}
             </span>{" "}
-            (đã trừ phí sàn {formatPrice(commissionAmount(booking.price))}) sau
-            khi khách xác nhận đã nhận ảnh.
+            sau khi khách xác nhận đã nhận ảnh.
           </p>
+          <div className="flex shrink-0 gap-2">
+            {canCollaborate && <CollaboratorDialog booking={booking} />}
+            <Button asChild variant="outline" size="sm" className="rounded-full">
+              <Link to={`/dashboard/bookings/${booking.id}/gallery`}>
+                <Images className="size-4" />
+                Giao ảnh
+              </Link>
+            </Button>
+          </div>
         </div>
       )}
 
       {booking.status === "released" && (
-        <div className="mt-4 flex items-start gap-2 border-t border-border pt-4 text-sm text-muted-foreground">
-          <Wallet className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-          <p>
+        <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="flex items-start gap-2 text-sm text-muted-foreground">
+            <Wallet className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
             Đã nhận{" "}
             <span className="font-medium text-foreground">
               {formatPrice(photographerPayout(booking.price))}
             </span>{" "}
             (đã trừ phí sàn {formatPrice(commissionAmount(booking.price))}).
           </p>
+          <Button asChild variant="outline" size="sm" className="shrink-0 rounded-full">
+            <Link to={`/dashboard/bookings/${booking.id}/gallery`}>
+              <Images className="size-4" />
+              Xem ảnh
+            </Link>
+          </Button>
         </div>
       )}
     </div>

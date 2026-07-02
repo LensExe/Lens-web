@@ -182,7 +182,10 @@
     @apply bg-background text-foreground;
     }
   html {
-    @apply font-sans;
+    /* bg-background here (not just on body) so the View Transitions snapshot of
+       the root has an opaque background at the edges — otherwise the theme
+       reveal's last-covered corner shows a transparent gap/flash. */
+    @apply font-sans bg-background;
     scroll-behavior: smooth;
     }
 }
@@ -256,11 +259,11 @@
   animation: auth-dialog-out 280ms cubic-bezier(0.4, 0, 1, 1);
 }
 
-/* Theme switch: circular reveal via the View Transitions API.
-   ThemeToggle drives the growing-circle clip-path from the click point on the
-   ::view-transition-new(root) snapshot. We disable the default cross-fade so
-   the new theme is wiped in cleanly over the old one. Browsers without the API
-   (e.g. Firefox) just swap instantly — no animation, no breakage. */
+/* Theme switch: circular reveal via the View Transitions API. ThemeToggle grows
+   a clip-path circle from the toggle button on the ::view-transition-new(root)
+   snapshot so the new theme's real content wipes in UNDER the content. We disable
+   the default cross-fade so it's a clean wipe. (Tradeoff: the page is a snapshot
+   during the transition, so other animations pause briefly then resume.) */
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;

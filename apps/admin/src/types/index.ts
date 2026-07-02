@@ -71,3 +71,111 @@ export interface ReportData {
   byStyle: Breakdown[];
   byCity: Breakdown[];
 }
+
+// ── Finance & withdrawals (Feature: Ví + Lens Xu) ───────────────────────────
+export type WithdrawalStatus = "pending" | "approved" | "rejected";
+
+export interface AdminWithdrawal {
+  id: string;
+  photographerId: string;
+  photographerName: string;
+  avatar: string;
+  /** VND. */
+  amount: number;
+  /** ISO datetime the withdrawal was requested. */
+  requestedAt: string;
+  status: WithdrawalStatus;
+}
+
+export interface FinanceSummary {
+  /** Tổng tiền thật đang giữ trong ví thợ (VND). */
+  walletReserve: number;
+  /** Tổng Lens Xu đang lưu hành (xu). */
+  coinsOutstanding: number;
+  /** Tổng tiền các yêu cầu rút đang chờ duyệt (VND). */
+  pendingWithdrawalTotal: number;
+  pendingCount: number;
+}
+
+// ── Bookings & collaboration (Feature: liên kết thợ) ────────────────────────
+export type EscrowStatus =
+  | "pending"
+  | "confirmed"
+  | "held"
+  | "released"
+  | "cancelled";
+
+export interface AdminCollaborator {
+  name: string;
+  /** Payout share 0–100. */
+  sharePct: number;
+  status: "invited" | "accepted" | "declined";
+}
+
+export interface AdminBooking {
+  id: string;
+  clientName: string;
+  photographerName: string;
+  collaborators?: AdminCollaborator[];
+  style: string;
+  /** ISO date string. */
+  date: string;
+  /** VND. */
+  price: number;
+  status: EscrowStatus;
+}
+
+// ── Storage & plans (Feature: cloud lưu trữ) ────────────────────────────────
+export type StoragePlanTier = "free" | "pro" | "studio";
+
+export interface AdminStorageRow {
+  photographerId: string;
+  name: string;
+  avatar: string;
+  plan: StoragePlanTier;
+  usedBytes: number;
+  quotaBytes: number;
+  galleryCount: number;
+  overQuota: boolean;
+}
+
+export interface StorageOverview {
+  totalUsedBytes: number;
+  overQuotaCount: number;
+  planBreakdown: Record<StoragePlanTier, number>;
+}
+
+export interface StorageReport {
+  overview: StorageOverview;
+  rows: AdminStorageRow[];
+}
+
+// ── Ranks, commission & AI assistant (Features: achievements + AI) ──────────
+export type RankId = "newbie" | "bronze" | "silver" | "gold" | "diamond";
+
+export interface AdminQualityRow {
+  photographerId: string;
+  name: string;
+  avatar: string;
+  rank: RankId;
+  completedSessions: number;
+  /** 0–100. */
+  fiveStarPct: number;
+  /** 0–100. */
+  cancelRate: number;
+  /** Platform commission for this rank, 0–1. */
+  commissionRate: number;
+  assistantEnabled: boolean;
+}
+
+export interface QualityOverview {
+  rankBreakdown: Record<RankId, number>;
+  /** Average commission rate across photographers, 0–1. */
+  avgCommission: number;
+  aiEnabledCount: number;
+}
+
+export interface QualityReport {
+  overview: QualityOverview;
+  rows: AdminQualityRow[];
+}

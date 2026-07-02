@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Send } from "lucide-react";
+import { ArrowLeft, Bot, Send, Sparkles } from "lucide-react";
 import {
   Avatar,
   AvatarFallback,
@@ -7,9 +7,13 @@ import {
   Button,
   Input,
   Skeleton,
+  Switch,
   cn,
 } from "@lens/ui";
 import { useMessages, useSendMessage } from "@/queries/useMessages";
+import { useToggleConversationAI } from "@/queries/useAssistant";
+import { aiDisclaimer } from "@/lib/assistant";
+import { currentUser } from "@/lib/session";
 import { formatClock } from "@/lib/time";
 import type { Conversation } from "@/types";
 
@@ -30,6 +34,9 @@ interface MessageThreadProps {
 export function MessageThread({ conversation, onBack }: MessageThreadProps) {
   const { data: messages = [], isLoading } = useMessages(conversation.id);
   const { mutate: send, isPending } = useSendMessage(conversation.id);
+  const toggleAI = useToggleConversationAI(conversation.id);
+  const isPhotographer = currentUser.role === "photographer";
+  const aiOn = !!conversation.aiEnabled;
   const [draft, setDraft] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -68,7 +75,30 @@ export function MessageThread({ conversation, onBack }: MessageThreadProps) {
             {ROLE_LABEL[conversation.participantRole]}
           </p>
         </div>
+        {isPhotographer && (
+          <label className="ml-auto flex shrink-0 cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+            <Sparkles className="size-4 text-ember" />
+            <span className="hidden sm:inline">Trợ lý AI</span>
+            <Switch
+              checked={aiOn}
+              onCheckedChange={(v) => toggleAI.mutate(v)}
+              aria-label="Bật trợ lý AI cho hội thoại"
+            />
+          </label>
+        )}
       </header>
+
+      {/* AI disclaimer — clients must know they're talking to a bot. */}
+      {aiOn && (
+        <div className="flex items-center gap-2 border-b border-border bg-ember/5 px-4 py-2 text-xs text-muted-foreground">
+          <Bot className="size-3.5 shrink-0 text-ember" />
+          <span>
+            {isPhotographer
+              ? "Trợ lý AI đang tự động trả lời khách trong hội thoại này."
+              : aiDisclaimer(conversation.participantName)}
+          </span>
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 space-y-3 overflow-y-auto p-4">
@@ -80,22 +110,35 @@ export function MessageThread({ conversation, onBack }: MessageThreadProps) {
           </div>
         ) : (
           messages.map((m) => {
-            const mine = m.senderId === "me";
+            // "Mine" is decided by the REAL signed-in user id, so each side sees
+            // its own messages on the right. AI replies are sent on the
+            // photographer's behalf but always styled as an AI bubble.
+            const ai = m.isAI || m.senderId === "ai";
+            const mine = m.senderId === currentUser.id;
             return (
               <div key={m.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
                 <div
                   className={cn(
                     "max-w-[75%] rounded-2xl px-3.5 py-2",
-                    mine
-                      ? "rounded-br-md bg-foreground text-background"
-                      : "rounded-bl-md bg-muted text-foreground"
+                    mine ? "rounded-br-md" : "rounded-bl-md",
+                    ai
+                      ? "bg-ember/10 text-foreground ring-1 ring-ember/20"
+                      : mine
+                        ? "bg-foreground text-background"
+                        : "bg-muted text-foreground"
                   )}
                 >
+                  {ai && (
+                    <p className="mb-0.5 flex items-center gap-1 text-[11px] font-medium text-ember">
+                      <Bot className="size-3" />
+                      Trợ lý AI
+                    </p>
+                  )}
                   <p className="text-sm leading-relaxed">{m.text}</p>
                   <p
                     className={cn(
                       "mt-1 text-[11px]",
-                      mine ? "text-background/60" : "text-muted-foreground"
+                      mine && !ai ? "text-background/60" : "text-muted-foreground"
                     )}
                   >
                     {formatClock(m.sentAt)}

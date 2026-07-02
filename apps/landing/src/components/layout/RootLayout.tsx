@@ -1,15 +1,24 @@
-import { useState } from "react";
-import { Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Outlet, useLocation } from "react-router-dom";
 import { ClickSpark } from "@lens/ui";
 import { Navbar } from "./Navbar";
 import { Footer } from "./Footer";
 import { AuthModalProvider } from "@/components/auth/auth-modal";
-import { useSmoothScroll } from "@lens/ui";
+import { useSmoothScroll, scrollToHash } from "@lens/ui";
 import { usePrefersReducedMotion } from "@lens/ui";
 
 export function RootLayout() {
   useSmoothScroll();
   const reduceMotion = usePrefersReducedMotion();
+  const location = useLocation();
+
+  // Scroll to an anchor when landing with a hash (e.g. from another route or a
+  // refresh on /#phong-cach). Delayed a tick so the target section has mounted.
+  useEffect(() => {
+    if (!location.hash) return;
+    const id = setTimeout(() => scrollToHash(location.hash), 80);
+    return () => clearTimeout(id);
+  }, [location.pathname, location.hash]);
   // ClickSpark paints a full-page canvas — only enable on pointer-fine
   // desktops; skip on mobile/reduced-motion to stay light.
   const [enableSpark] = useState(

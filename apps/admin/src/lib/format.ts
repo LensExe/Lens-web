@@ -11,6 +11,24 @@ export function formatCount(n: number): string {
   return n.toLocaleString("vi-VN");
 }
 
+/** Human byte size, e.g. 1_610_612_736 → "1,5 GB". */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KB", "MB", "GB", "TB"];
+  let value = bytes / 1024;
+  let i = 0;
+  while (value >= 1024 && i < units.length - 1) {
+    value /= 1024;
+    i++;
+  }
+  return `${value.toLocaleString("vi-VN", { maximumFractionDigits: 1 })} ${units[i]}`;
+}
+
+/** Percent label, e.g. 0.08 → "8%". */
+export function formatPercent(fraction: number): string {
+  return `${Math.round(fraction * 100)}%`;
+}
+
 /** Compact relative label from an ISO datetime (e.g. "5 phút", "3 giờ", "2 ngày"). */
 export function formatRelative(iso: string): string {
   const diffMin = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);

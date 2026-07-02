@@ -2,6 +2,7 @@ import { Star } from "lucide-react";
 import {
   Avatar,
   AvatarFallback,
+  AvatarImage,
   Button,
   Skeleton,
   toast,
@@ -19,6 +20,22 @@ export function ClientReviews() {
   const { data: bookings = [], isLoading } = useMyBookings();
   const reviewable = bookings.filter((b) => b.status === "released");
 
+  // One review target PER photographer — group shoots get a row for the lead and
+  // each accepted collaborator (không gộp chung một review).
+  const targets = reviewable.flatMap((b) => {
+    const people = [
+      { id: b.photographerId, name: b.photographerName, avatar: undefined as string | undefined },
+      ...(b.collaborators ?? [])
+        .filter((c) => c.status === "accepted")
+        .map((c) => ({
+          id: c.photographerId,
+          name: c.photographerName,
+          avatar: c.photographerAvatar,
+        })),
+    ];
+    return people.map((person) => ({ key: `${b.id}-${person.id}`, booking: b, person }));
+  });
+
   return (
     <div className="mx-auto max-w-[860px] px-5 py-8 md:py-10">
       <header className="mb-6">
@@ -35,7 +52,7 @@ export function ClientReviews() {
           <Skeleton className="h-20 rounded-2xl" />
           <Skeleton className="h-20 rounded-2xl" />
         </div>
-      ) : reviewable.length === 0 ? (
+      ) : targets.length === 0 ? (
         <div className="flex flex-col items-center rounded-2xl border border-dashed border-border p-10 text-center">
           <span className="mb-3 flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <Star className="size-6" />
@@ -48,24 +65,32 @@ export function ClientReviews() {
         </div>
       ) : (
         <div className="space-y-3">
-          {reviewable.map((booking) => (
+          {targets.map(({ key, booking, person }) => (
             <div
-              key={booking.id}
+              key={key}
               className="flex items-center gap-4 rounded-2xl border border-border bg-card p-4"
             >
               <Avatar className="size-12 shrink-0">
-                <AvatarFallback>{initialsOf(booking.photographerName)}</AvatarFallback>
+                {person.avatar && <AvatarImage src={person.avatar} alt={person.name} />}
+                <AvatarFallback>{initialsOf(person.name)}</AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold">{booking.photographerName}</p>
+                <p className="truncate font-semibold">{person.name}</p>
                 <p className="text-sm text-muted-foreground">
                   {booking.style} · {formatDate(booking.date)}
+                  {booking.collaborators && booking.collaborators.length > 0
+                    ? person.id === booking.photographerId
+                      ? " · Thợ chính"
+                      : " · Thợ liên kết"
+                    : ""}
                 </p>
               </div>
               <Button
                 variant="outline"
                 className="shrink-0 rounded-full"
-                onClick={() => toast("Tính năng viết đánh giá sắp ra mắt.")}
+                onClick={() =>
+                  toast(`Viết đánh giá cho ${person.name} — sắp ra mắt.`)
+                }
               >
                 <Star className="size-4" />
                 Viết đánh giá

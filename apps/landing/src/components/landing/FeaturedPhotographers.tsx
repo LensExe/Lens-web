@@ -20,7 +20,7 @@ export function FeaturedPhotographers() {
   useReveal(scope, [data]);
 
   return (
-    <section ref={scope} className="px-5 py-20">
+    <section ref={scope} id="nhiep-anh-gia" className="scroll-mt-20 px-5 py-20">
       <div className="mx-auto max-w-[1200px]">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>

@@ -4,6 +4,8 @@ import {
   getMessages,
   markConversationRead,
   sendMessage,
+  startConversation,
+  type StartConversationInput,
 } from "@/services/messages";
 
 // Layer 2 — Query hooks for messaging.
@@ -33,6 +35,17 @@ export function useSendMessage(conversationId: string) {
     mutationFn: (text: string) => sendMessage(conversationId, text),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: messageKeys.thread(conversationId) });
+      qc.invalidateQueries({ queryKey: messageKeys.conversations });
+    },
+  });
+}
+
+export function useStartConversation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (participant: StartConversationInput) =>
+      startConversation(participant),
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: messageKeys.conversations });
     },
   });

@@ -11,20 +11,24 @@ export function ThemeToggle() {
   const toggle = (e: React.MouseEvent<HTMLButtonElement>) => {
     const next = resolvedTheme === "dark" ? "light" : "dark";
 
-    // Fallback: no View Transitions support or the user prefers reduced motion.
+    // Fallback: reduced motion or no View Transitions support → swap instantly.
     if (reduceMotion || !document.startViewTransition) {
       setTheme(next);
       return;
     }
 
-    // Reveal the new theme with a circle growing from the toggle button to the
-    // farthest screen corner. flushSync forces next-themes to apply the `.dark`
-    // class synchronously so the snapshot captures the new theme.
-    const { clientX: x, clientY: y } = e;
-    const endRadius = Math.hypot(
-      Math.max(x, window.innerWidth - x),
-      Math.max(y, window.innerHeight - y)
-    );
+    // Real content reveal: the new theme is wiped in as a circle growing from the
+    // toggle button, UNDER the content (the changing layer is the page snapshot,
+    // content stays visible throughout). Tradeoff: while the transition runs, the
+    // page is a snapshot, so other animations pause briefly then resume.
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    const endRadius =
+      Math.hypot(
+        Math.max(x, window.innerWidth - x),
+        Math.max(y, window.innerHeight - y)
+      ) + 8;
 
     const transition = document.startViewTransition(() => {
       flushSync(() => setTheme(next));
@@ -39,8 +43,8 @@ export function ThemeToggle() {
           ],
         },
         {
-          duration: 480,
-          easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+          duration: 600,
+          easing: "ease-out",
           pseudoElement: "::view-transition-new(root)",
         }
       );

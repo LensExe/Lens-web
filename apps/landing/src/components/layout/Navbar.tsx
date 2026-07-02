@@ -1,21 +1,37 @@
 import { useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Menu } from "lucide-react";
-import { Button, Logo } from "@lens/ui";
+import { Button, Logo, scrollToHash } from "@lens/ui";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@lens/ui";
 import { ThemeToggle } from "@lens/ui";
-import { portalBrowse } from "@/lib/links";
 import { useAuthModal } from "@/components/auth/auth-modal-context";
 
-const navLinks = [
-  { label: "Nhiếp ảnh gia", href: portalBrowse(), external: true },
-  { label: "Cách hoạt động", to: "/#cach-hoat-dong" },
-  { label: "Phong cách chụp", to: "/#phong-cach" },
+type NavLinkItem = { label: string; hash: string };
+
+const navLinks: NavLinkItem[] = [
+  { label: "Nhiếp ảnh gia", hash: "#nhiep-anh-gia" },
+  { label: "Cách hoạt động", hash: "#cach-hoat-dong" },
+  { label: "Phong cách chụp", hash: "#phong-cach" },
 ];
+
+const pillClass =
+  "rounded-full px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground";
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
   const { openLogin, openSignup } = useAuthModal();
+  const location = useLocation();
+
+  // Same-page anchor: scroll smoothly (via Lenis) instead of letting the browser
+  // jump. When on another route, let the <a href="/#…"> navigate home first.
+  const onSection =
+    (hash: string) => (e: React.MouseEvent) => {
+      if (location.pathname === "/") {
+        e.preventDefault();
+        scrollToHash(hash);
+      }
+      setOpen(false);
+    };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-xl">
@@ -25,25 +41,16 @@ export function Navbar() {
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
-          {navLinks.map((link) =>
-            link.external ? (
-              <a
-                key={link.label}
-                href={link.href}
-                className="rounded-full px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                {link.label}
-              </a>
-            ) : (
-              <NavLink
-                key={link.label}
-                to={link.to!}
-                className="rounded-full px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                {link.label}
-              </NavLink>
-            )
-          )}
+          {navLinks.map((link) => (
+            <a
+              key={link.label}
+              href={`/${link.hash}`}
+              onClick={onSection(link.hash)}
+              className={pillClass}
+            >
+              {link.label}
+            </a>
+          ))}
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
@@ -71,27 +78,16 @@ export function Navbar() {
               </div>
               <SheetTitle className="sr-only">Điều hướng</SheetTitle>
               <nav className="flex flex-col gap-1 px-3">
-                {navLinks.map((link) =>
-                  link.external ? (
-                    <a
-                      key={link.label}
-                      href={link.href}
-                      onClick={() => setOpen(false)}
-                      className="rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-                    >
-                      {link.label}
-                    </a>
-                  ) : (
-                    <Link
-                      key={link.label}
-                      to={link.to!}
-                      onClick={() => setOpen(false)}
-                      className="rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-                    >
-                      {link.label}
-                    </Link>
-                  )
-                )}
+                {navLinks.map((link) => (
+                  <a
+                    key={link.label}
+                    href={`/${link.hash}`}
+                    onClick={onSection(link.hash)}
+                    className="rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    {link.label}
+                  </a>
+                ))}
               </nav>
               <div className="mt-4 flex flex-col gap-2 px-3">
                 <Button

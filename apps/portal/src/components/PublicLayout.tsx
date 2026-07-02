@@ -1,103 +1,8 @@
-import { useState } from "react";
 import { Link, Outlet } from "react-router-dom";
-import {
-  CalendarCheck,
-  Camera,
-  LayoutDashboard,
-  LogOut,
-  MessageSquare,
-  Star,
-} from "lucide-react";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-  Logo,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  ThemeToggle,
-  cn,
-} from "@lens/ui";
-import { clearSession, currentUser, hasRole } from "@/lib/session";
-import type { UserRole } from "@/types";
+import { Logo } from "@lens/ui";
+import { HeaderActions } from "@/components/header/HeaderActions";
 
 const LANDING_URL = import.meta.env.VITE_LANDING_URL ?? "http://localhost:5173";
-
-type MenuItem = {
-  to: string;
-  label: string;
-  icon: typeof LayoutDashboard;
-  /** Roles allowed to see this menu item. */
-  allow: UserRole[];
-};
-
-const menu: MenuItem[] = [
-  { to: "/client", label: "Khu vực khách hàng", icon: LayoutDashboard, allow: ["client", "photographer"] },
-  { to: "/client/bookings", label: "Lịch đặt của tôi", icon: CalendarCheck, allow: ["client", "photographer"] },
-  { to: "/dashboard", label: "Khu vực nhiếp ảnh gia", icon: Camera, allow: ["photographer"] },
-  { to: "/client/reviews", label: "Đánh giá của tôi", icon: Star, allow: ["client", "photographer"] },
-  { to: "/messages", label: "Tin nhắn", icon: MessageSquare, allow: ["client", "photographer"] },
-];
-
-const itemClass =
-  "flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-foreground/80 transition-colors hover:bg-muted hover:text-foreground";
-
-function AccountMenu() {
-  const [open, setOpen] = useState(false);
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          aria-label="Tài khoản"
-          className="rounded-full outline-none ring-offset-2 ring-offset-background transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <Avatar className="size-9">
-            <AvatarImage src={currentUser.avatar} alt={currentUser.name} />
-            <AvatarFallback>{currentUser.initials}</AvatarFallback>
-          </Avatar>
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={10} className="w-64 overflow-hidden rounded-2xl p-0">
-        {/* User header */}
-        <div className="flex items-center gap-3 bg-muted/50 p-4">
-          <Avatar className="size-10">
-            <AvatarImage src={currentUser.avatar} alt={currentUser.name} />
-            <AvatarFallback>{currentUser.initials}</AvatarFallback>
-          </Avatar>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{currentUser.name}</p>
-            <p className="truncate text-xs text-muted-foreground">{currentUser.email}</p>
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <div className="p-1.5">
-          {menu
-            .filter((m) => hasRole(m.allow, currentUser.role))
-            .map((m) => (
-            <Link key={m.to} to={m.to} onClick={() => setOpen(false)} className={itemClass}>
-              <m.icon className="size-4 text-muted-foreground" />
-              {m.label}
-            </Link>
-          ))}
-        </div>
-
-        {/* Logout */}
-        <div className="border-t border-border p-1.5">
-          <a
-            href={LANDING_URL}
-            onClick={clearSession}
-            className={cn(itemClass, "text-destructive hover:text-destructive")}
-          >
-            <LogOut className="size-4" />
-            Đăng xuất
-          </a>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
 
 export function PublicLayout() {
   return (
@@ -108,19 +13,7 @@ export function PublicLayout() {
             <Logo className="h-7" />
           </Link>
 
-          <nav className="hidden items-center gap-1 md:flex">
-            <Link
-              to="/"
-              className="rounded-full px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              Nhiếp ảnh gia
-            </Link>
-          </nav>
-
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <AccountMenu />
-          </div>
+          <HeaderActions />
         </div>
       </header>
 

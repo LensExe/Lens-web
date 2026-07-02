@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowUpRight, MapPin, Star } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage, formatPrice } from "@lens/ui";
+import { CardRankChip } from "@/components/achievements/CardRankChip";
 import type { Photographer } from "@/types";
 
 interface PhotographerCardProps {
@@ -55,6 +56,7 @@ export function PhotographerCard({ photographer }: PhotographerCardProps) {
       {/* Bottom: identity + price */}
       <div className="absolute inset-x-0 bottom-0 p-4 text-white">
         <div className="mb-2.5 flex flex-wrap gap-1.5">
+          <CardRankChip rank={photographer.rank} />
           {photographer.styles.slice(0, 2).map((style) => (
             <span
               key={style}

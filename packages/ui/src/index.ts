@@ -10,9 +10,11 @@ export * from "./components/ui/card";
 export * from "./components/ui/checkbox";
 export * from "./components/ui/dialog";
 export * from "./components/ui/dropdown-menu";
+export * from "./components/ui/hover-card";
 export * from "./components/ui/input";
 export * from "./components/ui/pagination";
 export * from "./components/ui/popover";
+export * from "./components/ui/progress";
 export * from "./components/ui/select";
 export * from "./components/ui/separator";
 export * from "./components/ui/sheet";
@@ -21,8 +23,10 @@ export * from "./components/ui/skeleton";
 export * from "./components/ui/slider";
 export * from "./components/ui/sonner";
 export * from "./components/ui/spinner";
+export * from "./components/ui/switch";
 export * from "./components/ui/table";
 export * from "./components/ui/tabs";
+export * from "./components/ui/textarea";
 export * from "./components/ui/tooltip";
 
 // ReUI Data Grid (TanStack Table — used by data-heavy admin tables)
@@ -54,7 +58,7 @@ export { ThemeToggle } from "./components/theme/ThemeToggle";
 // Hooks
 export { useIsMobile } from "./hooks/use-mobile";
 export { useReveal } from "./hooks/useReveal";
-export { useSmoothScroll } from "./hooks/useSmoothScroll";
+export { useSmoothScroll, scrollToHash } from "./hooks/useSmoothScroll";
 export { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion";
 
 // Utils

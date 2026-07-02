@@ -3,6 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import { CalendarCheck, CalendarClock, Inbox, Wallet } from "lucide-react";
 import { Skeleton, cn, formatPrice } from "@lens/ui";
 import { RequestCard } from "@/components/dashboard/RequestCard";
+import { CollaborationInvites } from "@/components/dashboard/CollaborationInvites";
 import { useIncomingBookings } from "@/queries/useDashboard";
 import { photographerPayout } from "@/lib/booking";
 import type { Booking, BookingStatus } from "@/types";
@@ -80,6 +81,8 @@ export function DashboardBookings() {
           Theo dõi và xử lý toàn bộ lịch chụp của bạn.
         </p>
       </header>
+
+      <CollaborationInvites />
 
       {/* Summary strip */}
       {isLoading ? (

@@ -16,6 +16,10 @@ const links = [
   { to: "/", label: "Tổng quan" },
   { to: "/photographers", label: "Duyệt nhiếp ảnh gia" },
   { to: "/users", label: "Quản lý người dùng" },
+  { to: "/finance", label: "Tài chính" },
+  { to: "/bookings", label: "Đặt lịch & ghép thợ" },
+  { to: "/storage", label: "Lưu trữ ảnh" },
+  { to: "/quality", label: "Hạng & AI" },
   { to: "/reports", label: "Báo cáo & thống kê" },
 ];
 

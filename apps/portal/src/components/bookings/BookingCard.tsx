@@ -3,7 +3,9 @@ import { Link } from "react-router-dom";
 import { CalendarDays, Check, Loader2, MapPin } from "lucide-react";
 import { Avatar, AvatarFallback, Button, cn, formatPrice, toast } from "@lens/ui";
 import { BOOKING_STATUS_META } from "@/lib/booking";
+import { formatCoins } from "@/lib/wallet";
 import { useCancelBooking, useConfirmReceipt } from "@/queries/useBookings";
+import { useGallery } from "@/queries/useStorage";
 import type { Booking } from "@/types";
 
 const initialsOf = (name: string) =>
@@ -17,12 +19,21 @@ export function BookingCard({ booking }: { booking: Booking }) {
   const status = BOOKING_STATUS_META[booking.status];
   const confirmReceipt = useConfirmReceipt();
   const cancelBooking = useCancelBooking();
+  const { data: gallery } = useGallery(booking.id);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
+  // Client can only complete once the photographer has delivered photos.
+  const hasPhotos = !!gallery?.photos.length;
 
   const release = () =>
     confirmReceipt.mutate(booking.id, {
-      onSuccess: () =>
-        toast.success(`Đã xác nhận nhận ảnh từ ${booking.photographerName}`),
+      onSuccess: (updated) => {
+        const earned = updated.coinsEarned ?? 0;
+        toast.success(
+          earned > 0
+            ? `Đã xác nhận · nhận +${formatCoins(earned)} hoàn lại`
+            : `Đã xác nhận nhận ảnh từ ${booking.photographerName}`
+        );
+      },
       onError: () => toast.error("Không thể xác nhận, vui lòng thử lại"),
     });
 
@@ -40,9 +51,11 @@ export function BookingCard({ booking }: { booking: Booking }) {
           <AvatarFallback>{initialsOf(booking.photographerName)}</AvatarFallback>
         </Avatar>
 
-        <div className="min-w-0 flex-1">
+        <Link to={`/client/bookings/${booking.id}`} className="group/detail min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate font-semibold">{booking.photographerName}</p>
+            <p className="truncate font-semibold group-hover/detail:underline">
+              {booking.photographerName}
+            </p>
             <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", status.className)}>
               {status.label}
             </span>
@@ -58,7 +71,13 @@ export function BookingCard({ booking }: { booking: Booking }) {
               {booking.location}
             </span>
           </div>
-        </div>
+          {booking.collaborators && booking.collaborators.length > 0 && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Nhóm {booking.collaborators.length + 1} thợ ·{" "}
+              {booking.collaborators.map((c) => c.photographerName).join(", ")}
+            </p>
+          )}
+        </Link>
 
         <div className="flex shrink-0 flex-col items-end gap-1.5 text-right">
           <p className="font-semibold">{formatPrice(booking.price)}</p>
@@ -72,12 +91,17 @@ export function BookingCard({ booking }: { booking: Booking }) {
                 size="sm"
                 variant="outline"
                 className="rounded-full"
-                disabled={confirmReceipt.isPending}
+                disabled={confirmReceipt.isPending || !hasPhotos}
                 onClick={release}
               >
                 <Check className="size-4" />
                 Đã nhận ảnh
               </Button>
+              {!hasPhotos && (
+                <span className="text-xs text-muted-foreground">
+                  Chờ nhiếp ảnh gia giao ảnh
+                </span>
+              )}
               <button
                 type="button"
                 onClick={() => setConfirmingCancel(true)}
@@ -85,6 +109,28 @@ export function BookingCard({ booking }: { booking: Booking }) {
               >
                 Huỷ & hoàn tiền
               </button>
+              {hasPhotos && (
+                <Link
+                  to={`/client/bookings/${booking.id}/gallery`}
+                  className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  Xem ảnh
+                </Link>
+              )}
+            </>
+          ) : booking.status === "released" ? (
+            <>
+              {booking.coinsEarned ? (
+                <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
+                  +{formatCoins(booking.coinsEarned)}
+                </span>
+              ) : null}
+              <Link
+                to={`/client/bookings/${booking.id}/gallery`}
+                className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Xem ảnh
+              </Link>
             </>
           ) : (
             <Link

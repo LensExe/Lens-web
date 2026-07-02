@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
-import { LogOut, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 import {
   Button,
   Logo,
@@ -8,10 +8,10 @@ import {
   SheetContent,
   SheetTitle,
   SheetTrigger,
-  ThemeToggle,
   cn,
 } from "@lens/ui";
-import { clearSession, currentUser, hasRole } from "@/lib/session";
+import { HeaderActions } from "@/components/header/HeaderActions";
+import { currentUser, hasRole } from "@/lib/session";
 import type { UserRole } from "@/types";
 
 type NavGroup = {
@@ -39,17 +39,21 @@ const groups: NavGroup[] = [
       { to: "/dashboard/portfolio", label: "Hồ sơ năng lực" },
       { to: "/dashboard/packages", label: "Gói dịch vụ" },
       { to: "/dashboard/availability", label: "Lịch trống" },
+      { to: "/dashboard/achievements", label: "Thành tựu" },
+      { to: "/dashboard/storage", label: "Lưu trữ ảnh" },
+      { to: "/dashboard/assistant", label: "Trợ lý AI" },
       { to: "/dashboard/bookings", label: "Quản lý đặt lịch" },
     ],
   },
   {
     label: "Khác",
     allow: ["client", "photographer"],
-    links: [{ to: "/messages", label: "Tin nhắn" }],
+    links: [
+      { to: "/messages", label: "Tin nhắn" },
+      { to: "/wallet", label: "Ví của tôi" },
+    ],
   },
 ];
-
-const LANDING_URL = import.meta.env.VITE_LANDING_URL ?? "http://localhost:5173";
 
 function Brand() {
   return (
@@ -126,18 +130,14 @@ export function PortalLayout() {
             </Sheet>
             <span className="truncate text-sm text-muted-foreground">
               <span className="md:hidden">Lens Portal</span>
-              <span className="hidden md:inline">Khu vực khách hàng &amp; nhiếp ảnh gia</span>
+              <span className="hidden md:inline">
+                {currentUser.role === "photographer"
+                  ? "Khu vực khách hàng & nhiếp ảnh gia"
+                  : "Khu vực khách hàng"}
+              </span>
             </span>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <ThemeToggle />
-            <Button variant="outline" className="rounded-full" asChild>
-              <a href={LANDING_URL} onClick={clearSession}>
-                <LogOut className="size-4" />
-                <span className="hidden sm:inline">Đăng xuất</span>
-              </a>
-            </Button>
-          </div>
+          <HeaderActions />
         </header>
         <main className="flex-1">
           <Outlet />

@@ -8,6 +8,23 @@ export async function getConversations(): Promise<Conversation[]> {
   return (await api.get<Conversation[]>("/conversations")).data;
 }
 
+/** The other person to open a chat with (e.g. a photographer from their profile). */
+export interface StartConversationInput {
+  id: string;
+  name: string;
+  avatar: string;
+  role: "client" | "photographer";
+}
+
+/** Open (or create) a conversation with a given person; returns the thread. */
+export async function startConversation(
+  participant: StartConversationInput
+): Promise<Conversation> {
+  return (
+    await api.post<Conversation>("/conversations/start", { participant })
+  ).data;
+}
+
 export async function getMessages(conversationId: string): Promise<Message[]> {
   return (
     await api.get<Message[]>(`/conversations/${conversationId}/messages`)

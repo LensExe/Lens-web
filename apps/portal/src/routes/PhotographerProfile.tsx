@@ -1,9 +1,10 @@
 import { useRef } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   BadgeCheck,
   CalendarDays,
+  Loader2,
   MapPin,
   MessageSquare,
   Star,
@@ -18,10 +19,15 @@ import {
   Skeleton,
   cn,
   formatPrice,
+  toast,
 } from "@lens/ui";
 import { usePhotographer } from "@/queries/usePhotographers";
 import { useReviews } from "@/queries/useReviews";
+import { useAchievements } from "@/queries/useAchievements";
+import { useStartConversation } from "@/queries/useMessages";
 import { useScrollReveal } from "@/lib/useScrollReveal";
+import { badgeById } from "@/lib/achievements";
+import { RankBadge } from "@/components/achievements/RankBadge";
 import type { Review } from "@/types";
 
 const initialsOf = (name: string) =>
@@ -92,7 +98,10 @@ export function PhotographerProfile() {
   const { id = "" } = useParams();
   const { data: photographer, isLoading, isError } = usePhotographer(id);
   const { data: reviews = [] } = useReviews(id);
+  const { data: achievements } = useAchievements(id);
   const scopeRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const startChat = useStartConversation();
 
   useScrollReveal(scopeRef, [photographer?.id, reviews.length]);
 
@@ -145,11 +154,12 @@ export function PhotographerProfile() {
               <AvatarImage src={photographer.avatar} alt={photographer.name} />
               <AvatarFallback>{initialsOf(photographer.name)}</AvatarFallback>
             </Avatar>
-            <h1 className="mt-4 flex items-center gap-2 text-3xl font-semibold tracking-tight md:text-4xl">
+            <h1 className="mt-4 flex flex-wrap items-center gap-2 text-3xl font-semibold tracking-tight md:text-4xl">
               {photographer.name}
               {photographer.featured && (
                 <BadgeCheck className="size-6 text-ember" aria-label="Nổi bật" />
               )}
+              {achievements && <RankBadge rank={achievements.rank} />}
             </h1>
             <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
               <span className="flex items-center gap-1">
@@ -170,6 +180,25 @@ export function PhotographerProfile() {
                 </Badge>
               ))}
             </div>
+
+            {achievements && achievements.badges.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {achievements.badges.map((bid) => {
+                  const badge = badgeById(bid);
+                  if (!badge) return null;
+                  return (
+                    <span
+                      key={bid}
+                      title={badge.description}
+                      className="flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
+                    >
+                      <BadgeCheck className="size-3.5" />
+                      {badge.name}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <section data-reveal className="mt-8">
@@ -248,11 +277,32 @@ export function PhotographerProfile() {
             <Button asChild className="mt-5 w-full rounded-full">
               <Link to={`/photographers/${photographer.id}/book`}>Đặt lịch</Link>
             </Button>
-            <Button asChild variant="outline" className="mt-2 w-full rounded-full">
-              <Link to="/messages">
+            <Button
+              variant="outline"
+              className="mt-2 w-full rounded-full"
+              disabled={startChat.isPending}
+              onClick={() =>
+                startChat.mutate(
+                  {
+                    id: photographer.id,
+                    name: photographer.name,
+                    avatar: photographer.avatar,
+                    role: "photographer",
+                  },
+                  {
+                    onSuccess: (conv) => navigate(`/messages?c=${conv.id}`),
+                    onError: () =>
+                      toast.error("Không thể mở tin nhắn, vui lòng thử lại"),
+                  }
+                )
+              }
+            >
+              {startChat.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
                 <MessageSquare className="size-4" />
-                Nhắn tin
-              </Link>
+              )}
+              Nhắn tin
             </Button>
           </div>
         </aside>

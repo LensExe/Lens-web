@@ -14,11 +14,15 @@ import {
   Button,
   Separator,
   Skeleton,
+  Slider,
+  Switch,
   cn,
   formatPrice,
 } from "@lens/ui";
 import { useMyBookings, usePayBooking } from "@/queries/useBookings";
+import { useCoinSummary } from "@/queries/useWallet";
 import { PAYMENT_METHODS } from "@/lib/booking";
+import { COIN_LABEL, formatCoins, maxRedeemableCoins } from "@/lib/wallet";
 import type { PaymentMethod } from "@/types";
 
 const initialsOf = (name: string) =>
@@ -32,10 +36,26 @@ export function ClientPayment() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const { data: bookings = [], isLoading } = useMyBookings();
+  const { data: coinSummary } = useCoinSummary();
   const payBooking = usePayBooking(id);
   const [method, setMethod] = useState<PaymentMethod>("bank");
+  const [useCoins, setUseCoins] = useState(false);
+  const [coinAmount, setCoinAmount] = useState(0);
 
   const booking = bookings.find((b) => b.id === id);
+
+  // How many Lens Xu the client may apply to THIS order (cap % + their balance).
+  const coinBalance = coinSummary?.balance ?? 0;
+  const redeemMax = booking
+    ? maxRedeemableCoins(booking.price, coinBalance)
+    : 0;
+  const coinsApplied = useCoins ? Math.min(coinAmount, redeemMax) : 0;
+  const cashDue = booking ? booking.price - coinsApplied : 0;
+
+  const toggleCoins = (on: boolean) => {
+    setUseCoins(on);
+    setCoinAmount(on ? redeemMax : 0);
+  };
 
   if (isLoading) {
     return (
@@ -176,6 +196,41 @@ export function ClientPayment() {
             </div>
           </div>
 
+          {/* Lens Xu redemption — reduces the cash charged (capped per order). */}
+          {redeemMax > 0 && (
+            <div className="rounded-2xl border border-border p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-medium">Dùng {COIN_LABEL} để trừ tiền</p>
+                  <p className="text-xs text-muted-foreground">
+                    Bạn có {formatCoins(coinBalance)} · tối đa{" "}
+                    {formatCoins(redeemMax)} cho đơn này
+                  </p>
+                </div>
+                <Switch
+                  checked={useCoins}
+                  onCheckedChange={toggleCoins}
+                  aria-label={`Dùng ${COIN_LABEL}`}
+                />
+              </div>
+              {useCoins && (
+                <div className="mt-4">
+                  <Slider
+                    min={0}
+                    max={redeemMax}
+                    step={1000}
+                    value={[coinAmount]}
+                    onValueChange={([v]) => setCoinAmount(v)}
+                  />
+                  <div className="mt-2 flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Áp dụng</span>
+                    <span className="font-medium">{formatCoins(coinsApplied)}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex items-start gap-2 rounded-2xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
             <ShieldCheck className="mt-0.5 size-4 shrink-0 text-foreground" />
             <p>
@@ -226,18 +281,33 @@ export function ClientPayment() {
 
             <Separator className="my-4" />
 
-            <div className="flex items-center justify-between text-base font-semibold">
-              <span>Tổng thanh toán</span>
-              <span>{formatPrice(booking.price)}</span>
+            <div className="space-y-1.5 text-sm">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>Giá buổi chụp</span>
+                <span>{formatPrice(booking.price)}</span>
+              </div>
+              {coinsApplied > 0 && (
+                <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
+                  <span>Trừ {COIN_LABEL}</span>
+                  <span>−{formatPrice(coinsApplied)}</span>
+                </div>
+              )}
+              <Separator className="my-2" />
+              <div className="flex items-center justify-between text-base font-semibold text-foreground">
+                <span>Cần thanh toán</span>
+                <span>{formatPrice(cashDue)}</span>
+              </div>
             </div>
 
             <Button
               className="mt-5 w-full rounded-full"
               disabled={payBooking.isPending}
-              onClick={() => payBooking.mutate({ method })}
+              onClick={() =>
+                payBooking.mutate({ method, coinsToRedeem: coinsApplied })
+              }
             >
               {payBooking.isPending && <Loader2 className="size-4 animate-spin" />}
-              Thanh toán {formatPrice(booking.price)}
+              Thanh toán {formatPrice(cashDue)}
             </Button>
           </div>
         </aside>

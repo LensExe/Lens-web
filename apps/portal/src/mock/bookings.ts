@@ -1,3 +1,4 @@
+import { avatar } from "@lens/ui";
 import type { Booking } from "@/types";
 
 // The single mock "bookings table" — the one source of truth the mock backend
@@ -64,6 +65,16 @@ export const seedBookings: Booking[] = [
     location: "Phố cổ, Hà Nội",
     price: 300_000,
     status: "released",
+    // A completed group shoot — the client reviews each photographer separately.
+    collaborators: [
+      {
+        photographerId: "p5",
+        photographerName: "Vũ Hoàng Lan",
+        photographerAvatar: avatar("hoanglan-av"),
+        sharePct: 40,
+        status: "accepted",
+      },
+    ],
   },
   {
     id: "bk-tkh-5",
@@ -140,6 +151,46 @@ export const seedBookings: Booking[] = [
     location: "Bát Tràng, Hà Nội",
     price: 650_000,
     status: "confirmed",
+    // Group shoot led by "me": one collaborator accepted, one still invited.
+    collaborators: [
+      {
+        photographerId: "p3",
+        photographerName: "Lê Thị Hương",
+        photographerAvatar: avatar("lehuong-av"),
+        sharePct: 30,
+        status: "accepted",
+      },
+      {
+        photographerId: "p9",
+        photographerName: "Ngô Bảo Trân",
+        photographerAvatar: avatar("baotran-av"),
+        sharePct: 20,
+        status: "invited",
+      },
+    ],
+  },
+  // Group shoot led by ANOTHER photographer (p2) where "me" is invited — powers
+  // the "Lời mời liên kết" section so you can accept/decline as Lý Gia Hân.
+  {
+    id: "collab-1",
+    clientId: "c-thu",
+    clientName: "Ngô Minh Thư",
+    photographerId: "p2",
+    photographerName: "Trần Quốc Bảo",
+    style: "Cưới",
+    date: iso(15),
+    location: "Nhà thờ Đức Bà, TP. Hồ Chí Minh",
+    price: 2_400_000,
+    status: "confirmed",
+    collaborators: [
+      {
+        photographerId: "me",
+        photographerName: "Lý Gia Hân",
+        photographerAvatar: avatar("giahan-av"),
+        sharePct: 40,
+        status: "invited",
+      },
+    ],
   },
   {
     id: "in-5",
