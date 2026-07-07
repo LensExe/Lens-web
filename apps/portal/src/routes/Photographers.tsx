@@ -25,6 +25,7 @@ import {
 import { PhotographerCard } from "@/components/shared/PhotographerCard";
 import { PhotographerCardSkeleton } from "@/components/shared/PhotographerCardSkeleton";
 import { FilterPanel } from "@/components/photographers/FilterPanel";
+import { StylePicker } from "@/components/photographers/StylePicker";
 import { usePhotographers } from "@/queries/usePhotographers";
 import { useScrollReveal } from "@/lib/useScrollReveal";
 import {
@@ -64,6 +65,12 @@ export function Photographers() {
 
   const update = (patch: Partial<Filters>) => {
     setSearchParams(filtersToParams({ ...filters, ...patch }), { replace: true });
+  };
+  const toggleStyle = (style: Filters["styles"][number]) => {
+    const styles = filters.styles.includes(style)
+      ? filters.styles.filter((s) => s !== style)
+      : [...filters.styles, style];
+    update({ styles });
   };
   const clear = () =>
     setSearchParams(
@@ -116,6 +123,21 @@ export function Photographers() {
           Chọn người kể câu chuyện của bạn qua từng khung hình. Lọc theo phong
           cách, ngân sách và ngày bạn cần.
         </p>
+        {/* Quick 3-step guide (feedback R1: luồng chưa trực quan) */}
+        <ol className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+          {[
+            "Chọn phong cách",
+            "So sánh hồ sơ & đánh giá",
+            "Đặt lịch",
+          ].map((label, i) => (
+            <li key={label} className="flex items-center gap-2">
+              <span className="flex size-5 items-center justify-center rounded-full bg-foreground text-[11px] font-semibold text-background">
+                {i + 1}
+              </span>
+              {label}
+            </li>
+          ))}
+        </ol>
       </header>
 
       {/* Toolbar: search + sort + mobile filter */}
@@ -177,7 +199,12 @@ export function Photographers() {
         </aside>
 
         {/* Results */}
-        <div>
+        <div className="min-w-0">
+          {/* Compact style quick-pick strip (feedback R1 iteration) */}
+          <div data-reveal>
+            <StylePicker selected={filters.styles} onToggle={toggleStyle} />
+          </div>
+
           <p className="mb-5 text-sm text-muted-foreground">
             {isLoading
               ? "Đang tải nhiếp ảnh gia..."

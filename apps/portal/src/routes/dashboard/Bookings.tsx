@@ -1,18 +1,10 @@
 import { useState } from "react";
-import type { LucideIcon } from "lucide-react";
-import { CalendarCheck, CalendarClock, Inbox, Wallet } from "lucide-react";
-import { Skeleton, cn, formatPrice } from "@lens/ui";
+import { CircleAlert, Inbox } from "lucide-react";
+import { Skeleton, cn } from "@lens/ui";
 import { RequestCard } from "@/components/dashboard/RequestCard";
 import { CollaborationInvites } from "@/components/dashboard/CollaborationInvites";
 import { useIncomingBookings } from "@/queries/useDashboard";
-import { photographerPayout } from "@/lib/booking";
-import type { Booking, BookingStatus } from "@/types";
-
-const todayISO = () => {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
+import type { BookingStatus } from "@/types";
 
 // Group the escrow lifecycle into the stages a photographer works in.
 type GroupKey = "pending" | "active" | "done" | "cancelled";
@@ -31,45 +23,20 @@ const EMPTY_MESSAGE: Record<GroupKey, string> = {
   cancelled: "Không có yêu cầu nào đã huỷ",
 };
 
-function SummaryStat({
-  icon: Icon,
-  value,
-  label,
-}: {
-  icon: LucideIcon;
-  value: string;
-  label: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-border bg-card px-4 py-3">
-      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Icon className="size-3.5" />
-        {label}
-      </span>
-      <p className="mt-1 text-lg font-semibold tracking-tight">{value}</p>
-    </div>
-  );
-}
-
 export function DashboardBookings() {
   const { data: bookings = [], isLoading } = useIncomingBookings();
   const [group, setGroup] = useState<GroupKey>("pending");
-  const today = todayISO();
 
   const countFor = (statuses: BookingStatus[]) =>
     bookings.filter((b) => statuses.includes(b.status)).length;
   const active = GROUPS.find((g) => g.key === group)!;
   const filtered = bookings.filter((b) => active.statuses.includes(b.status));
 
+  // Action-oriented counts — what needs the photographer's hands right now.
+  // (Kept operational, distinct from the business KPIs on the dashboard home.)
   const pendingCount = countFor(["pending"]);
-  const upcomingCount = bookings.filter(
-    (b) => b.date >= today && (b.status === "confirmed" || b.status === "held")
-  ).length;
-  const doneBookings = bookings.filter((b) => b.status === "released");
-  const revenue = doneBookings.reduce(
-    (sum, b: Booking) => sum + photographerPayout(b.price),
-    0
-  );
+  const toDeliverCount = countFor(["held"]);
+  const needsAction = pendingCount > 0 || toDeliverCount > 0;
 
   return (
     <div className="mx-auto max-w-[860px] px-5 py-8 md:py-10">
@@ -82,23 +49,20 @@ export function DashboardBookings() {
         </p>
       </header>
 
-      <CollaborationInvites />
-
-      {/* Summary strip */}
-      {isLoading ? (
-        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-[68px] rounded-2xl" />
-          ))}
-        </div>
-      ) : (
-        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <SummaryStat icon={Inbox} value={String(pendingCount)} label="Chờ duyệt" />
-          <SummaryStat icon={CalendarClock} value={String(upcomingCount)} label="Sắp tới" />
-          <SummaryStat icon={CalendarCheck} value={String(doneBookings.length)} label="Hoàn thành" />
-          <SummaryStat icon={Wallet} value={formatPrice(revenue)} label="Doanh thu" />
+      {/* Action-needed strip — the operational "what's on me now" cue */}
+      {!isLoading && needsAction && (
+        <div className="mb-6 flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-200">
+          <CircleAlert className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+          <span className="font-medium">Cần xử lý:</span>
+          {pendingCount > 0 && <span>{pendingCount} yêu cầu chờ duyệt</span>}
+          {pendingCount > 0 && toDeliverCount > 0 && (
+            <span className="text-amber-400 dark:text-amber-500/60">·</span>
+          )}
+          {toDeliverCount > 0 && <span>{toDeliverCount} buổi cần giao ảnh</span>}
         </div>
       )}
+
+      <CollaborationInvites />
 
       {/* Stage tabs */}
       <div className="mb-6 flex flex-wrap gap-2">

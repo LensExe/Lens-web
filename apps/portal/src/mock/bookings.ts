@@ -27,7 +27,7 @@ export const seedBookings: Booking[] = [
     style: "Cưới",
     date: iso(10),
     location: "Hồ Gươm, Hà Nội",
-    price: 800_000,
+    price: 320_000,
     status: "confirmed",
   },
   {
@@ -39,7 +39,7 @@ export const seedBookings: Booking[] = [
     style: "Du lịch",
     date: iso(21),
     location: "Bà Nà Hills, Đà Nẵng",
-    price: 200_000,
+    price: 110_000,
     status: "pending",
   },
   {
@@ -51,7 +51,7 @@ export const seedBookings: Booking[] = [
     style: "Sự kiện",
     date: iso(-2),
     location: "Quận 3, TP. Hồ Chí Minh",
-    price: 600_000,
+    price: 180_000,
     status: "held",
   },
   {
@@ -63,7 +63,7 @@ export const seedBookings: Booking[] = [
     style: "Chân dung",
     date: iso(-14),
     location: "Phố cổ, Hà Nội",
-    price: 300_000,
+    price: 160_000,
     status: "released",
     // A completed group shoot — the client reviews each photographer separately.
     collaborators: [
@@ -85,7 +85,7 @@ export const seedBookings: Booking[] = [
     style: "Ẩm thực",
     date: iso(-32),
     location: "Quận 1, TP. Hồ Chí Minh",
-    price: 400_000,
+    price: 200_000,
     status: "cancelled",
   },
   // Cross-link: Trần Khách Hàng books the signed-in photographer (Lý Gia Hân),
@@ -99,7 +99,7 @@ export const seedBookings: Booking[] = [
     style: "Gia đình",
     date: iso(8),
     location: "Hồ Tây, Hà Nội",
-    price: 450_000,
+    price: 220_000,
     status: "pending",
   },
 
@@ -113,7 +113,7 @@ export const seedBookings: Booking[] = [
     style: "Chân dung",
     date: iso(4),
     location: "Hồ Tây, Hà Nội",
-    price: 450_000,
+    price: 220_000,
     status: "pending",
   },
   {
@@ -125,7 +125,7 @@ export const seedBookings: Booking[] = [
     style: "Gia đình",
     date: iso(7),
     location: "Công viên Thống Nhất, Hà Nội",
-    price: 550_000,
+    price: 400_000,
     status: "pending",
   },
   {
@@ -137,7 +137,7 @@ export const seedBookings: Booking[] = [
     style: "Chân dung",
     date: iso(12),
     location: "Phố cổ, Hà Nội",
-    price: 450_000,
+    price: 220_000,
     status: "confirmed",
   },
   {
@@ -149,7 +149,7 @@ export const seedBookings: Booking[] = [
     style: "Gia đình",
     date: iso(18),
     location: "Bát Tràng, Hà Nội",
-    price: 650_000,
+    price: 400_000,
     status: "confirmed",
     // Group shoot led by "me": one collaborator accepted, one still invited.
     collaborators: [
@@ -180,7 +180,7 @@ export const seedBookings: Booking[] = [
     style: "Cưới",
     date: iso(15),
     location: "Nhà thờ Đức Bà, TP. Hồ Chí Minh",
-    price: 2_400_000,
+    price: 900_000,
     status: "confirmed",
     collaborators: [
       {
@@ -201,7 +201,7 @@ export const seedBookings: Booking[] = [
     style: "Chân dung",
     date: iso(-9),
     location: "Hoàng thành Thăng Long, Hà Nội",
-    price: 450_000,
+    price: 220_000,
     status: "released",
   },
   {
@@ -213,7 +213,7 @@ export const seedBookings: Booking[] = [
     style: "Gia đình",
     date: iso(-23),
     location: "Cầu Long Biên, Hà Nội",
-    price: 550_000,
+    price: 400_000,
     status: "held",
   },
   {
@@ -225,7 +225,7 @@ export const seedBookings: Booking[] = [
     style: "Chân dung",
     date: iso(-3),
     location: "Vườn hoa Lý Thái Tổ, Hà Nội",
-    price: 450_000,
+    price: 220_000,
     status: "cancelled",
   },
 ];

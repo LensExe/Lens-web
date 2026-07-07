@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
-import type { LucideIcon } from "lucide-react";
-import { ArrowRight, CalendarCheck, CalendarClock, CameraIcon, Search } from "lucide-react";
-import { Button, Skeleton } from "@lens/ui";
+import { ArrowRight, CalendarCheck, CalendarClock, Search } from "lucide-react";
+import { Button, Skeleton, cn } from "@lens/ui";
 import { BookingCard } from "@/components/bookings/BookingCard";
 import { useMyBookings } from "@/queries/useBookings";
+import { BOOKING_STATUS_META } from "@/lib/booking";
 import { currentUser } from "@/lib/session";
+import type { BookingStatus } from "@/types";
 
 const todayISO = () => {
   const d = new Date();
@@ -12,16 +13,61 @@ const todayISO = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-function StatCard({ icon: Icon, value, label }: { icon: LucideIcon; value: number; label: string }) {
-  return (
-    <div className="rounded-2xl border border-border bg-card p-5">
-      <span className="flex size-9 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-        <Icon className="size-4.5" />
-      </span>
-      <p className="mt-4 text-2xl font-semibold tracking-tight">{value}</p>
-      <p className="mt-0.5 text-sm text-muted-foreground">{label}</p>
-    </div>
+// Full escrow lifecycle, in the order a booking travels through it.
+const STATUS_ORDER: BookingStatus[] = [
+  "pending",
+  "confirmed",
+  "held",
+  "released",
+  "cancelled",
+];
+
+// Left-accent + dot colour per status (matches the BOOKING_STATUS_META palette).
+const STATUS_ACCENT: Record<BookingStatus, { dot: string; bar: string }> = {
+  pending: { dot: "bg-amber-500", bar: "border-l-amber-400 dark:border-l-amber-500/60" },
+  confirmed: { dot: "bg-blue-500", bar: "border-l-blue-400 dark:border-l-blue-500/60" },
+  held: { dot: "bg-violet-500", bar: "border-l-violet-400 dark:border-l-violet-500/60" },
+  released: { dot: "bg-emerald-500", bar: "border-l-emerald-400 dark:border-l-emerald-500/60" },
+  cancelled: { dot: "bg-muted-foreground/40", bar: "border-l-border" },
+};
+
+/** Compact stat tile — coloured left accent + dot, big number, small label.
+ *  Used for the total and each booking status. */
+function Tile({
+  count,
+  label,
+  dot,
+  bar,
+  to,
+  cta,
+}: {
+  count: number;
+  label: string;
+  dot: string;
+  bar: string;
+  to?: string;
+  cta?: string;
+}) {
+  const body = (
+    <>
+      <span className={cn("block size-2.5 rounded-full", dot)} />
+      <p className="mt-3 text-2xl font-semibold tracking-tight tabular-nums">{count}</p>
+      <p className="mt-0.5 text-xs font-medium text-muted-foreground">{label}</p>
+      {cta && (
+        <p className="mt-1 text-xs font-medium text-blue-600 dark:text-blue-400">{cta}</p>
+      )}
+    </>
   );
+
+  const cls = cn("rounded-2xl border border-l-[3px] border-border bg-card p-4", bar);
+  if (to) {
+    return (
+      <Link to={to} className={cn(cls, "transition-colors hover:bg-muted/40")}>
+        {body}
+      </Link>
+    );
+  }
+  return <div className={cls}>{body}</div>;
 }
 
 export function ClientOverview() {
@@ -34,7 +80,8 @@ export function ClientOverview() {
         b.status === "confirmed" ||
         b.status === "held")
   );
-  const completed = bookings.filter((b) => b.status === "released");
+  const countOf = (status: BookingStatus) =>
+    bookings.filter((b) => b.status === status).length;
 
   return (
     <div className="mx-auto max-w-[860px] px-5 py-8 md:py-10">
@@ -48,20 +95,37 @@ export function ClientOverview() {
       </header>
 
       {isLoading ? (
-        <div className="mt-7 grid gap-4 sm:grid-cols-3">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-32 rounded-2xl" />
+        <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} className="h-28 rounded-2xl" />
           ))}
         </div>
       ) : (
-        <div className="mt-7 grid gap-4 sm:grid-cols-3">
-          <StatCard icon={CameraIcon} value={bookings.length} label="Tổng buổi chụp" />
-          <StatCard icon={CalendarClock} value={upcoming.length} label="Sắp tới" />
-          <StatCard icon={CalendarCheck} value={completed.length} label="Đã hoàn thành" />
+        <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <Tile
+            count={bookings.length}
+            label="Tổng buổi chụp"
+            dot="bg-foreground"
+            bar="border-l-foreground/70"
+          />
+          {STATUS_ORDER.map((status) => {
+            const count = countOf(status);
+            return (
+              <Tile
+                key={status}
+                count={count}
+                label={BOOKING_STATUS_META[status].label}
+                dot={STATUS_ACCENT[status].dot}
+                bar={STATUS_ACCENT[status].bar}
+                to={status === "confirmed" && count > 0 ? "/client/bookings" : undefined}
+                cta={status === "confirmed" && count > 0 ? "Thanh toán →" : undefined}
+              />
+            );
+          })}
         </div>
       )}
 
-      <section className="mt-9">
+      <section className="mt-8">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-lg font-semibold">
             <CalendarClock className="size-5 text-muted-foreground" />

@@ -7,6 +7,8 @@ import {
   Loader2,
   MapPin,
   MessageSquare,
+  RefreshCw,
+  ShieldCheck,
   Star,
 } from "lucide-react";
 import {
@@ -28,6 +30,7 @@ import { useStartConversation } from "@/queries/useMessages";
 import { useScrollReveal } from "@/lib/useScrollReveal";
 import { badgeById } from "@/lib/achievements";
 import { RankBadge } from "@/components/achievements/RankBadge";
+import { RankLadderInfo } from "@/components/achievements/RankLadderInfo";
 import type { Review } from "@/types";
 
 const initialsOf = (name: string) =>
@@ -56,6 +59,26 @@ function Stars({ rating, className }: { rating: number; className?: string }) {
         />
       ))}
     </span>
+  );
+}
+
+function TrustStat({
+  icon,
+  value,
+  label,
+}: {
+  icon: React.ReactNode;
+  value: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <div>
+      <p className="flex items-center gap-1 text-lg font-semibold leading-none">
+        {icon}
+        {value}
+      </p>
+      <p className="mt-1 text-xs text-muted-foreground">{label}</p>
+    </div>
   );
 }
 
@@ -159,7 +182,12 @@ export function PhotographerProfile() {
               {photographer.featured && (
                 <BadgeCheck className="size-6 text-ember" aria-label="Nổi bật" />
               )}
-              {achievements && <RankBadge rank={achievements.rank} />}
+              {achievements && (
+                <span className="inline-flex items-center gap-1">
+                  <RankBadge rank={achievements.rank} />
+                  <RankLadderInfo currentRank={achievements.rank} />
+                </span>
+              )}
             </h1>
             <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
               <span className="flex items-center gap-1">
@@ -200,6 +228,35 @@ export function PhotographerProfile() {
               </div>
             )}
           </div>
+
+          {/* Trust panel — helps clients decide (feedback R1: 33% struggled to
+              judge who to pick). Uses the public achievements stats. */}
+          {achievements && (
+            <section data-reveal className="mt-6">
+              <div className="rounded-2xl border border-border bg-card p-4">
+                <div className="flex items-center gap-1.5 text-sm font-semibold">
+                  <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-400" />
+                  Độ uy tín
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+                  <TrustStat icon={<Star className="size-3.5 fill-ember text-ember" />}
+                    value={photographer.rating.toFixed(1)} label="Điểm đánh giá" />
+                  <TrustStat icon={<BadgeCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" />}
+                    value={`${achievements.stats.fiveStarPct}%`} label="Đánh giá 5★" />
+                  <TrustStat icon={<CalendarDays className="size-3.5 text-muted-foreground" />}
+                    value={achievements.stats.completedSessions} label="Buổi đã chụp" />
+                  <TrustStat icon={<RefreshCw className="size-3.5 text-muted-foreground" />}
+                    value={achievements.stats.returningClients} label="Khách quay lại" />
+                </div>
+                {photographer.featured && (
+                  <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <BadgeCheck className="size-3.5 text-ember" />
+                    Hồ sơ nổi bật, đã được Lens xác minh.
+                  </p>
+                )}
+              </div>
+            </section>
+          )}
 
           <section data-reveal className="mt-8">
             <h2 className="text-lg font-semibold">Giới thiệu</h2>
@@ -274,8 +331,15 @@ export function PhotographerProfile() {
               </div>
             )}
 
-            <Button asChild className="mt-5 w-full rounded-full">
-              <Link to={`/photographers/${photographer.id}/book`}>Đặt lịch</Link>
+            <Button
+              asChild
+              size="lg"
+              className="mt-5 w-full rounded-full bg-ember text-base text-white hover:bg-ember/90"
+            >
+              <Link to={`/photographers/${photographer.id}/book`}>
+                <CalendarDays className="size-4" />
+                Đặt lịch ngay
+              </Link>
             </Button>
             <Button
               variant="outline"

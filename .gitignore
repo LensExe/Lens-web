@@ -45,3 +45,5 @@ id_rsa*
 *.njsproj
 *.sln
 *.sw?
+
+reports

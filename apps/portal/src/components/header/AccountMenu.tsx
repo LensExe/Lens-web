@@ -2,7 +2,6 @@ import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   CalendarCheck,
-  Camera,
   LayoutDashboard,
   LogOut,
   MessageSquare,
@@ -34,11 +33,12 @@ type MenuItem = {
   allow: UserRole[];
 };
 
-// Photographer's own area sits first (their primary workspace); the shared
-// client-side items follow. Clients never see the photographer entry.
+// A single role-aware workspace entry (photographers land in their studio
+// dashboard, clients in their own area) — no more "two separate apps" split.
+const workspaceHome = currentUser.role === "photographer" ? "/dashboard" : "/client";
+
 const menu: MenuItem[] = [
-  { to: "/dashboard", label: "Khu vực nhiếp ảnh gia", icon: Camera, allow: ["photographer"] },
-  { to: "/client", label: "Khu vực khách hàng", icon: LayoutDashboard, allow: ["client", "photographer"] },
+  { to: workspaceHome, label: "Bảng điều khiển", icon: LayoutDashboard, allow: ["client", "photographer"] },
   { to: "/client/bookings", label: "Lịch đặt của tôi", icon: CalendarCheck, allow: ["client", "photographer"] },
   { to: "/client/reviews", label: "Đánh giá của tôi", icon: Star, allow: ["client", "photographer"] },
   { to: "/messages", label: "Tin nhắn", icon: MessageSquare, allow: ["client", "photographer"] },

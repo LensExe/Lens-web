@@ -4,11 +4,16 @@ import { useForm } from "react-hook-form";
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import {
   ArrowLeft,
+  ArrowRight,
   CalendarDays,
   CheckCircle2,
   Clock,
+  Lightbulb,
   Loader2,
   MapPin,
+  Moon,
+  Sun,
+  Sunrise,
 } from "lucide-react";
 import {
   Avatar,
@@ -30,8 +35,11 @@ import {
 import { usePhotographer } from "@/queries/usePhotographers";
 import { useCreateBooking } from "@/queries/useBookings";
 import {
-  TIME_SLOTS,
+  TIME_PERIODS,
   bookingSchema,
+  freeInPeriod,
+  isDateNearlyFull,
+  isSlotTaken,
   resolvePackages,
   type BookingFormValues,
 } from "@/lib/booking";
@@ -50,6 +58,18 @@ const formatDateVN = (s: string) => {
 };
 
 const STEPS = ["Buổi chụp", "Thông tin", "Xác nhận"];
+// Short guidance shown per step (feedback R1: flow chưa trực quan).
+const STEP_HINTS = [
+  "Chọn gói chụp, rồi chọn ngày để xem khung giờ còn trống bên phải.",
+  "Nhập địa điểm và thông tin liên hệ để nhiếp ảnh gia chuẩn bị.",
+  "Kiểm tra lại thông tin, sau đó gửi yêu cầu đặt lịch.",
+];
+
+const PERIOD_ICON: Record<string, typeof Sun> = {
+  morning: Sunrise,
+  afternoon: Sun,
+  evening: Moon,
+};
 const initialsOf = (name: string) =>
   name.split(" ").slice(-2).map((w) => w[0]).join("");
 
@@ -150,6 +170,9 @@ export function BookingFlow() {
     ? (packages.find((p) => p.id === values.packageId)?.price ?? 0)
     : 0;
   const availableSet = new Set(photographer.availableDates);
+  const nearlyFullDates = photographer.availableDates
+    .filter((d) => isDateNearlyFull(photographer.id, d))
+    .map(fromISODate);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const selectedDate = values.date ? fromISODate(values.date) : undefined;
@@ -269,6 +292,12 @@ export function BookingFlow() {
         ))}
       </ol>
 
+      {/* Per-step guidance */}
+      <div className="mb-6 -mt-3 flex items-start gap-2 rounded-xl bg-muted/60 px-3.5 py-2.5 text-sm text-muted-foreground">
+        <Lightbulb className="mt-0.5 size-4 shrink-0 text-ember" />
+        <span>{STEP_HINTS[step]}</span>
+      </div>
+
       <form
         onSubmit={handleSubmit(onSubmit)}
         className="grid gap-8 lg:grid-cols-[1fr_300px]"
@@ -306,49 +335,109 @@ export function BookingFlow() {
                 )}
               </div>
 
-              <div>
-                <h2 className="mb-3 text-base font-semibold">Chọn ngày trống</h2>
-                <div className="inline-block rounded-2xl border border-border p-2">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    defaultMonth={selectedDate ?? fromISODate(photographer.availableDates[0] ?? toISODate(today))}
-                    disabled={[{ before: today }, (d: Date) => !availableSet.has(toISODate(d))]}
-                    onSelect={(d) =>
-                      setValue("date", d ? toISODate(d) : "", { shouldValidate: true })
-                    }
-                  />
+              {/* Date + time slots side by side (feedback R1 iteration) */}
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* Date */}
+                <div>
+                  <h2 className="mb-3 text-base font-semibold">Chọn ngày trống</h2>
+                  <div className="rounded-2xl border border-border p-2">
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate}
+                      defaultMonth={selectedDate ?? fromISODate(photographer.availableDates[0] ?? toISODate(today))}
+                      disabled={[{ before: today }, (d: Date) => !availableSet.has(toISODate(d))]}
+                      modifiers={{ nearlyFull: nearlyFullDates }}
+                      modifiersClassNames={{
+                        nearlyFull:
+                          "rounded-md bg-amber-100 font-semibold text-amber-700 dark:bg-amber-500/25 dark:text-amber-300",
+                      }}
+                      onSelect={(d) => {
+                        setValue("date", d ? toISODate(d) : "", { shouldValidate: true });
+                        // Availability differs per day — reset the slot so the user
+                        // re-picks from the newly shown free slots.
+                        setValue("timeSlot", "", { shouldValidate: false });
+                      }}
+                    />
+                  </div>
+                  {/* Availability legend */}
+                  <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <span className="size-2 rounded-full bg-foreground" /> Còn nhiều chỗ
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="size-2 rounded-full bg-amber-500" /> Sắp kín
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="size-2 rounded-full bg-muted-foreground/30" /> Không nhận
+                    </span>
+                  </div>
+                  {errors.date && (
+                    <p className="mt-2 text-sm text-destructive">{errors.date.message}</p>
+                  )}
                 </div>
-                {errors.date && (
-                  <p className="mt-2 text-sm text-destructive">{errors.date.message}</p>
-                )}
-              </div>
 
-              <div>
-                <h2 className="mb-3 text-base font-semibold">Khung giờ</h2>
-                <div className="flex flex-wrap gap-2">
-                  {TIME_SLOTS.map((slot) => {
-                    const active = values.timeSlot === slot;
-                    return (
-                      <button
-                        type="button"
-                        key={slot}
-                        onClick={() => setValue("timeSlot", slot, { shouldValidate: true })}
-                        className={cn(
-                          "rounded-full border px-4 py-2 text-sm transition-colors",
-                          active
-                            ? "border-foreground bg-foreground text-background"
-                            : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
-                        )}
-                      >
-                        {slot}
-                      </button>
-                    );
-                  })}
+                {/* Time slots */}
+                <div>
+                  <h2 className="mb-3 text-base font-semibold">Khung giờ</h2>
+                  {values.date ? (
+                    <>
+                      <div className="space-y-4">
+                        {TIME_PERIODS.map((period) => {
+                          const Icon = PERIOD_ICON[period.id];
+                          const free = freeInPeriod(photographer.id, values.date, period);
+                          return (
+                            <div key={period.id}>
+                              <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                                <Icon className="size-3.5" />
+                                {period.label}
+                                <span className="text-muted-foreground/70">
+                                  · {free > 0 ? `${free} khung trống` : "hết chỗ"}
+                                </span>
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {period.slots.map((slot) => {
+                                  const active = values.timeSlot === slot;
+                                  const taken = isSlotTaken(photographer.id, values.date, slot);
+                                  return (
+                                    <button
+                                      type="button"
+                                      key={slot}
+                                      disabled={taken}
+                                      onClick={() =>
+                                        setValue("timeSlot", slot, { shouldValidate: true })
+                                      }
+                                      className={cn(
+                                        "flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-sm font-medium transition-colors",
+                                        taken
+                                          ? "cursor-not-allowed border-dashed border-border bg-muted/40 text-muted-foreground/50"
+                                          : active
+                                            ? "border-foreground bg-foreground text-background shadow-sm"
+                                            : "border-border hover:border-foreground/40 hover:bg-muted"
+                                      )}
+                                    >
+                                      <span className={cn(taken && "line-through")}>{slot}</span>
+                                      {taken && (
+                                        <span className="text-[10px] font-normal">Đã đặt</span>
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {errors.timeSlot && (
+                        <p className="mt-3 text-sm text-destructive">{errors.timeSlot.message}</p>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex min-h-[13rem] flex-col items-center justify-center rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                      <CalendarDays className="mb-2 size-6 opacity-40" />
+                      Chọn một ngày ở bên trái để xem các khung giờ còn trống.
+                    </div>
+                  )}
                 </div>
-                {errors.timeSlot && (
-                  <p className="mt-2 text-sm text-destructive">{errors.timeSlot.message}</p>
-                )}
               </div>
             </>
           )}
@@ -426,13 +515,20 @@ export function BookingFlow() {
               {step === 0 ? "Huỷ" : "Quay lại"}
             </Button>
             {step < 2 ? (
-              <Button type="button" className="rounded-full" onClick={next}>
+              <Button
+                type="button"
+                size="lg"
+                className="rounded-full bg-ember px-8 text-white hover:bg-ember/90"
+                onClick={next}
+              >
                 Tiếp tục
+                <ArrowRight className="size-4" />
               </Button>
             ) : (
               <Button
                 type="submit"
-                className="rounded-full"
+                size="lg"
+                className="rounded-full bg-ember px-8 text-white hover:bg-ember/90"
                 disabled={createBooking.isPending || !confirmArmed}
               >
                 {createBooking.isPending && <Loader2 className="size-4 animate-spin" />}

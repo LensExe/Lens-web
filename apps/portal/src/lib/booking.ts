@@ -47,7 +47,58 @@ export const SESSION_PACKAGES: SessionPackage[] = [
   { id: "premium", name: "Gói cao cấp", duration: "Nửa ngày (4 giờ)", multiplier: 3 },
 ];
 
-export const TIME_SLOTS = ["08:00", "10:00", "14:00", "16:00"];
+export interface TimePeriod {
+  id: string;
+  label: string;
+  slots: string[];
+}
+
+// Time slots grouped by part of day (feedback R1: 22% khó đặt lịch — thêm lựa
+// chọn khung giờ sáng/chiều/tối).
+export const TIME_PERIODS: TimePeriod[] = [
+  { id: "morning", label: "Buổi sáng", slots: ["08:00", "10:00"] },
+  { id: "afternoon", label: "Buổi chiều", slots: ["14:00", "16:00"] },
+  { id: "evening", label: "Buổi tối", slots: ["18:00", "20:00"] },
+];
+
+export const TIME_SLOTS = TIME_PERIODS.flatMap((p) => p.slots);
+
+// Deterministic "already booked" slots per photographer + date, so the UI can
+// show realistic availability (lịch trống) without a backend. ~1/3 are taken.
+export function isSlotTaken(
+  photographerId: string,
+  dateISO: string,
+  slot: string
+): boolean {
+  if (!dateISO) return false;
+  const s = `${photographerId}|${dateISO}|${slot}`;
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h % 3 === 0;
+}
+
+/** Number of free slots in a part-of-day on a given date. */
+export function freeInPeriod(
+  photographerId: string,
+  dateISO: string,
+  period: TimePeriod
+): number {
+  if (!dateISO) return period.slots.length;
+  return period.slots.filter((s) => !isSlotTaken(photographerId, dateISO, s)).length;
+}
+
+/** Total free slots on a date (across all periods). */
+export function freeSlotCount(photographerId: string, dateISO: string): number {
+  if (!dateISO) return TIME_SLOTS.length;
+  return TIME_SLOTS.filter((s) => !isSlotTaken(photographerId, dateISO, s)).length;
+}
+
+/** A date is "nearly full" when 3 or fewer of its 6 slots remain — flagged on
+ *  the calendar so the "sắp kín" state is actually visible on a meaningful share
+ *  of days (≤2 almost never triggered). */
+export function isDateNearlyFull(photographerId: string, dateISO: string): boolean {
+  return freeSlotCount(photographerId, dateISO) <= 3;
+}
 
 // Price for a package. Rounded to a clean 10k VND — fine enough that the basic
 // package (×1) always equals the photographer's listed price (which is a

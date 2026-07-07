@@ -1,9 +1,8 @@
 // Placeholder images for the UI phase — real photos, keyed by a deterministic
 // hash so a given seed always resolves to the same image.
 //   • avatars → randomuser.me (real human faces, fast & reliable)
-//   • photos  → curated Unsplash IDs, sized on the fly with ?w&h&fit=crop
-// (picsum.photos timed out; loremflickr baked red letterbox bars into non-square
-// crops — both dropped. The Unsplash IDs below were verified to load + themed.)
+//   • photos  → local files served from each app's /public/photos/<folder>/
+//     (copied from the project's own photo source, organised by genre).
 // Phase 2: swap these for real uploaded URLs (Supabase Storage).
 const hashNum = (s: string) => {
   let h = 0;
@@ -11,57 +10,45 @@ const hashNum = (s: string) => {
   return h;
 };
 
-// Real Unsplash photo IDs grouped by subject (the keys match the keywords passed
-// from HeroVisual / StyleCategories / category seeds).
-const POOLS: Record<string, string[]> = {
-  wedding: [
-    "1519741497674-611481863552",
-    "1583939003579-730e3918a45a",
-    "1465495976277-4387d4b0b4c6",
-    "1511285560929-80b456fea0bc",
-    "1606800052052-a08af7148866",
-    "1537633552985-df8429e8048b",
-    "1469371670807-013ccf25f16a",
-  ],
-  portrait: [
-    "1500648767791-00dcc994a43e",
-    "1506794778202-cad84cf45f1d",
-    "1438761681033-6461ffad8d80",
-    "1507003211169-0a1dd7228f2d",
-    "1534528741775-53994a69daeb",
-    "1539571696357-5a69c17a67c6",
-  ],
-  fashion: [
-    "1502823403499-6ccfcf4fb453",
-    "1524504388940-b1c1722653e1",
-    "1529626455594-4ff0802cfb7e",
-    "1544005313-94ddf0286df2",
-    "1517841905240-472988babdf9",
-  ],
-  travel: [
-    "1469854523086-cc02fe5d8800",
-    "1501785888041-af3ef285b470",
-    "1530789253388-582c481c54b0",
-    "1476514525535-07fb3b4ae5f1",
-    "1528127269322-539801943592",
-  ],
-  food: [
-    "1414235077428-338989a2e8c0",
-    "1555939594-58d7cb561ad1",
-    "1504674900247-0877df9cc836",
-    "1565299624946-b28f40a0ae38",
-    "1473093295043-cdd812d0e601",
-    "1540189549336-e6e99c3679fe",
-    "1467003909585-2f8a72700288",
-  ],
-  event: [
-    "1551836022-d5d88e9218df",
-    "1504384308090-c894fdcc538d",
-    "1573496359142-b8d87734a5a2",
-    "1517248135467-4c7edcad34c4",
-  ],
+// Local photo folders under /public/photos. `count` = files in the folder,
+// `prefix` = filename stem (files are `<prefix>_<1..count>.jpg`, not zero-padded).
+const FOLDERS: Record<string, { count: number; prefix: string }> = {
+  portrait: { count: 10, prefix: "portrait" },
+  family: { count: 10, prefix: "family" },
+  event: { count: 10, prefix: "event" },
+  food: { count: 10, prefix: "food" },
+  product: { count: 10, prefix: "product" },
+  street: { count: 10, prefix: "street" },
+  architecture: { count: 10, prefix: "arc" },
+  travel: { count: 6, prefix: "travel" },
 };
-const ALL_PHOTOS = Object.values(POOLS).flat();
+
+// Map every keyword we receive — both the legacy pool keywords still passed by
+// HeroVisual / StyleCategories and the new genre folder names — onto a folder.
+// The source has 8 folders for 10 styles, so `wedding`→family and `fashion`→
+// portrait reuse the nearest genre (different seeds still yield different images).
+const KEYWORD_TO_FOLDER: Record<string, string> = {
+  portrait: "portrait",
+  fashion: "portrait",
+  wedding: "family",
+  family: "family",
+  event: "event",
+  food: "food",
+  product: "product",
+  street: "street",
+  architecture: "architecture",
+  travel: "travel",
+};
+
+// Flat list of every file path, for the no-keyword "varied photo" case.
+const ALL_PHOTOS = Object.entries(FOLDERS).flatMap(([folder, { count, prefix }]) =>
+  Array.from({ length: count }, (_, i) => `/photos/${folder}/${prefix}_${i + 1}.jpg`)
+);
+
+const fileInFolder = (folder: string, n: number) => {
+  const { count, prefix } = FOLDERS[folder];
+  return `/photos/${folder}/${prefix}_${(n % count) + 1}.jpg`;
+};
 
 /** A real human-face placeholder for avatars (source size is fixed at 128px). */
 export const avatar = (seed: string) => {
@@ -71,14 +58,17 @@ export const avatar = (seed: string) => {
 };
 
 /**
- * A real placeholder photo, cropped to exactly w×h. Seeds ending in `-av`
- * resolve to a face avatar; pass `keyword` (wedding | portrait | fashion |
- * travel | food | event) to pin the subject, else a varied photo is chosen.
+ * A real placeholder photo. Seeds that look like avatars (`-av`, `-rv`, or
+ * containing `reviewer`) resolve to a face avatar; pass `keyword` (a genre —
+ * portrait | fashion | wedding | family | event | food | product | street |
+ * architecture | travel) to pin the subject, else a varied photo is chosen.
+ * `w`/`h` are kept for call-site compatibility but no longer size the URL
+ * (files are static; components set the display size via CSS).
  */
-export const photo = (seed: string, w: number, h: number, keyword?: string) => {
-  if (!keyword && seed.includes("-av")) return avatar(seed);
+export const photo = (seed: string, _w: number, _h: number, keyword?: string) => {
+  if (!keyword && /(-av|-rv|reviewer)/.test(seed)) return avatar(seed);
   const n = hashNum(seed);
-  const pool = (keyword && POOLS[keyword]) || ALL_PHOTOS;
-  const id = pool[n % pool.length];
-  return `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop&q=80`;
+  const folder = keyword ? KEYWORD_TO_FOLDER[keyword] : undefined;
+  if (folder) return fileInFolder(folder, n);
+  return ALL_PHOTOS[n % ALL_PHOTOS.length];
 };

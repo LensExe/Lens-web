@@ -1,6 +1,11 @@
-import { Clock3, Coins } from "lucide-react";
+import { Clock3, Coins, Gift, WalletMinimal } from "lucide-react";
 import { CountUp } from "@lens/ui";
-import { COIN_LABEL } from "@/lib/wallet";
+import {
+  CASHBACK_RATE,
+  COIN_EXPIRY_MONTHS,
+  COIN_LABEL,
+  COIN_REDEEM_CAP_RATE,
+} from "@/lib/wallet";
 import type { CoinSummary } from "@/types";
 
 const fmtDate = (iso?: string) => {
@@ -37,6 +42,27 @@ export function CoinCard({ summary }: { summary: CoinSummary }) {
           </p>
         </div>
       )}
+
+      {/* How Lens Xu works (feedback R1: người dùng chưa hiểu cơ chế Lens Xu). */}
+      <div className="mt-4 rounded-2xl border border-border/60 bg-background/40 p-3.5">
+        <p className="text-sm font-medium">{COIN_LABEL} hoạt động thế nào?</p>
+        <ul className="mt-2 space-y-2 text-sm text-muted-foreground">
+          <li className="flex items-start gap-2">
+            <Gift className="mt-0.5 size-4 shrink-0 text-ember" />
+            Nhận {Math.round(CASHBACK_RATE * 100)}% hoàn xu trên số tiền mặt của mỗi
+            buổi chụp hoàn thành.
+          </li>
+          <li className="flex items-start gap-2">
+            <WalletMinimal className="mt-0.5 size-4 shrink-0 text-ember" />
+            Dùng xu để trừ tối đa {Math.round(COIN_REDEEM_CAP_RATE * 100)}% giá trị
+            mỗi đơn khi thanh toán buổi chụp.
+          </li>
+          <li className="flex items-start gap-2">
+            <Clock3 className="mt-0.5 size-4 shrink-0 text-ember" />
+            Xu hết hạn sau {COIN_EXPIRY_MONTHS} tháng kể từ ngày nhận, hãy dùng sớm.
+          </li>
+        </ul>
+      </div>
     </div>
   );
 }

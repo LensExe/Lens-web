@@ -1,6 +1,7 @@
 import { BadgeCheck, Lock, Percent, Sparkles, TrendingUp } from "lucide-react";
 import { CountUp, Progress, Skeleton, cn } from "@lens/ui";
 import { RankBadge } from "@/components/achievements/RankBadge";
+import { RankLadderInfo } from "@/components/achievements/RankLadderInfo";
 import { BADGES, rankProgress } from "@/lib/achievements";
 import { useMyAchievements } from "@/queries/useAchievements";
 
@@ -55,8 +56,9 @@ export function DashboardAchievements() {
 
       {/* Current rank + progress to next */}
       <section className="mt-7 rounded-3xl border border-border bg-card p-6">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <RankBadge rank={data.rank} />
+          <RankLadderInfo currentRank={data.rank} />
           <span className="text-sm text-muted-foreground">
             <CountUp to={data.stats.completedSessions} /> buổi chụp đã hoàn thành
           </span>
@@ -95,7 +97,11 @@ export function DashboardAchievements() {
 
       {/* Rank perks */}
       <section className="mt-6 rounded-2xl border border-border bg-muted/30 p-5">
-        <h2 className="mb-3 text-base font-semibold">Quyền lợi cấp bậc</h2>
+        <h2 className="text-base font-semibold">Quyền lợi cấp bậc</h2>
+        <p className="mb-3 mt-1 text-sm text-muted-foreground">
+          Càng hoàn thành nhiều buổi chụp chất lượng, bạn càng lên cấp cao hơn —
+          giảm phí hoa hồng, được ưu tiên hiển thị và tạo niềm tin với khách hàng.
+        </p>
         <ul className="space-y-2 text-sm">
           <li className="flex items-center gap-2">
             <Percent className="size-4 text-muted-foreground" />

@@ -129,12 +129,7 @@ export function PortalLayout() {
               </SheetContent>
             </Sheet>
             <span className="truncate text-sm text-muted-foreground">
-              <span className="md:hidden">Lens Portal</span>
-              <span className="hidden md:inline">
-                {currentUser.role === "photographer"
-                  ? "Khu vực khách hàng & nhiếp ảnh gia"
-                  : "Khu vực khách hàng"}
-              </span>
+              Lens Portal
             </span>
           </div>
           <HeaderActions />

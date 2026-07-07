@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
-  CalendarCheck,
   CalendarClock,
   CalendarDays,
   ImageIcon,
@@ -12,6 +11,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { Skeleton, formatPrice } from "@lens/ui";
+import { StatCard } from "@/components/StatCard";
 import { RequestCard } from "@/components/dashboard/RequestCard";
 import { useIncomingBookings, useMyPhotographerProfile } from "@/queries/useDashboard";
 import { photographerPayout } from "@/lib/booking";
@@ -22,18 +22,6 @@ const todayISO = () => {
   d.setHours(0, 0, 0, 0);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
-
-function StatCard({ icon: Icon, value, label }: { icon: LucideIcon; value: string; label: string }) {
-  return (
-    <div className="rounded-2xl border border-border bg-card p-5">
-      <span className="flex size-9 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-        <Icon className="size-4.5" />
-      </span>
-      <p className="mt-4 text-2xl font-semibold tracking-tight">{value}</p>
-      <p className="mt-0.5 text-sm text-muted-foreground">{label}</p>
-    </div>
-  );
-}
 
 function ShortcutCard({
   to,
@@ -98,20 +86,14 @@ export function DashboardOverview() {
         </div>
       ) : (
         <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard icon={Inbox} value={String(pending.length)} label="Chờ duyệt" />
-          <StatCard icon={CalendarClock} value={String(upcoming.length)} label="Sắp tới" />
-          <StatCard icon={CalendarCheck} value={String(completed.length)} label="Đã hoàn thành" />
           <StatCard icon={Wallet} value={formatPrice(revenue)} label="Doanh thu" />
-        </div>
-      )}
-
-      {profile && (
-        <div className="mt-4 flex items-center gap-2 rounded-2xl border border-border bg-muted/30 px-5 py-3 text-sm">
-          <Star className="size-4 fill-amber-400 text-amber-400" />
-          <span className="font-medium">{profile.rating.toFixed(1)}</span>
-          <span className="text-muted-foreground">
-            · {profile.reviewCount} đánh giá
-          </span>
+          <StatCard icon={Inbox} value={pending.length} label="Chờ duyệt" />
+          <StatCard icon={CalendarClock} value={upcoming.length} label="Sắp tới" />
+          <StatCard
+            icon={Star}
+            value={profile ? profile.rating.toFixed(1) : "—"}
+            label={profile ? `${profile.reviewCount} đánh giá` : "Đánh giá"}
+          />
         </div>
       )}
 

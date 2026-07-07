@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowUpRight, MapPin, Star } from "lucide-react";
+import { ArrowUpRight, BadgeCheck, MapPin, Star } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage, formatPrice } from "@lens/ui";
 import { CardRankChip } from "@/components/achievements/CardRankChip";
 import type { Photographer } from "@/types";
@@ -43,11 +43,19 @@ export function PhotographerCard({ photographer }: PhotographerCardProps) {
 
       {/* Top row: rating + open affordance */}
       <div className="absolute inset-x-3 top-3 flex items-start justify-between">
-        <span className="flex items-center gap-1 rounded-full bg-black/45 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-md">
-          <Star className="size-3 fill-ember text-ember" />
-          {photographer.rating.toFixed(1)}
-          <span className="text-white/70">({photographer.reviewCount})</span>
-        </span>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="flex items-center gap-1 rounded-full bg-black/45 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-md">
+            <Star className="size-3 fill-ember text-ember" />
+            {photographer.rating.toFixed(1)}
+            <span className="text-white/70">({photographer.reviewCount})</span>
+          </span>
+          {photographer.featured && (
+            <span className="flex items-center gap-1 rounded-full bg-ember/85 px-2 py-1 text-[11px] font-medium text-white backdrop-blur-md">
+              <BadgeCheck className="size-3" />
+              Nổi bật
+            </span>
+          )}
+        </div>
         <span className="flex size-9 translate-y-1 items-center justify-center rounded-full bg-white/15 text-white opacity-0 backdrop-blur-md transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
           <ArrowUpRight className="size-4" />
         </span>

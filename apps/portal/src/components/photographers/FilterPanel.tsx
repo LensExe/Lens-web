@@ -15,11 +15,9 @@ import {
   PRICE_MIN,
   PRICE_STEP,
   RATING_OPTIONS,
-  STYLE_OPTIONS,
   countActiveFilters,
   type Filters,
 } from "@/lib/photographer-filters";
-import type { PhotoStyle } from "@/types";
 
 interface FilterPanelProps {
   filters: Filters;
@@ -153,13 +151,6 @@ function DateSection({ filters, onChange }: Pick<FilterPanelProps, "filters" | "
 }
 
 export function FilterPanel({ filters, onChange, onClear }: FilterPanelProps) {
-  const toggleStyle = (style: PhotoStyle) => {
-    const styles = filters.styles.includes(style)
-      ? filters.styles.filter((s) => s !== style)
-      : [...filters.styles, style];
-    onChange({ styles });
-  };
-
   const activeCount = countActiveFilters(filters);
 
   return (
@@ -177,14 +168,6 @@ export function FilterPanel({ filters, onChange, onClear }: FilterPanelProps) {
           </button>
         )}
       </div>
-
-      <Section title="Phong cách">
-        {STYLE_OPTIONS.map((style) => (
-          <Chip key={style} active={filters.styles.includes(style)} onClick={() => toggleStyle(style)}>
-            {style}
-          </Chip>
-        ))}
-      </Section>
 
       <Section title="Thành phố">
         <Chip active={!filters.city} onClick={() => onChange({ city: "" })}>
