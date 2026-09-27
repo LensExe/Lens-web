@@ -1,20 +1,29 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getIncomingBookings,
-  getMyAvailability,
+  getMyEarnings,
   getMyPhotographerProfile,
-  toggleAvailability,
+  getMySchedule,
+  saveMySchedule,
   updateBookingStatus,
   updateMyPhotographerProfile,
 } from "@/services/dashboard";
-import type { BookingStatus, Photographer } from "@/types";
+import type { BookingStatus, Photographer, WorkSchedule } from "@/types";
 
 // Layer 2 — Query hooks for the photographer dashboard.
 export const dashboardKeys = {
   profile: ["dashboard", "profile"] as const,
   incoming: ["dashboard", "incoming"] as const,
-  availability: ["dashboard", "availability"] as const,
+  schedule: ["dashboard", "schedule"] as const,
+  earnings: ["dashboard", "earnings"] as const,
 };
+
+export function useMyEarnings() {
+  return useQuery({
+    queryKey: dashboardKeys.earnings,
+    queryFn: getMyEarnings,
+  });
+}
 
 export function useMyPhotographerProfile() {
   return useQuery({
@@ -54,19 +63,21 @@ export function useUpdateBookingStatus() {
   });
 }
 
-export function useMyAvailability() {
+export function useMySchedule() {
   return useQuery({
-    queryKey: dashboardKeys.availability,
-    queryFn: getMyAvailability,
+    queryKey: dashboardKeys.schedule,
+    queryFn: getMySchedule,
   });
 }
 
-export function useToggleAvailability() {
+export function useSaveMySchedule() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (date: string) => toggleAvailability(date),
-    onSuccess: (dates) => {
-      qc.setQueryData(dashboardKeys.availability, dates);
+    mutationFn: (schedule: WorkSchedule) => saveMySchedule(schedule),
+    onSuccess: (saved) => {
+      qc.setQueryData(dashboardKeys.schedule, saved);
+      // Public free dates / slots derive from the schedule.
+      qc.invalidateQueries({ queryKey: ["photographers"] });
     },
   });
 }

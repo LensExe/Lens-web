@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { CalendarX, Search } from "lucide-react";
-import { Button, Skeleton, cn } from "@lens/ui";
+import { Button, Skeleton, PageContainer, PageHeader, StatusTabs } from "@lens/ui";
 import { BookingCard } from "@/components/bookings/BookingCard";
 import { useMyBookings } from "@/queries/useBookings";
 import { BOOKING_STATUS_META } from "@/lib/booking";
@@ -9,67 +9,70 @@ import type { BookingStatus } from "@/types";
 
 type FilterValue = "all" | BookingStatus;
 
-const FILTERS: { value: FilterValue; label: string }[] = [
-  { value: "all", label: "Tất cả" },
-  { value: "pending", label: BOOKING_STATUS_META.pending.label },
-  { value: "confirmed", label: BOOKING_STATUS_META.confirmed.label },
-  { value: "held", label: BOOKING_STATUS_META.held.label },
-  { value: "released", label: BOOKING_STATUS_META.released.label },
-  { value: "cancelled", label: BOOKING_STATUS_META.cancelled.label },
+// Status tabs, in the order a booking travels through them.
+const FILTERS: FilterValue[] = [
+  "all",
+  "awaiting_deposit",
+  "pending",
+  "confirmed",
+  "held",
+  "released",
+  "cancelled",
 ];
 
 export function ClientBookings() {
   const { data: bookings = [], isLoading } = useMyBookings();
   const [filter, setFilter] = useState<FilterValue>("all");
 
+  const countOf = (value: FilterValue) =>
+    value === "all" ? bookings.length : bookings.filter((b) => b.status === value).length;
   const filtered =
     filter === "all" ? bookings : bookings.filter((b) => b.status === filter);
 
   return (
-    <div className="mx-auto max-w-[860px] px-5 py-8 md:py-10">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-          Lịch đặt của tôi
-        </h1>
-        <p className="mt-1 text-muted-foreground">
-          {isLoading ? "Đang tải..." : `${bookings.length} buổi chụp`}
-        </p>
-      </header>
+    <PageContainer>
+      <PageHeader
+        title="Lịch đặt của tôi"
+        description={isLoading ? "Đang tải..." : `${bookings.length} buổi chụp`}
+        actions={
+          <Button asChild variant="outline" className="rounded-full">
+            <Link to="/">
+              <Search className="size-4" />
+              Đặt lịch mới
+            </Link>
+          </Button>
+        }
+      />
 
-      <div className="mb-6 flex flex-wrap gap-2">
-        {FILTERS.map((f) => (
-          <button
-            key={f.value}
-            type="button"
-            onClick={() => setFilter(f.value)}
-            aria-pressed={filter === f.value}
-            className={cn(
-              "focus-ring rounded-full border px-3.5 py-1.5 text-sm transition-colors",
-              filter === f.value
-                ? "border-foreground bg-foreground text-background"
-                : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
+      <StatusTabs
+        className="mb-6"
+        value={filter}
+        onChange={setFilter}
+        tabs={FILTERS.map((value) => ({
+          value,
+          label: value === "all" ? "Tất cả" : BOOKING_STATUS_META[value].label,
+          count: isLoading ? undefined : countOf(value),
+        }))}
+      />
 
       {isLoading ? (
-        <div className="space-y-3">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-20 rounded-2xl" />
+        <div className="grid gap-3 xl:grid-cols-2">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-24 rounded-2xl" />
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center rounded-2xl border border-dashed border-border p-10 text-center">
-          <span className="mb-3 flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-            <CalendarX className="size-6" />
+        <div className="flex flex-col items-center rounded-2xl border border-dashed border-border px-6 py-16 text-center">
+          <span className="mb-3 flex size-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <CalendarX className="size-7" />
           </span>
           <p className="font-medium">
+            {filter === "all" ? "Bạn chưa có lịch đặt nào" : "Không có buổi chụp phù hợp"}
+          </p>
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
             {filter === "all"
-              ? "Bạn chưa có lịch đặt nào"
-              : "Không có lịch đặt ở trạng thái này"}
+              ? "Tìm nhiếp ảnh gia phù hợp và đặt lịch cho khoảnh khắc của bạn."
+              : "Chưa có buổi chụp nào ở trạng thái này."}
           </p>
           {filter === "all" && (
             <Button asChild className="mt-5 rounded-full">
@@ -81,12 +84,12 @@ export function ClientBookings() {
           )}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid gap-3 xl:grid-cols-2">
           {filtered.map((booking) => (
             <BookingCard key={booking.id} booking={booking} />
           ))}
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

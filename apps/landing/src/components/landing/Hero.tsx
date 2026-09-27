@@ -7,7 +7,7 @@ import { Camera, Search, Sparkles } from "lucide-react";
 import { Button } from "@lens/ui";
 import { Magnet } from "@lens/ui";
 import { usePrefersReducedMotion } from "@lens/ui";
-import { portalBrowse } from "@/lib/links";
+import { portalBrowse, portalBrowseStyle } from "@/lib/links";
 import { AnimatedHeadline } from "./AnimatedHeadline";
 import { HeroVisual } from "./HeroVisual";
 
@@ -180,7 +180,7 @@ export function Hero() {
                 variant="outline"
                 size="lg"
                 className="rounded-full px-6"
-                onClick={() => navigate("/signup")}
+                onClick={() => navigate("/signup?role=photographer")}
               >
                 <Camera className="size-4" />
                 Trở thành nhiếp ảnh gia
@@ -196,7 +196,7 @@ export function Hero() {
                 key={style}
                 type="button"
                 onClick={() => {
-                  window.location.href = portalBrowse(style);
+                  window.location.href = portalBrowseStyle(style);
                 }}
                 className="rounded-full border border-border bg-background/60 px-3 py-1 text-sm text-muted-foreground transition-colors hover:bg-foreground hover:text-background"
               >

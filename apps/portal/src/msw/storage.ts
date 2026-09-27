@@ -114,7 +114,7 @@ export function addPhotos(
   photographerId: string,
   clientName: string,
   style: string,
-  count = 4
+  count = 5
 ): ShootGallery {
   const tier = planOf(photographerId);
   const def = planById(tier);

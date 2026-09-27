@@ -111,7 +111,7 @@ export async function getPhotographers() {
 - **Landing** — public marketing homepage + **auth** only. On login, check role and redirect to the right app via env URLs (`VITE_PORTAL_URL`, `VITE_ADMIN_URL`). UI phase has no real auth — the login screen picks a role and redirects. Landing's browse/discovery CTAs link out to the portal.
 - **Portal** — has TWO zones:
   - **Public (no login):** browse photographers (`/photographers`) + photographer profile (`/photographers/:id`) under `PublicLayout`. This is the discovery surface (landing links here).
-  - **Signed-in app:** Client (`/client/*`) and Photographer (`/dashboard/*`) + `/messages` under `PortalLayout` (sidebar).
+  - **Signed-in app:** Client (`/client/*`) uses a top navigation in the same header as the public pages; Photographer (`/dashboard/*`) uses a sidebar studio; `/messages` is full-screen. (`PortalLayout` switches `ClientShell` / `StudioShell` by role.)
 - **Admin** — approve photographers, manage users, monitor bookings, reports.
 
 > Note: browse/profile live in **portal** (as public routes), not landing. Landing keeps a small photographer mock only for the homepage "featured" showcase; portal owns the full browse data + filters.

@@ -1,7 +1,7 @@
 import { api } from "@/lib/api";
-import type { AdminBooking } from "@/types";
+import type { AdminBookingsReport } from "@/types";
 
 // Layer 3 — Service / API.
-export async function getBookings(): Promise<AdminBooking[]> {
-  return (await api.get<AdminBooking[]>("/admin/bookings")).data;
+export async function getBookings(): Promise<AdminBookingsReport> {
+  return (await api.get<AdminBookingsReport>("/admin/bookings")).data;
 }

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
-import { LogOut, Menu } from "lucide-react";
+import { Link, Outlet, useLocation } from "react-router-dom";
+import { ExternalLink, Menu } from "lucide-react";
 import {
   Button,
   Logo,
@@ -9,97 +9,74 @@ import {
   SheetTitle,
   SheetTrigger,
   ThemeToggle,
-  cn,
 } from "@lens/ui";
+import { AdminNav } from "@/components/layout/AdminNav";
+import { AdminUserCard } from "@/components/layout/AdminUserCard";
+import { titleFor } from "@/components/layout/nav";
+import { useAdminQueue } from "@/queries/useStats";
 
-const links = [
-  { to: "/", label: "Tổng quan" },
-  { to: "/photographers", label: "Duyệt nhiếp ảnh gia" },
-  { to: "/users", label: "Quản lý người dùng" },
-  { to: "/finance", label: "Tài chính" },
-  { to: "/bookings", label: "Đặt lịch & ghép thợ" },
-  { to: "/storage", label: "Lưu trữ ảnh" },
-  { to: "/quality", label: "Hạng & AI" },
-  { to: "/reports", label: "Báo cáo & thống kê" },
-];
-
-const LANDING_URL = import.meta.env.VITE_LANDING_URL ?? "http://localhost:5173";
-
-function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
-  return (
-    <nav className="flex-1 space-y-1 p-4">
-      {links.map((link) => (
-        <NavLink
-          key={link.to}
-          to={link.to}
-          end
-          onClick={onNavigate}
-          className={({ isActive }) =>
-            cn(
-              "block rounded-xl px-3 py-2 text-sm transition-colors",
-              isActive
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )
-          }
-        >
-          {link.label}
-        </NavLink>
-      ))}
-    </nav>
-  );
-}
+const PORTAL_URL = import.meta.env.VITE_PORTAL_URL ?? "http://localhost:5174";
 
 function Brand() {
   return (
-    <div className="flex h-16 items-center gap-2 border-b border-border px-5" aria-label="Lens Admin">
+    <Link
+      to="/"
+      className="flex h-16 shrink-0 items-center gap-2 border-b border-border px-5"
+      aria-label="Lens Admin — tổng quan"
+    >
       <Logo className="h-6" />
-      <span className="text-sm font-medium text-muted-foreground">Admin</span>
-    </div>
+      <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+        Quản trị
+      </span>
+    </Link>
   );
 }
 
+// The console shell: full-height sidebar (grouped menu with queue badges +
+// the signed-in admin), a sticky header naming the page, wide content.
 export function AdminLayout() {
   const [navOpen, setNavOpen] = useState(false);
+  const { pathname } = useLocation();
+  const { data: queue } = useAdminQueue();
 
   return (
     <div className="flex min-h-dvh">
-      {/* Desktop sidebar */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-muted/20 md:flex">
+      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-border bg-muted/20 md:flex">
         <Brand />
-        <NavLinks />
+        <AdminNav queue={queue} />
+        <AdminUserCard />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 items-center justify-between gap-2 border-b border-border px-4 md:px-5">
+        <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-2 border-b border-border bg-background/80 px-4 backdrop-blur-xl md:px-8">
           <div className="flex min-w-0 items-center gap-2">
-            {/* Mobile nav trigger */}
             <Sheet open={navOpen} onOpenChange={setNavOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="md:hidden" aria-label="Mở menu">
                   <Menu className="size-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-72 p-0">
+              <SheetContent side="left" className="flex w-72 flex-col gap-0 p-0">
                 <SheetTitle className="sr-only">Điều hướng</SheetTitle>
                 <Brand />
-                <NavLinks onNavigate={() => setNavOpen(false)} />
+                <AdminNav queue={queue} onNavigate={() => setNavOpen(false)} />
+                <AdminUserCard />
               </SheetContent>
             </Sheet>
-            <span className="truncate text-sm text-muted-foreground">
-              Bảng quản trị hệ thống
-            </span>
+            <span className="truncate font-medium">{titleFor(pathname)}</span>
           </div>
+
           <div className="flex shrink-0 items-center gap-2">
-            <ThemeToggle />
-            <Button variant="outline" className="rounded-full" asChild>
-              <a href={LANDING_URL}>
-                <LogOut className="size-4" />
-                <span className="hidden sm:inline">Đăng xuất</span>
+            <Button asChild variant="outline" className="hidden rounded-full lg:inline-flex">
+              <a href={PORTAL_URL} target="_blank" rel="noreferrer">
+                <ExternalLink className="size-4" />
+                Xem trang công khai
               </a>
             </Button>
+            <ThemeToggle />
           </div>
         </header>
+
         <main className="flex-1">
           <Outlet />
         </main>

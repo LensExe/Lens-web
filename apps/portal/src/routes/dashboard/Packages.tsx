@@ -1,146 +1,223 @@
-import { useState } from "react";
-import { Check, Loader2, Package, Plus, X } from "lucide-react";
-import { Button, Input, Skeleton, formatPrice, toast } from "@lens/ui";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
+import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
+import { Info, Plus, Trash2 } from "lucide-react";
+import {
+  Button,
+  Input,
+  PageContainer,
+  PageHeader,
+  SaveBar,
+  Skeleton,
+  Textarea,
+  formatPrice,
+  toast,
+} from "@lens/ui";
+import { FormField } from "@/components/FormField";
 import {
   useMyPhotographerProfile,
   useUpdateMyPhotographerProfile,
 } from "@/queries/useDashboard";
-import { resolvePackages } from "@/lib/booking";
-import type { Photographer, PhotographerPackage } from "@/types";
+import {
+  packageSummary,
+  packagesFormSchema,
+  resolvePackages,
+  type PackagesFormValues,
+} from "@/lib/booking";
+import type { Photographer } from "@/types";
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <label className="text-sm font-medium">{label}</label>
-      {children}
-    </div>
-  );
-}
+const INPUT = "h-10 rounded-xl px-3";
 
-// Mounts only once the profile is loaded, so `draft` is always present.
+const blankPackage = (): PackagesFormValues["packages"][number] => ({
+  id: `pkg-${Date.now()}`,
+  name: "",
+  description: "",
+  price: 200_000,
+  photoCount: 20,
+  durationHours: 1,
+  deliveryDays: 7,
+});
+
+// Mounts only once the profile is loaded, so the form starts from real data.
 function PackagesEditor({ profile }: { profile: Photographer }) {
   const update = useUpdateMyPhotographerProfile();
-  const [draft, setDraft] = useState<PhotographerPackage[]>(() =>
-    resolvePackages(profile).map((p) => ({ ...p }))
-  );
-  const [dirty, setDirty] = useState(false);
+  const initial: PackagesFormValues = { packages: resolvePackages(profile) };
 
-  const edit = (next: PhotographerPackage[]) => {
-    setDraft(next);
-    setDirty(true);
-  };
-  const updatePkg = (i: number, p: Partial<PhotographerPackage>) =>
-    edit(draft.map((pkg, idx) => (idx === i ? { ...pkg, ...p } : pkg)));
-  const addPkg = () =>
-    edit([...draft, { id: `pkg-${Date.now()}`, name: "", duration: "", price: 0 }]);
-  const removePkg = (i: number) => edit(draft.filter((_, idx) => idx !== i));
+  const {
+    register,
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors, isDirty },
+  } = useForm<PackagesFormValues>({
+    resolver: standardSchemaResolver(packagesFormSchema),
+    mode: "onTouched",
+    defaultValues: initial,
+  });
+  const { fields, append, remove } = useFieldArray({ control, name: "packages", keyName: "key" });
+  const live = useWatch({ control, name: "packages" }) ?? [];
 
-  const cleaned = draft.filter((p) => p.name.trim() && p.price > 0);
-  const canSave = dirty && cleaned.length > 0 && !update.isPending;
-
-  const save = () => {
-    if (!canSave) return;
+  const onSubmit = (values: PackagesFormValues) =>
     update.mutate(
-      { packages: cleaned },
+      { packages: values.packages },
       {
         onSuccess: () => {
-          setDirty(false);
-          toast.success("Đã cập nhật gói dịch vụ");
+          reset(values);
+          toast.success("Đã lưu gói dịch vụ");
         },
         onError: () => toast.error("Lưu thất bại, vui lòng thử lại"),
       }
     );
-  };
+
+  const cheapest = live.length ? Math.min(...live.map((p) => Number(p?.price) || Infinity)) : NaN;
 
   return (
-    <div className="mx-auto max-w-[860px] px-5 py-8 md:py-10">
-      <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-            Gói dịch vụ
-          </h1>
-          <p className="mt-1 text-muted-foreground">
-            Các gói khách hàng chọn khi đặt lịch chụp với bạn.
-          </p>
-        </div>
-        <Button className="rounded-full" disabled={!canSave} onClick={save}>
-          {update.isPending ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <Check className="size-4" />
-          )}
-          Lưu thay đổi
-        </Button>
-      </header>
+    <PageContainer>
+      <PageHeader
+        title="Gói dịch vụ"
+        description="Các gói khách hàng chọn khi đặt lịch chụp với bạn."
+      />
 
-      {draft.length === 0 ? (
-        <div className="flex flex-col items-center rounded-2xl border border-dashed border-border p-10 text-center">
-          <span className="mb-3 flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-            <Package className="size-6" />
-          </span>
-          <p className="font-medium">Chưa có gói dịch vụ nào</p>
-          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-            Thêm gói để khách hàng chọn khi đặt lịch.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {draft.map((pkg, i) => (
-            <div
-              key={pkg.id}
-              className="grid items-end gap-3 rounded-2xl border border-border bg-card p-4 sm:grid-cols-[1fr_1fr_140px_auto]"
-            >
-              <Field label="Tên gói">
-                <Input
-                  value={pkg.name}
-                  placeholder="VD: Gói cơ bản"
-                  onChange={(e) => updatePkg(i, { name: e.target.value })}
-                />
-              </Field>
-              <Field label="Mô tả">
-                <Input
-                  value={pkg.duration}
-                  placeholder="VD: 1 giờ chụp · 15 ảnh"
-                  onChange={(e) => updatePkg(i, { duration: e.target.value })}
-                />
-              </Field>
-              <Field label="Giá (VND)">
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  step={10000}
-                  value={pkg.price}
-                  onChange={(e) => updatePkg(i, { price: Number(e.target.value) })}
-                />
-              </Field>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Xoá gói"
-                className="rounded-full text-muted-foreground hover:text-destructive"
-                onClick={() => removePkg(i)}
-              >
-                <X className="size-4" />
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <Button variant="outline" className="mt-3 rounded-full" onClick={addPkg}>
-        <Plus className="size-4" />
-        Thêm gói
-      </Button>
-
-      <p className="mt-6 text-xs text-muted-foreground">
-        Mức giá tham khảo: gói rẻ nhất hiện tại{" "}
-        <span className="font-medium text-foreground">
-          {formatPrice(Math.min(...cleaned.map((p) => p.price), profile.pricePerSession))}
+      <p className="mb-6 flex items-start gap-2 rounded-2xl bg-muted px-4 py-3 text-sm text-foreground">
+        <Info className="mt-0.5 size-4 shrink-0" />
+        <span>
+          <span className="font-semibold">Số ảnh bàn giao</span> là cam kết với khách: buổi
+          chụp chỉ được xác nhận hoàn thành khi bạn giao đủ số ảnh này. Gói đã đặt giữ nguyên
+          điều khoản dù bạn sửa gói sau đó.
         </span>
-        . Nếu xoá hết, hệ thống dùng gói mặc định theo giá khởi điểm.
       </p>
-    </div>
+
+      <form onSubmit={handleSubmit(onSubmit)} noValidate>
+        <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+          {fields.map((field, i) => {
+            const err = errors.packages?.[i];
+            const current = live[i];
+            return (
+              <section key={field.key} className="flex flex-col rounded-3xl border border-border bg-card p-5">
+                <div className="mb-4 flex items-center justify-between">
+                  <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                    Gói {i + 1}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Xoá gói ${i + 1}`}
+                    className="rounded-full text-muted-foreground hover:text-destructive"
+                    onClick={() => remove(i)}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField label="Tên gói" htmlFor={`name-${i}`} error={err?.name?.message} className="sm:col-span-2">
+                    <Input id={`name-${i}`} placeholder="VD: Gói cơ bản" className={INPUT} {...register(`packages.${i}.name`)} />
+                  </FormField>
+                  <FormField
+                    label="Mô tả"
+                    htmlFor={`desc-${i}`}
+                    error={err?.description?.message}
+                    hint="Mô tả chung: bối cảnh, trang phục, phong cách…"
+                    className="sm:col-span-2"
+                  >
+                    <Textarea
+                      id={`desc-${i}`}
+                      rows={2}
+                      placeholder="VD: 2 bộ trang phục, chụp ngoài trời, hỗ trợ tạo dáng"
+                      className="resize-none rounded-xl"
+                      {...register(`packages.${i}.description`)}
+                    />
+                  </FormField>
+                  <FormField label="Giá (VND)" htmlFor={`price-${i}`} error={err?.price?.message}>
+                    <Input
+                      id={`price-${i}`}
+                      type="number"
+                      inputMode="numeric"
+                      step={10_000}
+                      className={INPUT}
+                      {...register(`packages.${i}.price`, { valueAsNumber: true })}
+                    />
+                  </FormField>
+                  <FormField
+                    label="Số ảnh bàn giao"
+                    htmlFor={`photos-${i}`}
+                    error={err?.photoCount?.message}
+                    hint="Bắt buộc · dùng để xác nhận hoàn thành"
+                  >
+                    <Input
+                      id={`photos-${i}`}
+                      type="number"
+                      inputMode="numeric"
+                      className={INPUT}
+                      {...register(`packages.${i}.photoCount`, { valueAsNumber: true })}
+                    />
+                  </FormField>
+                  <FormField label="Thời lượng chụp (giờ)" htmlFor={`hours-${i}`} error={err?.durationHours?.message}>
+                    <Input
+                      id={`hours-${i}`}
+                      type="number"
+                      inputMode="decimal"
+                      step={0.5}
+                      className={INPUT}
+                      {...register(`packages.${i}.durationHours`, { valueAsNumber: true })}
+                    />
+                  </FormField>
+                  <FormField label="Hạn giao ảnh (ngày)" htmlFor={`days-${i}`} error={err?.deliveryDays?.message}>
+                    <Input
+                      id={`days-${i}`}
+                      type="number"
+                      inputMode="numeric"
+                      className={INPUT}
+                      {...register(`packages.${i}.deliveryDays`, { valueAsNumber: true })}
+                    />
+                  </FormField>
+                </div>
+
+                {/* What the client will see */}
+                {current && Number.isFinite(current.price) && (
+                  <p className="mt-4 rounded-2xl bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+                    Khách thấy:{" "}
+                    <span className="font-medium text-foreground">
+                      {formatPrice(current.price)} · {packageSummary(current)}
+                    </span>
+                  </p>
+                )}
+              </section>
+            );
+          })}
+
+          <button
+            type="button"
+            onClick={() => append(blankPackage())}
+            className="focus-ring flex min-h-40 flex-col items-center justify-center gap-2 rounded-3xl border-2 border-dashed border-border text-sm text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+          >
+            <Plus className="size-5" />
+            Thêm gói
+          </button>
+        </div>
+
+        {errors.packages?.root?.message || errors.packages?.message ? (
+          <p className="mt-4 text-sm text-destructive">
+            {errors.packages?.root?.message ?? errors.packages?.message}
+          </p>
+        ) : null}
+
+        {Number.isFinite(cheapest) && (
+          <p className="mt-6 text-xs text-muted-foreground">
+            Gói rẻ nhất hiện tại:{" "}
+            <span className="font-medium text-foreground">{formatPrice(cheapest)}</span> — đây là
+            mức "Giá từ" khách thấy trên hồ sơ.
+          </p>
+        )}
+
+        <SaveBar
+          dirty={isDirty}
+          saving={update.isPending}
+          onReset={() => reset(initial)}
+          saveLabel="Lưu gói dịch vụ"
+        />
+      </form>
+    </PageContainer>
   );
 }
 
@@ -149,14 +226,14 @@ export function DashboardPackages() {
 
   if (isLoading || !profile) {
     return (
-      <div className="mx-auto max-w-[860px] px-5 py-8 md:py-10">
+      <PageContainer>
         <Skeleton className="h-9 w-48" />
-        <div className="mt-7 space-y-3">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-24 rounded-2xl" />
+        <div className="mt-7 grid gap-4 lg:grid-cols-2">
+          {[0, 1].map((i) => (
+            <Skeleton key={i} className="h-80 rounded-3xl" />
           ))}
         </div>
-      </div>
+      </PageContainer>
     );
   }
 

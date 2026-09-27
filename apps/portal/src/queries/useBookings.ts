@@ -5,9 +5,10 @@ import {
   createBooking,
   getMyBookings,
   payBooking,
+  payDeposit,
 } from "@/services/bookings";
 import { walletKeys } from "@/queries/useWallet";
-import type { PaymentInput } from "@/types";
+import type { DepositInput, PaymentInput } from "@/types";
 
 // Layer 2 — Query hooks.
 export const bookingKeys = {
@@ -35,6 +36,17 @@ export function useCreateBooking() {
     mutationFn: createBooking,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: bookingKeys.mine });
+    },
+  });
+}
+
+export function usePayDeposit(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: DepositInput) => payDeposit(id, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: bookingKeys.mine });
+      invalidateMoney(qc);
     },
   });
 }

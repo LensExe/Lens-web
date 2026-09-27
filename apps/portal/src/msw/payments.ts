@@ -78,7 +78,10 @@ export function coinSummaryOf(userId: string): CoinSummary {
     balance,
     upcoming.reduce((s, e) => s + e.amount, 0)
   );
-  return { balance, expiringSoon, nextExpiryAt: upcoming[0]?.at };
+  const mine = coinLedger.filter((t) => t.userId === userId);
+  const earnedTotal = mine.filter((t) => t.type === "earn").reduce((s, t) => s + t.amount, 0);
+  const redeemedTotal = -mine.filter((t) => t.type === "redeem").reduce((s, t) => s + t.amount, 0);
+  return { balance, expiringSoon, nextExpiryAt: upcoming[0]?.at, earnedTotal, redeemedTotal };
 }
 
 // ── The seam: every money/points movement goes through here ──────────────────

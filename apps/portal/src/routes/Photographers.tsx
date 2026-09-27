@@ -1,7 +1,7 @@
 import { type MouseEvent, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Skeleton as BoneSkeleton } from "boneyard-js/react";
-import { Search, SlidersHorizontal } from "lucide-react";
+import { ChevronRight, Search, SlidersHorizontal } from "lucide-react";
 import {
   Button,
   Input,
@@ -24,6 +24,7 @@ import {
 } from "@lens/ui";
 import { PhotographerCard } from "@/components/shared/PhotographerCard";
 import { PhotographerCardSkeleton } from "@/components/shared/PhotographerCardSkeleton";
+import { ActiveFilterChips } from "@/components/photographers/ActiveFilterChips";
 import { FilterPanel } from "@/components/photographers/FilterPanel";
 import { StylePicker } from "@/components/photographers/StylePicker";
 import { usePhotographers } from "@/queries/usePhotographers";
@@ -82,6 +83,7 @@ export function Photographers() {
         priceMax: PRICE_MAX,
         date: "",
         rating: "",
+        exp: "",
       }),
       { replace: true }
     );
@@ -113,7 +115,7 @@ export function Photographers() {
   useScrollReveal(scopeRef, [isLoading]);
 
   return (
-    <div ref={scopeRef} className="mx-auto max-w-[1240px] px-5 py-10 md:py-14">
+    <div ref={scopeRef} className="mx-auto max-w-[1280px] px-5 py-8 md:px-8 md:py-10">
       {/* Editorial header */}
       <header data-reveal className="max-w-2xl">
         <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">
@@ -123,17 +125,12 @@ export function Photographers() {
           Chọn người kể câu chuyện của bạn qua từng khung hình. Lọc theo phong
           cách, ngân sách và ngày bạn cần.
         </p>
-        {/* Quick 3-step guide (feedback R1: luồng chưa trực quan) */}
-        <ol className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
-          {[
-            "Chọn phong cách",
-            "So sánh hồ sơ & đánh giá",
-            "Đặt lịch",
-          ].map((label, i) => (
+        {/* Quick 3-step guide (feedback R1: luồng chưa trực quan) — a quiet line */}
+        <ol className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+          {["Chọn phong cách", "So sánh hồ sơ & đánh giá", "Đặt lịch"].map((label, i) => (
             <li key={label} className="flex items-center gap-2">
-              <span className="flex size-5 items-center justify-center rounded-full bg-foreground text-[11px] font-semibold text-background">
-                {i + 1}
-              </span>
+              {i > 0 && <ChevronRight className="size-3.5 text-muted-foreground/50" />}
+              <span className="font-semibold text-ember tabular-nums">{i + 1}</span>
               {label}
             </li>
           ))}
@@ -205,11 +202,22 @@ export function Photographers() {
             <StylePicker selected={filters.styles} onToggle={toggleStyle} />
           </div>
 
-          <p className="mb-5 text-sm text-muted-foreground">
-            {isLoading
-              ? "Đang tải nhiếp ảnh gia..."
-              : `${results.length} nhiếp ảnh gia phù hợp`}
-          </p>
+          <div className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2">
+            <p className="text-sm text-muted-foreground">
+              {isLoading ? (
+                "Đang tải nhiếp ảnh gia..."
+              ) : (
+                <>
+                  <span className="font-semibold text-foreground">{results.length}</span> nhiếp ảnh gia phù hợp
+                </>
+              )}
+            </p>
+            <ActiveFilterChips
+              filters={filters}
+              onChange={update}
+              onClearAll={() => setSearchParams({}, { replace: true })}
+            />
+          </div>
 
           {isError ? (
             <p className="rounded-2xl border border-border bg-muted/40 p-6 text-center text-muted-foreground">

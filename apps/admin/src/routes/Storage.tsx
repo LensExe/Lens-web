@@ -1,13 +1,16 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, HardDrive, Layers } from "lucide-react";
+import { AlertTriangle, HardDrive, HardDriveDownload } from "lucide-react";
 import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-  DataGridColumnHeader,
+  PageContainer,
+  PageHeader,
   Progress,
+  SegmentedBar,
   Skeleton,
+  StatCard,
+  TONE_CHIP,
+  TONE_FILL,
   cn,
+  type Tone,
 } from "@lens/ui";
 import {
   getCoreRowModel,
@@ -18,100 +21,99 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { DataTable } from "@/components/DataTable";
-import { StatCard } from "@/components/StatCard";
+import { ColumnHeader } from "@/components/data-table/ColumnHeader";
+import { NUM } from "@/components/data-table/columns";
+import { EmptyState } from "@/components/EmptyState";
+import { StatusPill } from "@/components/StatusPill";
+import { UserCell } from "@/components/UserCell";
 import { useStorageReport } from "@/queries/useStorageReport";
 import { STORAGE_PLAN_META } from "@/lib/status";
 import { formatBytes, formatCount } from "@/lib/format";
-import type { AdminStorageRow } from "@/types";
+import type { AdminStorageRow, StoragePlanTier } from "@/types";
 
-const initialsOf = (name: string) =>
-  name.split(" ").slice(-2).map((w) => w[0]).join("");
+type Filter = "all" | "near" | "over";
+
+const usagePct = (r: AdminStorageRow) => (r.usedBytes / r.quotaBytes) * 100;
+// Calm until close to the quota.
+const usageTone = (pct: number): Tone => (pct > 100 ? "rose" : pct >= 70 ? "amber" : "neutral");
+const PLANS: StoragePlanTier[] = ["free", "pro", "studio"];
 
 export function Storage() {
   // TanStack Table mutates in place; opt out of the React Compiler here.
   "use no memo";
   const { data, isLoading } = useStorageReport();
-  const rows = data?.rows ?? [];
+  const rows = useMemo(() => data?.rows ?? [], [data]);
   const overview = data?.overview;
+  const [filter, setFilter] = useState<Filter>("all");
   const [sorting, setSorting] = useState<SortingState>([]);
+
+  const near = rows.filter((r) => !r.overQuota && usagePct(r) >= 70);
+  const visible = useMemo(
+    () =>
+      filter === "over"
+        ? rows.filter((r) => r.overQuota)
+        : filter === "near"
+          ? rows.filter((r) => !r.overQuota && usagePct(r) >= 70)
+          : rows,
+    [rows, filter]
+  );
 
   const columns = useMemo<ColumnDef<AdminStorageRow>[]>(
     () => [
       {
         accessorKey: "name",
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Nhiếp ảnh gia" />,
-        cell: ({ row }) => {
-          const r = row.original;
-          return (
-            <div className="flex items-center gap-3">
-              <Avatar className="size-9 shrink-0">
-                <AvatarImage src={r.avatar} alt={r.name} />
-                <AvatarFallback>{initialsOf(r.name)}</AvatarFallback>
-              </Avatar>
-              <p className="font-medium leading-tight">{r.name}</p>
-            </div>
-          );
-        },
-        size: 240,
+        header: ({ column }) => <ColumnHeader column={column} title="Nhiếp ảnh gia" />,
+        cell: ({ row }) => <UserCell name={row.original.name} avatar={row.original.avatar} />,
       },
       {
         accessorKey: "plan",
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Gói" />,
-        cell: ({ row }) => {
-          const meta = STORAGE_PLAN_META[row.original.plan];
-          return (
-            <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", meta.className)}>
-              {meta.label}
-            </span>
-          );
-        },
+        header: ({ column }) => <ColumnHeader column={column} title="Gói" />,
+        cell: ({ row }) => <StatusPill meta={STORAGE_PLAN_META[row.original.plan]} dot={false} />,
       },
       {
         accessorKey: "usedBytes",
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Dung lượng" />,
+        header: ({ column }) => <ColumnHeader column={column} title="Dung lượng" />,
         cell: ({ row }) => {
           const r = row.original;
-          const pct = Math.min(100, Math.round((r.usedBytes / r.quotaBytes) * 100));
+          const pct = usagePct(r);
+          const tone = usageTone(pct);
           return (
-            <div className="w-44">
-              <div className="flex justify-between text-xs">
-                <span className={cn(r.overQuota && "font-medium text-rose-600 dark:text-rose-400")}>
+            <div className="w-48">
+              <div className="flex justify-between text-xs tabular-nums">
+                <span className={cn("font-medium", tone === "rose" && "text-rose-600 dark:text-rose-400")}>
                   {formatBytes(r.usedBytes)}
                 </span>
-                <span className="text-muted-foreground">{formatBytes(r.quotaBytes)}</span>
+                <span className="text-muted-foreground">
+                  {formatBytes(r.quotaBytes)} · {Math.round(pct)}%
+                </span>
               </div>
-              <Progress value={pct} className="mt-1.5 h-1.5" />
+              <Progress value={Math.min(100, pct)} className="mt-1.5 h-1.5" indicatorClassName={TONE_FILL[tone]} />
             </div>
           );
         },
-        size: 200,
       },
       {
         accessorKey: "galleryCount",
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Số gallery" />,
-        cell: ({ row }) => (
-          <span className="text-sm font-medium">{formatCount(row.original.galleryCount)}</span>
-        ),
+        header: ({ column }) => <ColumnHeader column={column} title="Bộ sưu tập" align="right" />,
+        meta: NUM,
+        cell: ({ row }) => <span className="text-sm font-medium tabular-nums">{formatCount(row.original.galleryCount)}</span>,
       },
       {
-        accessorKey: "overQuota",
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Tình trạng" />,
-        cell: ({ row }) =>
-          row.original.overQuota ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-medium text-rose-700 dark:bg-rose-500/15 dark:text-rose-400">
-              <AlertTriangle className="size-3" />
-              Vượt quota
-            </span>
-          ) : (
-            <span className="text-xs text-muted-foreground">Bình thường</span>
-          ),
+        id: "health",
+        header: ({ column }) => <ColumnHeader column={column} title="Tình trạng" />,
+        accessorFn: (r) => usagePct(r),
+        cell: ({ row }) => {
+          const tone = usageTone(usagePct(row.original));
+          const label = tone === "rose" ? "Vượt quota" : tone === "amber" ? "Gần đầy" : "Bình thường";
+          return <StatusPill meta={{ label, className: TONE_CHIP[tone] }} />;
+        },
       },
     ],
     []
   );
 
   const table = useReactTable({
-    data: rows,
+    data: visible,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
@@ -123,29 +125,64 @@ export function Storage() {
   });
 
   return (
-    <div className="mx-auto max-w-[1080px] px-6 py-8 md:py-10">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Lưu trữ ảnh</h1>
-        <p className="mt-1 text-muted-foreground">
-          Dung lượng, gói dịch vụ và cảnh báo vượt quota theo nhiếp ảnh gia.
-        </p>
-      </header>
+    <PageContainer>
+      <PageHeader
+        title="Lưu trữ ảnh"
+        description="Dung lượng, gói lưu trữ và cảnh báo vượt quota theo nhiếp ảnh gia."
+      />
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <StatCard icon={HardDrive} value={overview ? formatBytes(overview.totalUsedBytes) : "…"} label="Tổng dung lượng nền tảng" />
-        <StatCard icon={AlertTriangle} value={overview ? formatCount(overview.overQuotaCount) : "…"} label="Gallery vượt quota" />
+      <div className="mb-6 grid gap-4 lg:grid-cols-3">
         <StatCard
-          icon={Layers}
-          value={overview ? `${overview.planBreakdown.free}·${overview.planBreakdown.pro}·${overview.planBreakdown.studio}` : "…"}
-          label="Gói Free · Pro · Studio"
+          icon={HardDrive}
+          value={overview ? formatBytes(overview.totalUsedBytes) : "…"}
+          label="Tổng dung lượng nền tảng"
         />
+        <StatCard
+          icon={AlertTriangle}
+          value={overview ? formatCount(overview.overQuotaCount) : "…"}
+          label="Tài khoản vượt quota"
+          hint={
+            overview && overview.overQuotaCount > 0 ? (
+              <span className="text-xs font-medium text-rose-600 dark:text-rose-400">
+                Bộ sưu tập của họ đang bị khoá
+              </span>
+            ) : undefined
+          }
+        />
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <p className="flex items-center gap-2 text-sm font-medium">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-muted text-foreground">
+              <HardDriveDownload className="size-4" />
+            </span>
+            Tỉ lệ gói lưu trữ
+          </p>
+          {overview ? (
+            <SegmentedBar
+              className="mt-4"
+              segments={PLANS.map((p) => ({
+                label: STORAGE_PLAN_META[p].label,
+                value: overview.planBreakdown[p],
+                color: STORAGE_PLAN_META[p].color,
+              }))}
+              format={(v) => `${v} thợ`}
+            />
+          ) : (
+            <Skeleton className="mt-4 h-16" />
+          )}
+        </div>
       </div>
 
-      {isLoading ? (
-        <Skeleton className="h-80 rounded-2xl" />
-      ) : (
-        <DataTable table={table} recordCount={rows.length} />
-      )}
-    </div>
+      <DataTable
+        table={table}
+        recordCount={visible.length}
+        isLoading={isLoading}
+        tabs={{ value: filter, onChange: setFilter, items: [
+          { value: "all", label: "Tất cả", count: rows.length },
+          { value: "over", label: "Vượt quota", count: rows.filter((r) => r.overQuota).length },
+          { value: "near", label: "Gần đầy (≥ 70%)", count: near.length },
+        ] }}
+        empty={<EmptyState bare icon={HardDrive} title="Không có tài khoản nào ở mục này" />}
+      />
+    </PageContainer>
   );
 }

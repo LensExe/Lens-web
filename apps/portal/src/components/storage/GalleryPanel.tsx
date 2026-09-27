@@ -2,13 +2,14 @@ import { Link, useNavigate } from "react-router-dom";
 import { Download, ImageOff, Loader2, Lock, Upload } from "lucide-react";
 import { Button, Skeleton, cn, toast } from "@lens/ui";
 import { ExpiryBanner } from "@/components/storage/ExpiryBanner";
+import { DeliveryProgress } from "@/components/storage/DeliveryProgress";
 import { useGallery, useUploadPhotos } from "@/queries/useStorage";
 import { formatBytes } from "@/lib/storage";
 import type { ShootGallery } from "@/types";
 
 function GalleryGrid({ gallery }: { gallery: ShootGallery }) {
   return (
-    <div className="columns-2 gap-3 md:columns-3 [&>*]:mb-3">
+    <div className="columns-2 gap-3 md:columns-3 xl:columns-4 [&>*]:mb-3">
       {gallery.photos.map((p, i) => (
         <div
           key={p.id}
@@ -43,14 +44,17 @@ function GalleryGrid({ gallery }: { gallery: ShootGallery }) {
 /**
  * The delivery gallery for one booking: photos + (photographer) upload +
  * expiry/lock banners. Reused by the standalone gallery route AND embedded in the
- * booking detail page's delivery step.
+ * booking detail page's delivery step. `required` (the booked package's photo
+ * count) adds the "Đã giao X/Y ảnh" progress bar.
  */
 export function GalleryPanel({
   bookingId,
   canUpload,
+  required,
 }: {
   bookingId: string;
   canUpload: boolean;
+  required?: number;
 }) {
   const navigate = useNavigate();
   const { data: gallery, isLoading } = useGallery(bookingId);
@@ -71,36 +75,48 @@ export function GalleryPanel({
     );
   }
 
+  const progress = required ? (
+    <DeliveryProgress
+      delivered={gallery?.photos.length ?? 0}
+      required={required}
+      canUpload={canUpload}
+    />
+  ) : null;
+
   if (!gallery || gallery.photos.length === 0) {
     return (
-      <div className="flex flex-col items-center rounded-3xl border border-dashed border-border p-12 text-center">
-        <span className="mb-3 flex size-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
-          <ImageOff className="size-7" />
-        </span>
-        <p className="text-lg font-medium">
-          {canUpload ? "Chưa có ảnh nào" : "Nhiếp ảnh gia chưa giao ảnh"}
-        </p>
-        <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-          {canUpload
-            ? "Tải ảnh buổi chụp lên để giao cho khách hàng."
-            : "Ảnh sẽ xuất hiện ở đây ngay khi nhiếp ảnh gia giao."}
-        </p>
-        {canUpload && (
-          <Button className="mt-5 rounded-full" disabled={upload.isPending} onClick={doUpload}>
-            {upload.isPending ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Upload className="size-4" />
-            )}
-            Tải ảnh lên
-          </Button>
-        )}
+      <div className="space-y-4">
+        {progress}
+        <div className="flex flex-col items-center rounded-3xl border border-dashed border-border p-12 text-center">
+          <span className="mb-3 flex size-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <ImageOff className="size-7" />
+          </span>
+          <p className="text-lg font-medium">
+            {canUpload ? "Chưa có ảnh nào" : "Nhiếp ảnh gia chưa giao ảnh"}
+          </p>
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+            {canUpload
+              ? "Tải ảnh buổi chụp lên để giao cho khách hàng."
+              : "Ảnh sẽ xuất hiện ở đây ngay khi nhiếp ảnh gia giao."}
+          </p>
+          {canUpload && (
+            <Button className="mt-5 rounded-full" disabled={upload.isPending} onClick={doUpload}>
+              {upload.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Upload className="size-4" />
+              )}
+              Tải ảnh lên
+            </Button>
+          )}
+        </div>
       </div>
     );
   }
 
   return (
     <div>
+      {progress && <div className="mb-4">{progress}</div>}
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           {gallery.photos.length} ảnh · {formatBytes(gallery.sizeBytes)}

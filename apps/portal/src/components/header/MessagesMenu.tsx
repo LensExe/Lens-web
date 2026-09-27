@@ -5,6 +5,7 @@ import {
   AvatarFallback,
   AvatarImage,
   Button,
+  CountBadge,
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
@@ -87,7 +88,7 @@ export function MessagesMenu() {
                     </p>
                   </div>
                   {c.unreadCount > 0 && (
-                    <span className="size-2 shrink-0 rounded-full bg-primary" aria-hidden />
+                    <span className="size-2 shrink-0 rounded-full bg-ember" aria-hidden />
                   )}
                 </Link>
               ))}
@@ -107,11 +108,12 @@ export function MessagesMenu() {
 
       {/* Unread count overlaid on the trigger — pointer-events-none so it never
           blocks the hover/click target underneath. */}
-      {unreadTotal > 0 && (
-        <span className="pointer-events-none absolute -right-1 -top-1 flex min-w-[18px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-[18px] text-white">
-          {unreadTotal > 9 ? "9+" : unreadTotal}
-        </span>
-      )}
+      <CountBadge
+        count={unreadTotal}
+        max={9}
+        onIcon
+        className="pointer-events-none absolute -right-1.5 -top-1.5"
+      />
     </div>
   );
 }

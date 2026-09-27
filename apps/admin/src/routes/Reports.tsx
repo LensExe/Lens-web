@@ -1,101 +1,129 @@
-import { CalendarCheck, TrendingUp, Wallet } from "lucide-react";
-import { Skeleton, formatPrice } from "@lens/ui";
-import { StatCard } from "@/components/StatCard";
+import { useState } from "react";
+import { CalendarCheck, MapPin, Palette, TrendingUp, Wallet } from "lucide-react";
+import {
+  BarChart,
+  BarList,
+  PageContainer,
+  PageHeader,
+  Skeleton,
+  StatCard,
+  cn,
+  formatPrice,
+  formatPriceCompact,
+} from "@lens/ui";
 import { useReports } from "@/queries/useReports";
 import { formatCount } from "@/lib/format";
-import type { Breakdown } from "@/types";
 
-function BreakdownList({ title, items }: { title: string; items: Breakdown[] }) {
-  const max = Math.max(...items.map((i) => i.count), 1);
-  return (
-    <div className="rounded-2xl border border-border bg-card p-5">
-      <h3 className="mb-4 font-semibold">{title}</h3>
-      <ul className="space-y-3">
-        {items.map((item) => (
-          <li key={item.label}>
-            <div className="mb-1 flex items-center justify-between text-sm">
-              <span>{item.label}</span>
-              <span className="text-muted-foreground">{formatCount(item.count)}</span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-foreground"
-                style={{ width: `${(item.count / max) * 100}%` }}
-              />
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
+type Metric = "revenue" | "bookings";
+
+const change = (now: number, before: number) =>
+  before ? Math.round(((now - before) / before) * 1000) / 10 : undefined;
 
 export function Reports() {
   const { data, isLoading } = useReports();
+  const [metric, setMetric] = useState<Metric>("revenue");
 
   if (isLoading || !data) {
     return (
-      <div className="mx-auto max-w-[1080px] px-6 py-8 md:py-10">
+      <PageContainer>
         <Skeleton className="h-9 w-56" />
         <div className="mt-7 grid gap-4 sm:grid-cols-3">
           {[0, 1, 2].map((i) => (
             <Skeleton key={i} className="h-32 rounded-2xl" />
           ))}
         </div>
-        <Skeleton className="mt-8 h-72 rounded-2xl" />
-      </div>
+        <Skeleton className="mt-6 h-72 rounded-2xl" />
+      </PageContainer>
     );
   }
 
-  const totalBookings = data.monthly.reduce((s, m) => s + m.bookings, 0);
-  const totalRevenue = data.monthly.reduce((s, m) => s + m.revenue, 0);
-  const avgPerBooking = totalBookings ? Math.round(totalRevenue / totalBookings) : 0;
-  const maxRevenue = Math.max(...data.monthly.map((m) => m.revenue), 1);
+  const months = data.monthly;
+  const cur = months[months.length - 1];
+  const prev = months[months.length - 2];
+  const avg = (m: { revenue: number; bookings: number }) => (m.bookings ? Math.round(m.revenue / m.bookings) : 0);
 
   return (
-    <div className="mx-auto max-w-[1080px] px-6 py-8 md:py-10">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-          Báo cáo &amp; thống kê
-        </h1>
-        <p className="mt-1 text-muted-foreground">
-          Hiệu suất nền tảng trong 6 tháng gần nhất.
-        </p>
-      </header>
+    <PageContainer>
+      <PageHeader title="Báo cáo & thống kê" description={`Hiệu suất nền tảng 6 tháng gần nhất (${months[0].month}–${cur.month}).`} />
 
-      <div className="mt-7 grid gap-4 sm:grid-cols-3">
-        <StatCard icon={CalendarCheck} value={formatCount(totalBookings)} label="Lượt đặt lịch" />
-        <StatCard icon={Wallet} value={formatPrice(totalRevenue)} label="Tổng doanh thu" />
-        <StatCard icon={TrendingUp} value={formatPrice(avgPerBooking)} label="Trung bình / buổi" />
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard
+          icon={CalendarCheck}
+          value={formatCount(cur.bookings)}
+          label="Lượt đặt tháng này"
+          delta={change(cur.bookings, prev.bookings)}
+        />
+        <StatCard
+          icon={Wallet}
+          value={formatPrice(cur.revenue)}
+          label="Doanh thu tháng này"
+          delta={change(cur.revenue, prev.revenue)}
+        />
+        <StatCard
+          icon={TrendingUp}
+          value={formatPrice(avg(cur))}
+          label="Trung bình mỗi buổi"
+          delta={change(avg(cur), avg(prev))}
+        />
       </div>
 
-      {/* Monthly revenue bar chart */}
-      <section className="mt-8 rounded-2xl border border-border bg-card p-5 md:p-6">
-        <h2 className="font-semibold">Doanh thu theo tháng</h2>
-        <div className="mt-6 flex gap-3 sm:gap-6">
-          {data.monthly.map((m) => (
-            <div key={m.month} className="flex flex-1 flex-col items-center">
-              <span className="mb-2 text-xs font-medium text-muted-foreground">
-                {Math.round(m.revenue / 1_000_000)}tr
-              </span>
-              <div className="flex h-44 w-full items-end">
-                <div
-                  className="w-full rounded-t-lg bg-foreground transition-all"
-                  style={{ height: `${(m.revenue / maxRevenue) * 100}%` }}
-                  title={formatPrice(m.revenue)}
-                />
-              </div>
-              <span className="mt-2 text-xs text-muted-foreground">{m.month}</span>
-            </div>
-          ))}
+      {/* Trend: one measure at a time (never two scales on one chart) */}
+      <section className="mt-6 rounded-2xl border border-border bg-card p-5 md:p-6">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-semibold">{metric === "revenue" ? "Doanh thu theo tháng" : "Lượt đặt theo tháng"}</h2>
+          <div role="tablist" aria-label="Chỉ số" className="grid grid-cols-2 rounded-full bg-muted p-1 text-sm">
+            {(
+              [
+                { value: "revenue", label: "Doanh thu" },
+                { value: "bookings", label: "Lượt đặt" },
+              ] as const
+            ).map((t) => (
+              <button
+                key={t.value}
+                type="button"
+                role="tab"
+                aria-selected={metric === t.value}
+                onClick={() => setMetric(t.value)}
+                className={cn(
+                  "focus-ring rounded-full px-4 py-1.5 font-medium transition-colors",
+                  metric === t.value ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
+        <BarChart
+          data={months.map((m) => ({ label: m.month, value: metric === "revenue" ? m.revenue : m.bookings }))}
+          format={metric === "revenue" ? formatPriceCompact : (v) => formatCount(v)}
+          height={220}
+          ariaLabel={metric === "revenue" ? "Doanh thu theo tháng" : "Lượt đặt theo tháng"}
+        />
       </section>
 
-      {/* Breakdowns */}
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <BreakdownList title="Theo phong cách chụp" items={data.byStyle} />
-        <BreakdownList title="Theo khu vực" items={data.byCity} />
+        <section className="rounded-2xl border border-border bg-card p-5">
+          <h2 className="mb-4 flex items-center gap-2 font-semibold">
+            <Palette className="size-4 text-muted-foreground" />
+            Lượt đặt theo phong cách
+          </h2>
+          <BarList
+            items={data.byStyle.map((s) => ({ label: s.label, value: s.count }))}
+            format={formatCount}
+          />
+        </section>
+        <section className="rounded-2xl border border-border bg-card p-5">
+          <h2 className="mb-4 flex items-center gap-2 font-semibold">
+            <MapPin className="size-4 text-muted-foreground" />
+            Lượt đặt theo khu vực
+          </h2>
+          <BarList
+            items={data.byCity.map((c) => ({ label: c.label, value: c.count }))}
+            format={formatCount}
+          />
+        </section>
       </div>
-    </div>
+    </PageContainer>
   );
 }

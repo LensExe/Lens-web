@@ -1,8 +1,30 @@
-import { avatar } from "@lens/ui";
+import { avatar, photo } from "@lens/ui";
 import type { PhotographerApplication } from "@/types";
 
 // Mock photographer applications. Imported ONLY by the service layer.
 const av = (seed: string) => avatar(seed);
+
+// Portfolio shots are the portal app's /public/photos files (not copied into
+// admin), so they're addressed through the portal's public URL.
+const PORTAL_URL = import.meta.env.VITE_PORTAL_URL ?? "http://localhost:5174";
+const GENRE: Record<string, string> = {
+  "Chân dung": "portrait",
+  "Thời trang": "fashion",
+  "Cưới": "wedding",
+  "Gia đình": "family",
+  "Du lịch": "travel",
+  "Đường phố": "street",
+  "Ẩm thực": "food",
+  "Sản phẩm": "product",
+  "Sự kiện": "event",
+  "Kiến trúc": "architecture",
+};
+const portfolioOf = (seed: string, styles: string[], count: number) =>
+  Array.from(
+    { length: count },
+    (_, i) => PORTAL_URL + photo(`${seed}-${i}`, 600, 800, GENRE[styles[i % styles.length]])
+  );
+const hoursAgo = (n: number) => new Date(Date.now() - n * 3_600_000).toISOString();
 const daysAgo = (n: number) => {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
@@ -20,7 +42,7 @@ export const mockApplications: PhotographerApplication[] = [
     styles: ["Chân dung", "Thời trang"],
     experienceYears: 2,
     pricePerSession: 180_000,
-    portfolioCount: 14,
+    portfolio: portfolioOf("ap1", ["Chân dung", "Thời trang"], 14),
     bio: "Thích chụp chân dung và thời trang, đang luyện tay nghề ở Hà Nội.",
     submittedAt: daysAgo(1),
     status: "pending",
@@ -34,7 +56,7 @@ export const mockApplications: PhotographerApplication[] = [
     styles: ["Cưới", "Gia đình"],
     experienceYears: 3,
     pricePerSession: 300_000,
-    portfolioCount: 16,
+    portfolio: portfolioOf("ap2", ["Cưới", "Gia đình"], 16),
     bio: "Mê ảnh cưới phóng sự, mới chụp vài buổi cho bạn bè và người thân.",
     submittedAt: daysAgo(2),
     status: "pending",
@@ -48,7 +70,7 @@ export const mockApplications: PhotographerApplication[] = [
     styles: ["Du lịch", "Đường phố"],
     experienceYears: 2,
     pricePerSession: 120_000,
-    portfolioCount: 15,
+    portfolio: portfolioOf("ap3", ["Du lịch", "Đường phố"], 15),
     bio: "Săn ảnh du lịch khắp miền Trung, phong cách tự nhiên.",
     submittedAt: daysAgo(3),
     status: "pending",
@@ -62,7 +84,7 @@ export const mockApplications: PhotographerApplication[] = [
     styles: ["Ẩm thực", "Sản phẩm"],
     experienceYears: 3,
     pricePerSession: 200_000,
-    portfolioCount: 13,
+    portfolio: portfolioOf("ap4", ["Ẩm thực", "Sản phẩm"], 13),
     bio: "Thích bày món và chụp ẩm thực, sản phẩm cho quán nhỏ.",
     submittedAt: daysAgo(5),
     status: "pending",
@@ -76,10 +98,12 @@ export const mockApplications: PhotographerApplication[] = [
     styles: ["Sự kiện", "Kiến trúc"],
     experienceYears: 3,
     pricePerSession: 190_000,
-    portfolioCount: 17,
+    portfolio: portfolioOf("ap5", ["Sự kiện", "Kiến trúc"], 17),
     bio: "Thích chụp sự kiện và kiến trúc, giao ảnh nhanh.",
     submittedAt: daysAgo(8),
     status: "approved",
+    reviewNote: "Portfolio sự kiện ổn định, ánh sáng tốt.",
+    reviewedAt: hoursAgo(24 * 6),
   },
   {
     id: "ap6",
@@ -90,9 +114,11 @@ export const mockApplications: PhotographerApplication[] = [
     styles: ["Chân dung", "Du lịch"],
     experienceYears: 1,
     pricePerSession: 100_000,
-    portfolioCount: 7,
+    portfolio: portfolioOf("ap6", ["Chân dung", "Du lịch"], 7),
     bio: "Mới vào nghề, hồ sơ còn ít tác phẩm.",
     submittedAt: daysAgo(11),
     status: "rejected",
+    reviewNote: "Portfolio mới có 7 ảnh, cần tối thiểu 12 ảnh đã qua hậu kỳ. Bạn có thể gửi lại hồ sơ.",
+    reviewedAt: hoursAgo(24 * 9),
   },
 ];

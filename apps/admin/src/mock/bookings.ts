@@ -62,6 +62,15 @@ export const mockBookings: AdminBooking[] = [
     status: "pending",
   },
   {
+    id: "bk7",
+    clientName: "Đỗ Thu Giang",
+    photographerName: "Bùi Thanh Tùng",
+    style: "Du lịch",
+    date: inDays(9),
+    price: 1_500_000,
+    status: "awaiting_deposit",
+  },
+  {
     id: "bk6",
     clientName: "Nguyễn Thuý An",
     photographerName: "Trần Quốc Bảo",

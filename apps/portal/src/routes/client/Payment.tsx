@@ -1,40 +1,35 @@
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
+import { ArrowLeft, ShieldCheck } from "lucide-react";
 import {
-  ArrowLeft,
-  CalendarDays,
-  CheckCircle2,
-  Loader2,
-  MapPin,
-  ShieldCheck,
-} from "lucide-react";
-import {
-  Avatar,
-  AvatarFallback,
   Button,
   Separator,
   Skeleton,
   Slider,
+  Spinner,
   Switch,
-  cn,
   formatPrice,
+  PageContainer,
+  PageHeader,
 } from "@lens/ui";
+import { CheckoutResult } from "@/components/checkout/CheckoutResult";
+import { CheckoutSummary } from "@/components/checkout/CheckoutSummary";
+import { PaymentMethodPicker } from "@/components/checkout/PaymentMethodPicker";
 import { useMyBookings, usePayBooking } from "@/queries/useBookings";
 import { useCoinSummary } from "@/queries/useWallet";
-import { PAYMENT_METHODS } from "@/lib/booking";
+import { FREE_CANCEL_DAYS, remainingAmount } from "@/lib/booking";
 import { COIN_LABEL, formatCoins, maxRedeemableCoins } from "@/lib/wallet";
 import type { PaymentMethod } from "@/types";
 
-const initialsOf = (name: string) =>
-  name.split(" ").slice(-2).map((w) => w[0]).join("");
 const formatDate = (iso: string) => {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
 };
 
+// Pay the remainder (after the deposit) once the photographer has confirmed.
+// The platform then holds the full amount until the client confirms delivery.
 export function ClientPayment() {
   const { id = "" } = useParams();
-  const navigate = useNavigate();
   const { data: bookings = [], isLoading } = useMyBookings();
   const { data: coinSummary } = useCoinSummary();
   const payBooking = usePayBooking(id);
@@ -43,14 +38,15 @@ export function ClientPayment() {
   const [coinAmount, setCoinAmount] = useState(0);
 
   const booking = bookings.find((b) => b.id === id);
+  const remaining = booking ? remainingAmount(booking) : 0;
 
-  // How many Lens Xu the client may apply to THIS order (cap % + their balance).
+  // Lens Xu apply to the remainder (cap % of the order + their balance).
   const coinBalance = coinSummary?.balance ?? 0;
   const redeemMax = booking
-    ? maxRedeemableCoins(booking.price, coinBalance)
+    ? Math.min(maxRedeemableCoins(booking.price, coinBalance), remaining)
     : 0;
   const coinsApplied = useCoins ? Math.min(coinAmount, redeemMax) : 0;
-  const cashDue = booking ? booking.price - coinsApplied : 0;
+  const cashDue = remaining - coinsApplied;
 
   const toggleCoins = (on: boolean) => {
     setUseCoins(on);
@@ -59,16 +55,19 @@ export function ClientPayment() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-[860px] px-5 py-10">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="mt-6 h-96 w-full rounded-3xl" />
-      </div>
+      <PageContainer>
+        <Skeleton className="h-9 w-64 rounded-xl" />
+        <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+          <Skeleton className="h-96 rounded-3xl" />
+          <Skeleton className="h-96 rounded-3xl" />
+        </div>
+      </PageContainer>
     );
   }
 
   if (!booking) {
     return (
-      <div className="mx-auto flex min-h-[60vh] max-w-[860px] flex-col items-center justify-center px-5 text-center">
+      <PageContainer className="flex min-h-[60vh] flex-col items-center justify-center text-center">
         <h1 className="text-2xl font-semibold">Không tìm thấy lịch đặt</h1>
         <Button asChild variant="outline" className="mt-5 rounded-full">
           <Link to="/client/bookings">
@@ -76,135 +75,99 @@ export function ClientPayment() {
             Về lịch đặt của tôi
           </Link>
         </Button>
-      </div>
+      </PageContainer>
     );
   }
 
   // Paid — money is now held in escrow. Show confirmation + next step.
   if (booking.status === "held" || payBooking.isSuccess) {
     return (
-      <div className="mx-auto max-w-[560px] px-5 py-16 text-center">
-        <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-ember/10 text-ember">
-          <CheckCircle2 className="size-9" />
-        </span>
-        <h1 className="mt-5 text-2xl font-semibold tracking-tight">
-          Thanh toán thành công!
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          Sàn Lens đang giữ {formatPrice(booking.price)} cho buổi chụp với{" "}
-          {booking.photographerName}. Sau khi nhận đủ ảnh, hãy xác nhận để sàn
-          giải ngân cho nhiếp ảnh gia.
-        </p>
-
-        <div className="mt-6 rounded-2xl border border-border bg-card p-5 text-left text-sm">
-          <SummaryRow label="Nhiếp ảnh gia" value={booking.photographerName} />
-          <SummaryRow label="Ngày chụp" value={formatDate(booking.date)} />
-          <Separator className="my-3" />
-          <div className="flex items-center justify-between font-semibold">
-            <span>Sàn đang giữ</span>
-            <span>{formatPrice(booking.price)}</span>
+      <PageContainer>
+        <CheckoutResult
+          title="Thanh toán thành công!"
+          description={
+            <>
+              Sàn Lens đang giữ toàn bộ tiền buổi chụp với {booking.photographerName}. Sau
+              khi nhận đủ ảnh, hãy xác nhận để sàn giải ngân cho nhiếp ảnh gia.
+            </>
+          }
+        >
+          <div className="rounded-3xl border border-border bg-card p-5 text-sm">
+            <div className="flex justify-between py-1">
+              <span className="text-muted-foreground">Nhiếp ảnh gia</span>
+              <span className="font-medium">{booking.photographerName}</span>
+            </div>
+            <div className="flex justify-between py-1">
+              <span className="text-muted-foreground">Ngày chụp</span>
+              <span className="font-medium">{formatDate(booking.date)}</span>
+            </div>
+            <Separator className="my-3" />
+            <div className="flex justify-between font-semibold">
+              <span>Sàn đang giữ</span>
+              <span>{formatPrice(booking.price - (booking.coinsRedeemed ?? 0))}</span>
+            </div>
           </div>
-        </div>
-
-        <Button asChild className="mt-6 rounded-full">
-          <Link to="/client/bookings">Về lịch đặt của tôi</Link>
-        </Button>
-      </div>
+          <div className="mt-6 flex justify-center">
+            <Button asChild className="rounded-full">
+              <Link to={`/client/bookings/${booking.id}`}>Xem lịch đặt</Link>
+            </Button>
+          </div>
+        </CheckoutResult>
+      </PageContainer>
     );
   }
 
   // Payment only applies once the photographer has confirmed.
   if (booking.status !== "confirmed") {
     return (
-      <div className="mx-auto flex min-h-[60vh] max-w-[860px] flex-col items-center justify-center px-5 text-center">
+      <PageContainer className="flex min-h-[60vh] flex-col items-center justify-center text-center">
         <h1 className="text-2xl font-semibold">Chưa thể thanh toán</h1>
         <p className="mt-2 max-w-md text-muted-foreground">
-          Bạn chỉ có thể thanh toán sau khi nhiếp ảnh gia xác nhận lịch chụp.
+          Bạn chỉ có thể thanh toán phần còn lại sau khi nhiếp ảnh gia xác nhận lịch chụp.
         </p>
         <Button asChild variant="outline" className="mt-5 rounded-full">
-          <Link to="/client/bookings">
+          <Link to={`/client/bookings/${booking.id}`}>
             <ArrowLeft className="size-4" />
-            Về lịch đặt của tôi
+            Chi tiết lịch đặt
           </Link>
         </Button>
-      </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="mx-auto max-w-[980px] px-5 py-8">
-      <button
-        type="button"
-        onClick={() => navigate("/client/bookings")}
+    <PageContainer>
+      <Link
+        to={`/client/bookings/${booking.id}`}
         className="group mb-5 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-0.5" />
-        Về lịch đặt của tôi
-      </button>
+        Chi tiết lịch đặt
+      </Link>
 
-      <header className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-          Thanh toán buổi chụp
-        </h1>
-        <p className="mt-1 text-muted-foreground">
-          Thanh toán toàn bộ để xác nhận buổi chụp với {booking.photographerName}.
-        </p>
-      </header>
+      <PageHeader
+        title="Thanh toán phần còn lại"
+        description={`${booking.photographerName} đã xác nhận lịch chụp. Hoàn tất thanh toán trước buổi chụp.`}
+      />
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
-        {/* Payment methods */}
-        <div className="min-w-0 space-y-7">
-          <div>
-            <h2 className="mb-3 text-base font-semibold">
-              Chọn phương thức thanh toán
-            </h2>
-            <div className="space-y-3">
-              {PAYMENT_METHODS.map((m) => {
-                const active = method === m.id;
-                return (
-                  <button
-                    type="button"
-                    key={m.id}
-                    onClick={() => setMethod(m.id)}
-                    aria-pressed={active}
-                    className={cn(
-                      "flex w-full items-center gap-3 rounded-2xl border p-4 text-left transition-colors",
-                      active
-                        ? "border-foreground bg-muted/40 ring-1 ring-foreground"
-                        : "border-border hover:bg-muted/40"
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "flex size-5 shrink-0 items-center justify-center rounded-full border",
-                        active ? "border-foreground" : "border-border"
-                      )}
-                    >
-                      {active && (
-                        <span className="size-2.5 rounded-full bg-foreground" />
-                      )}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block font-medium">{m.label}</span>
-                      <span className="block text-xs text-muted-foreground">
-                        {m.hint}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
+        <div className="min-w-0 space-y-4">
+          <PaymentMethodPicker
+            value={method}
+            onChange={setMethod}
+            amount={cashDue}
+            bookingId={booking.id}
+          />
 
           {/* Lens Xu redemption — reduces the cash charged (capped per order). */}
           {redeemMax > 0 && (
-            <div className="rounded-2xl border border-border p-4">
+            <section className="rounded-3xl border border-border bg-card p-6">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-medium">Dùng {COIN_LABEL} để trừ tiền</p>
-                  <p className="text-xs text-muted-foreground">
-                    Bạn có {formatCoins(coinBalance)} · tối đa{" "}
-                    {formatCoins(redeemMax)} cho đơn này
+                  <p className="font-semibold">Dùng {COIN_LABEL} để trừ tiền</p>
+                  <p className="text-sm text-muted-foreground">
+                    Bạn có {formatCoins(coinBalance)} · tối đa {formatCoins(redeemMax)} cho
+                    đơn này
                   </p>
                 </div>
                 <Switch
@@ -228,99 +191,44 @@ export function ClientPayment() {
                   </div>
                 </div>
               )}
-            </div>
+            </section>
           )}
 
-          <div className="flex items-start gap-2 rounded-2xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+          <p className="flex items-start gap-2 rounded-2xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
             <ShieldCheck className="mt-0.5 size-4 shrink-0 text-foreground" />
-            <p>
-              Sàn Lens giữ tiền cho đến khi bạn xác nhận đã nhận đủ ảnh. Nhiếp
-              ảnh gia chỉ nhận được tiền sau khi hoàn thành — nếu buổi chụp bị
-              huỷ, bạn được hoàn lại toàn bộ.
-            </p>
-          </div>
-
-          {payBooking.isError && (
-            <p className="text-sm text-destructive">
-              Thanh toán thất bại. Vui lòng thử lại.
-            </p>
-          )}
+            Sàn Lens giữ tiền cho đến khi bạn xác nhận đã nhận đủ ảnh. Huỷ trước buổi chụp
+            từ {FREE_CANCEL_DAYS} ngày trở lên được hoàn 100%; huỷ muộn hơn sẽ mất tiền cọc.
+          </p>
         </div>
 
-        {/* Summary sidebar */}
-        <aside className="lg:sticky lg:top-24 lg:self-start">
-          <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <Avatar className="size-11">
-                <AvatarFallback>
-                  {initialsOf(booking.photographerName)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <p className="truncate font-semibold leading-tight">
-                  {booking.photographerName}
-                </p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {booking.style}
-                </p>
-              </div>
-            </div>
-
-            <Separator className="my-4" />
-
-            <dl className="space-y-2.5 text-sm">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <CalendarDays className="size-4" />
-                <span className="text-foreground">{formatDate(booking.date)}</span>
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <MapPin className="size-4" />
-                <span className="truncate text-foreground">{booking.location}</span>
-              </div>
-            </dl>
-
-            <Separator className="my-4" />
-
-            <div className="space-y-1.5 text-sm">
-              <div className="flex items-center justify-between text-muted-foreground">
-                <span>Giá buổi chụp</span>
-                <span>{formatPrice(booking.price)}</span>
-              </div>
-              {coinsApplied > 0 && (
-                <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
-                  <span>Trừ {COIN_LABEL}</span>
-                  <span>−{formatPrice(coinsApplied)}</span>
-                </div>
-              )}
-              <Separator className="my-2" />
-              <div className="flex items-center justify-between text-base font-semibold text-foreground">
-                <span>Cần thanh toán</span>
-                <span>{formatPrice(cashDue)}</span>
-              </div>
-            </div>
-
+        <aside className="lg:sticky lg:top-24">
+          <CheckoutSummary
+            booking={booking}
+            lines={[
+              { label: "Giá buổi chụp", value: booking.price },
+              { label: "Đã đặt cọc", value: booking.depositAmount, tone: "minus" },
+              ...(coinsApplied > 0
+                ? [{ label: `Trừ ${COIN_LABEL}`, value: coinsApplied, tone: "minus" as const }]
+                : []),
+            ]}
+            dueLabel="Cần thanh toán"
+            due={cashDue}
+          >
+            {payBooking.isError && (
+              <p className="mb-3 text-sm text-destructive">Thanh toán thất bại. Vui lòng thử lại.</p>
+            )}
             <Button
-              className="mt-5 w-full rounded-full"
+              size="lg"
+              className="h-11 w-full rounded-full"
               disabled={payBooking.isPending}
-              onClick={() =>
-                payBooking.mutate({ method, coinsToRedeem: coinsApplied })
-              }
+              onClick={() => payBooking.mutate({ method, coinsToRedeem: coinsApplied })}
             >
-              {payBooking.isPending && <Loader2 className="size-4 animate-spin" />}
+              {payBooking.isPending && <Spinner />}
               Thanh toán {formatPrice(cashDue)}
             </Button>
-          </div>
+          </CheckoutSummary>
         </aside>
       </div>
-    </div>
-  );
-}
-
-function SummaryRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-start justify-between gap-4 py-1 text-sm">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="text-right font-medium">{value}</span>
-    </div>
+    </PageContainer>
   );
 }

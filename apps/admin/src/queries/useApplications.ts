@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getApplications, setApplicationStatus } from "@/services/applications";
-import type { ApprovalStatus } from "@/types";
+import { decideApplication, getApplications } from "@/services/applications";
+import { queueKey } from "@/queries/useStats";
+import type { ApplicationDecision } from "@/types";
 
 // Layer 2 — Query hooks.
 export const applicationKeys = {
@@ -14,13 +15,14 @@ export function useApplications() {
   });
 }
 
-export function useSetApplicationStatus() {
+export function useDecideApplication() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: ApprovalStatus }) =>
-      setApplicationStatus(id, status),
+    mutationFn: ({ id, decision }: { id: string; decision: ApplicationDecision }) =>
+      decideApplication(id, decision),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: applicationKeys.all });
+      qc.invalidateQueries({ queryKey: queueKey });
     },
   });
 }

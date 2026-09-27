@@ -7,13 +7,6 @@ import type { Photographer } from "@/types";
 // account. Her incoming booking requests are NOT here — they live in the single
 // bookings table (mock/bookings.ts), queried by photographerId === "me".
 
-const iso = (daysFromNow: number) => {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + daysFromNow);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
-
 // The signed-in photographer's own profile (id "me" — not in the public roster).
 export const myPhotographer: Photographer = {
   id: "me",
@@ -38,12 +31,41 @@ export const myPhotographer: Photographer = {
     img("giahan-7", 600, 800, "portrait"),
     img("giahan-8", 600, 600, "family"),
   ],
-  // Days she has marked herself free. Seeded by toggling availability later.
-  availableDates: [iso(2), iso(3), iso(6), iso(9), iso(13), iso(16), iso(20), iso(27)],
+  // Computed by the mock backend from her work schedule (mock/schedules.ts).
+  availableDates: [],
   // Her own service packages (editable in the dashboard).
   packages: [
-    { id: "basic", name: "Gói cơ bản", duration: "1 giờ chụp · 15 ảnh chỉnh sửa", price: 220_000 },
-    { id: "standard", name: "Gói tiêu chuẩn", duration: "2 giờ chụp · 35 ảnh chỉnh sửa", price: 400_000 },
-    { id: "premium", name: "Gói cao cấp", duration: "Nửa ngày · 70 ảnh + 1 album", price: 660_000 },
+    {
+      id: "basic",
+      name: "Gói cơ bản",
+      description: "Chụp chân dung ngoài trời, ánh sáng tự nhiên.",
+      price: 220_000,
+      photoCount: 15,
+      durationHours: 1,
+      deliveryDays: 5,
+    },
+    {
+      id: "standard",
+      name: "Gói tiêu chuẩn",
+      description: "2 bộ trang phục, 2 bối cảnh, hỗ trợ tạo dáng.",
+      price: 400_000,
+      photoCount: 35,
+      durationHours: 2,
+      deliveryDays: 7,
+    },
+    {
+      id: "premium",
+      name: "Gói cao cấp",
+      description: "Nửa ngày chụp gia đình, kèm 1 album in 20×30.",
+      price: 660_000,
+      photoCount: 70,
+      durationHours: 4,
+      deliveryDays: 10,
+    },
   ],
 };
+
+// Payouts from shoots before the bookings table existed, for the earnings chart:
+// the 6 months up to and including the current one (oldest → newest). Live
+// released bookings are added on top by the mock backend.
+export const seedMonthlyEarnings = [1_620_000, 2_180_000, 1_940_000, 2_760_000, 3_120_000, 2_050_000];

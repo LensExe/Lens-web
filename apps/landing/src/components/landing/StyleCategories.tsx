@@ -1,24 +1,22 @@
 import { useRef } from "react";
-import { portalBrowse } from "@/lib/links";
+import { ArrowUpRight } from "lucide-react";
 import { useGSAP } from "@gsap/react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { photo, useReveal } from "@lens/ui";
+import { Skeleton, cn, useReveal } from "@lens/ui";
+import { portalBrowseStyle } from "@/lib/links";
+import { useStyles } from "@/queries/useStyles";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
-const categories = [
-  { label: "Chân dung", seed: "cat-portrait", span: "row-span-2" },
-  { label: "Cưới", seed: "cat-wedding", span: "" },
-  { label: "Thời trang", seed: "cat-fashion", span: "" },
-  { label: "Du lịch", seed: "cat-travel", span: "row-span-2" },
-  { label: "Ẩm thực", seed: "cat-food", span: "" },
-  { label: "Sự kiện", seed: "cat-event", span: "" },
-];
+// Bento grid: 2 tall tiles + 8 small ones fill 2×6 (mobile) / 4×3 (desktop)
+// exactly — no empty cell. Tile order + which are tall come from the data.
+const GRID = "grid auto-rows-[150px] grid-cols-2 gap-4 grid-flow-row-dense lg:auto-rows-[180px] lg:grid-cols-4";
 
 export function StyleCategories() {
   const scope = useRef<HTMLElement>(null);
-  useReveal(scope);
+  const { data: styles, isLoading } = useStyles();
+  useReveal(scope, [styles]);
 
   // Gentle scroll parallax on each tile image (transform-only, gated).
   useGSAP(
@@ -49,7 +47,7 @@ export function StyleCategories() {
       });
       return () => mm.revert();
     },
-    { scope }
+    { scope, dependencies: [styles], revertOnUpdate: true }
   );
 
   return (
@@ -64,25 +62,44 @@ export function StyleCategories() {
           </div>
         </div>
 
-        <div className="mt-10 grid auto-rows-[150px] grid-cols-2 gap-4 md:grid-cols-3">
-          {categories.map((cat) => (
+        <div className={cn("mt-10", GRID)}>
+          {isLoading &&
+            Array.from({ length: 10 }, (_, i) => (
+              <Skeleton
+                key={i}
+                className={cn("rounded-[28px]", (i === 0 || i === 5) && "row-span-2")}
+              />
+            ))}
+
+          {styles?.map((style) => (
             <a
-              key={cat.label}
+              key={style.id}
               data-reveal
-              href={portalBrowse(cat.label)}
-              className={`focus-ring group relative overflow-hidden rounded-[28px] ${cat.span}`}
+              href={portalBrowseStyle(style.label)}
+              className={cn(
+                "focus-ring group relative overflow-hidden rounded-[28px]",
+                style.large && "row-span-2"
+              )}
             >
               <img
                 data-cat-img
-                src={photo(cat.seed, 600, 600, cat.seed.replace("cat-", ""))}
-                alt={cat.label}
+                src={style.image}
+                alt={style.label}
                 loading="lazy"
                 className="size-full object-cover brightness-95 transition-[filter] duration-500 ease-out group-hover:brightness-110"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent transition-opacity duration-500 group-hover:from-black/70" />
-              <span className="absolute bottom-4 left-4 text-lg font-semibold text-white">
-                {cat.label}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
+              <span className="absolute right-3 top-3 flex size-8 items-center justify-center rounded-full bg-white/90 text-obsidian opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100">
+                <ArrowUpRight className="size-4" />
               </span>
+              <div className="absolute inset-x-4 bottom-4 text-white">
+                <p className={cn("font-semibold", style.large ? "text-xl" : "text-lg")}>
+                  {style.label}
+                </p>
+                <p className="text-xs text-white/75">
+                  {style.photographerCount} nhiếp ảnh gia
+                </p>
+              </div>
             </a>
           ))}
         </div>

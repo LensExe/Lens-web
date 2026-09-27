@@ -11,7 +11,7 @@ export const RANK_COMMISSION: Record<RankId, number> = {
   bronze: 0.09,
   silver: 0.08,
   gold: 0.07,
-  diamond: 0.06,
+  diamond: 0.05,
 };
 
 const row = (
@@ -38,8 +38,8 @@ const row = (
 export const mockQualityRows: AdminQualityRow[] = [
   row("u3", "Trần Quốc Bảo", "quocbao-av", "diamond", 132, 98, 1, true),
   row("u2", "Nguyễn Minh Anh", "minhanh-av", "gold", 68, 95, 3, true),
-  row("u1", "Lý Gia Hân", "giahan-av", "silver", 27, 92, 4, true),
-  row("u8", "Vũ Hoàng Lan", "hoanglan-av", "bronze", 14, 88, 6, false),
-  row("u9", "Đỗ Khánh Vy", "khanhvy-av", "bronze", 11, 90, 5, true),
-  row("u10", "Bùi Thanh Tùng", "thanhtung-av", "newbie", 4, 85, 8, false),
+  row("u1", "Lý Gia Hân", "giahan-av", "bronze", 27, 92, 4, true),
+  row("u13", "Vũ Hoàng Lan", "hoanglan-av", "bronze", 14, 88, 6, false),
+  row("u14", "Đỗ Khánh Vy", "khanhvy-av", "bronze", 11, 90, 5, true),
+  row("u15", "Bùi Thanh Tùng", "thanhtung-av", "newbie", 4, 85, 8, false),
 ];

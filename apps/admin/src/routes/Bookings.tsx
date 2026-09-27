@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
-import { CalendarX } from "lucide-react";
+import { CalendarClock, CalendarX, ShieldCheck, UsersRound } from "lucide-react";
 import {
-  DataGridColumnHeader,
-  Skeleton,
-  cn,
+  PageContainer,
+  PageHeader,
+  StatCard,
   formatPrice,
 } from "@lens/ui";
 import {
@@ -15,89 +15,94 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { DataTable } from "@/components/DataTable";
+import { ColumnHeader } from "@/components/data-table/ColumnHeader";
+import { NUM } from "@/components/data-table/columns";
+import { EmptyState } from "@/components/EmptyState";
+import { StatusPill } from "@/components/StatusPill";
+import { UserCell } from "@/components/UserCell";
+import { CollaboratorStack } from "@/components/CollaboratorStack";
 import { useAdminBookings } from "@/queries/useAdminBookings";
 import { ESCROW_STATUS_META } from "@/lib/status";
-import { formatCount, formatDate } from "@/lib/format";
+import { formatCount, formatDate, relativeDay } from "@/lib/format";
 import type { AdminBooking, EscrowStatus } from "@/types";
 
-type StatusFilter = "all" | EscrowStatus;
+type Filter = "all" | EscrowStatus;
 
-const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
-  { value: "all", label: "Tất cả" },
-  { value: "pending", label: "Chờ xác nhận" },
-  { value: "confirmed", label: "Đã xác nhận" },
-  { value: "held", label: "Đang giữ tiền" },
-  { value: "released", label: "Hoàn thành" },
-  { value: "cancelled", label: "Đã huỷ" },
+// The order a booking travels in.
+const STATUS_ORDER: EscrowStatus[] = [
+  "awaiting_deposit",
+  "pending",
+  "confirmed",
+  "held",
+  "released",
+  "cancelled",
 ];
 
 export function Bookings() {
   // TanStack Table mutates in place; opt out of the React Compiler here.
   "use no memo";
-  const { data: bookings = [], isLoading } = useAdminBookings();
-  const [status, setStatus] = useState<StatusFilter>("all");
+  const { data: report, isLoading } = useAdminBookings();
+  const bookings = useMemo(() => report?.rows ?? [], [report]);
+  const summary = report?.summary;
+  const [filter, setFilter] = useState<Filter>("all");
   const [sorting, setSorting] = useState<SortingState>([]);
 
   const data = useMemo(
-    () => (status === "all" ? bookings : bookings.filter((b) => b.status === status)),
-    [bookings, status]
+    () => (filter === "all" ? bookings : bookings.filter((b) => b.status === filter)),
+    [bookings, filter]
   );
 
   const columns = useMemo<ColumnDef<AdminBooking>[]>(
     () => [
       {
-        accessorKey: "photographerName",
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Nhiếp ảnh gia" />,
-        cell: ({ row }) => {
-          const b = row.original;
-          return (
-            <div className="min-w-0">
-              <p className="font-medium leading-tight">{b.photographerName}</p>
-              {b.collaborators && b.collaborators.length > 0 && (
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  + {b.collaborators.map((c) => `${c.name} (${c.sharePct}%)`).join(", ")}
-                </p>
-              )}
-            </div>
-          );
-        },
-        size: 300,
-      },
-      {
-        accessorKey: "clientName",
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Khách hàng" />,
+        accessorKey: "style",
+        header: ({ column }) => <ColumnHeader column={column} title="Buổi chụp" />,
         cell: ({ row }) => (
-          <span className="text-sm text-muted-foreground">{row.original.clientName}</span>
+          <div className="min-w-0">
+            <p className="font-medium leading-tight">{row.original.style}</p>
+            <p className="text-xs uppercase tabular-nums text-muted-foreground">#{row.original.id}</p>
+          </div>
         ),
       },
       {
-        accessorKey: "style",
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Thể loại" />,
-        cell: ({ row }) => <span className="text-sm">{row.original.style}</span>,
+        accessorKey: "photographerName",
+        header: ({ column }) => <ColumnHeader column={column} title="Nhiếp ảnh gia" />,
+        cell: ({ row }) => {
+          const b = row.original;
+          return (
+            <UserCell
+              name={b.photographerName}
+              avatar={b.photographerAvatar}
+              sub={b.collaborators?.length ? <CollaboratorStack collaborators={b.collaborators} /> : undefined}
+            />
+          );
+        },
+      },
+      {
+        accessorKey: "clientName",
+        header: ({ column }) => <ColumnHeader column={column} title="Khách hàng" />,
+        cell: ({ row }) => <UserCell name={row.original.clientName} avatar={row.original.clientAvatar} />,
       },
       {
         accessorKey: "date",
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Ngày chụp" />,
+        header: ({ column }) => <ColumnHeader column={column} title="Ngày chụp" />,
         cell: ({ row }) => (
-          <span className="text-sm text-muted-foreground">{formatDate(row.original.date)}</span>
+          <div>
+            <p className="text-sm tabular-nums">{formatDate(row.original.date)}</p>
+            <p className="text-xs text-muted-foreground">{relativeDay(row.original.date)}</p>
+          </div>
         ),
       },
       {
         accessorKey: "price",
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Giá trị" />,
-        cell: ({ row }) => <span className="font-medium">{formatPrice(row.original.price)}</span>,
+        header: ({ column }) => <ColumnHeader column={column} title="Giá trị" align="right" />,
+        meta: NUM,
+        cell: ({ row }) => <span className="font-medium tabular-nums">{formatPrice(row.original.price)}</span>,
       },
       {
         accessorKey: "status",
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Trạng thái" />,
-        cell: ({ row }) => {
-          const meta = ESCROW_STATUS_META[row.original.status];
-          return (
-            <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", meta.className)}>
-              {meta.label}
-            </span>
-          );
-        },
+        header: ({ column }) => <ColumnHeader column={column} title="Trạng thái" />,
+        cell: ({ row }) => <StatusPill meta={ESCROW_STATUS_META[row.original.status]} />,
       },
     ],
     []
@@ -116,45 +121,45 @@ export function Bookings() {
   });
 
   return (
-    <div className="mx-auto max-w-[1080px] px-6 py-8 md:py-10">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Đặt lịch & ghép thợ</h1>
-        <p className="mt-1 text-muted-foreground">
-          {isLoading ? "Đang tải..." : `${formatCount(bookings.length)} buổi chụp · theo dõi escrow và chia payout`}
-        </p>
-      </header>
+    <PageContainer>
+      <PageHeader
+        title="Đặt lịch & ghép thợ"
+        description="Theo dõi tiền sàn đang giữ, trạng thái từng buổi chụp và các nhóm thợ ghép."
+      />
 
-      <div className="mb-5 flex flex-wrap gap-2">
-        {STATUS_FILTERS.map((f) => (
-          <button
-            key={f.value}
-            type="button"
-            onClick={() => setStatus(f.value)}
-            aria-pressed={status === f.value}
-            className={cn(
-              "focus-ring rounded-full border px-3.5 py-1.5 text-sm transition-colors",
-              status === f.value
-                ? "border-foreground bg-foreground text-background"
-                : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
+      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+        <StatCard
+          icon={ShieldCheck}
+          value={summary ? formatPrice(summary.escrowHeld) : "…"}
+          label="Sàn đang giữ"
+          hint={<span className="text-xs text-muted-foreground">Tiền cọc + tiền đã thanh toán, chưa giải ngân</span>}
+        />
+        <StatCard
+          icon={CalendarClock}
+          value={summary ? formatCount(summary.activeCount) : "…"}
+          label="Buổi chụp đang diễn ra"
+        />
+        <StatCard
+          icon={UsersRound}
+          value={summary ? formatCount(summary.collabCount) : "…"}
+          label="Buổi có ghép thợ"
+        />
       </div>
 
-      {isLoading ? (
-        <Skeleton className="h-80 rounded-2xl" />
-      ) : data.length === 0 ? (
-        <div className="flex flex-col items-center rounded-2xl border border-dashed border-border p-10 text-center">
-          <span className="mb-3 flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-            <CalendarX className="size-6" />
-          </span>
-          <p className="font-medium">Không có buổi chụp phù hợp</p>
-        </div>
-      ) : (
-        <DataTable table={table} recordCount={data.length} />
-      )}
-    </div>
+      <DataTable
+        table={table}
+        recordCount={data.length}
+        isLoading={isLoading}
+        tabs={{ value: filter, onChange: setFilter, items: [
+          { value: "all", label: "Tất cả", count: bookings.length },
+          ...STATUS_ORDER.map((s) => ({
+            value: s,
+            label: ESCROW_STATUS_META[s].label,
+            count: bookings.filter((b) => b.status === s).length,
+          })),
+        ] }}
+        empty={<EmptyState bare icon={CalendarX} title="Không có buổi chụp ở trạng thái này" />}
+      />
+    </PageContainer>
   );
 }

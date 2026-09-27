@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { CircleAlert, Inbox } from "lucide-react";
-import { Skeleton, cn } from "@lens/ui";
+import { Skeleton, PageContainer, PageHeader, StatusTabs } from "@lens/ui";
 import { RequestCard } from "@/components/dashboard/RequestCard";
 import { CollaborationInvites } from "@/components/dashboard/CollaborationInvites";
 import { useIncomingBookings } from "@/queries/useDashboard";
@@ -39,15 +39,11 @@ export function DashboardBookings() {
   const needsAction = pendingCount > 0 || toDeliverCount > 0;
 
   return (
-    <div className="mx-auto max-w-[860px] px-5 py-8 md:py-10">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-          Quản lý đặt lịch
-        </h1>
-        <p className="mt-1 text-muted-foreground">
-          Theo dõi và xử lý toàn bộ lịch chụp của bạn.
-        </p>
-      </header>
+    <PageContainer>
+      <PageHeader
+        title="Quản lý đặt lịch"
+        description="Theo dõi và xử lý toàn bộ lịch chụp của bạn."
+      />
 
       {/* Action-needed strip — the operational "what's on me now" cue */}
       {!isLoading && needsAction && (
@@ -65,59 +61,37 @@ export function DashboardBookings() {
       <CollaborationInvites />
 
       {/* Stage tabs */}
-      <div className="mb-6 flex flex-wrap gap-2">
-        {GROUPS.map((g) => {
-          const count = countFor(g.statuses);
-          const selected = group === g.key;
-          return (
-            <button
-              key={g.key}
-              type="button"
-              onClick={() => setGroup(g.key)}
-              aria-pressed={selected}
-              className={cn(
-                "focus-ring flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm transition-colors",
-                selected
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              {g.label}
-              <span
-                className={cn(
-                  "min-w-5 rounded-full px-1.5 text-center text-xs font-medium tabular-nums",
-                  selected
-                    ? "bg-background/20 text-background"
-                    : "bg-muted text-muted-foreground"
-                )}
-              >
-                {count}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      <StatusTabs
+        className="mb-6"
+        value={group}
+        onChange={setGroup}
+        tabs={GROUPS.map((g) => ({
+          value: g.key,
+          label: g.label,
+          count: isLoading ? undefined : countFor(g.statuses),
+        }))}
+      />
 
       {isLoading ? (
-        <div className="space-y-3">
-          {[0, 1, 2].map((i) => (
+        <div className="grid gap-3 xl:grid-cols-2">
+          {[0, 1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-32 rounded-2xl" />
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center rounded-2xl border border-dashed border-border p-10 text-center">
-          <span className="mb-3 flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-            <Inbox className="size-6" />
+        <div className="flex flex-col items-center rounded-2xl border border-dashed border-border px-6 py-16 text-center">
+          <span className="mb-3 flex size-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <Inbox className="size-7" />
           </span>
           <p className="font-medium">{EMPTY_MESSAGE[group]}</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid gap-3 xl:grid-cols-2">
           {filtered.map((booking) => (
             <RequestCard key={booking.id} booking={booking} />
           ))}
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

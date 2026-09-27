@@ -1,110 +1,124 @@
-import { CalendarCheck, X } from "lucide-react";
-import { Calendar, Skeleton } from "@lens/ui";
-import { useMyAvailability, useToggleAvailability } from "@/queries/useDashboard";
+import { useState } from "react";
+import { CalendarCheck, CalendarX, Users } from "lucide-react";
+import { PageContainer, PageHeader, SaveBar, Skeleton, StatCard, toast } from "@lens/ui";
+import { WeeklyHoursEditor } from "@/components/schedule/WeeklyHoursEditor";
+import { BusyDaysEditor } from "@/components/schedule/BusyDaysEditor";
+import { UnsavedChangesGuard } from "@/components/UnsavedChangesGuard";
+import { useIncomingBookings, useMySchedule, useSaveMySchedule } from "@/queries/useDashboard";
+import {
+  BOOKING_WINDOW_DAYS,
+  addDaysISO,
+  countSlots,
+  dayAvailability,
+  occupiesSlot,
+  todayISO,
+} from "@/lib/schedule";
+import type { Booking, WorkSchedule } from "@/types";
 
-const toISODate = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+// Edits stay in a local draft until "Lưu lịch" — one request per save, no
+// request per click.
+function ScheduleEditor({ saved, bookings }: { saved: WorkSchedule; bookings: Booking[] }) {
+  const save = useSaveMySchedule();
+  const [draft, setDraft] = useState<WorkSchedule | null>(null);
+  const schedule = draft ?? saved;
+  const dirty = draft !== null && JSON.stringify(draft) !== JSON.stringify(saved);
 
-const fromISODate = (s: string) => {
-  const [y, m, d] = s.split("-").map(Number);
-  return new Date(y, m - 1, d);
-};
+  // Slots clients already hold, by date.
+  const now = new Date().toISOString();
+  const bookingsByDate: Record<string, Booking[]> = {};
+  for (const b of bookings) {
+    if (occupiesSlot(b, now)) (bookingsByDate[b.date] ??= []).push(b);
+  }
 
-const formatDateVN = (s: string) => {
-  const [y, m, d] = s.split("-");
-  return `${d}/${m}/${y}`;
-};
+  const from = addDaysISO(todayISO(), 1);
+  const days = Array.from({ length: BOOKING_WINDOW_DAYS }, (_, i) => {
+    const date = addDaysISO(from, i);
+    return dayAvailability(schedule, date, (bookingsByDate[date] ?? []).flatMap((b) => b.timeSlot ?? []));
+  });
+  const total = (status: "free" | "busy" | "booked") =>
+    days.reduce((n, d) => n + countSlots(d, status), 0);
 
-export function DashboardAvailability() {
-  const { data: dates = [], isLoading } = useMyAvailability();
-  const { mutate: toggle, isPending } = useToggleAvailability();
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayISO = toISODate(today);
-
-  // Only future free days are actionable; past ones are kept but not shown here.
-  const upcoming = dates.filter((d) => d >= todayISO).sort();
-  const selectedDates = upcoming.map(fromISODate);
-
-  // mode="multiple" hands back the full new selection — diff it against the
-  // current set to find the single date the click toggled.
-  const handleSelect = (next: Date[] | undefined) => {
-    const nextSet = new Set((next ?? []).map(toISODate));
-    const currentSet = new Set(upcoming);
-    const added = [...nextSet].find((d) => !currentSet.has(d));
-    const removed = [...currentSet].find((d) => !nextSet.has(d));
-    const changed = added ?? removed;
-    if (changed) toggle(changed);
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    save.mutate(schedule, {
+      onSuccess: () => {
+        setDraft(null);
+        toast.success("Đã lưu lịch làm việc");
+      },
+      onError: () => toast.error("Lưu lịch thất bại, vui lòng thử lại"),
+    });
   };
 
   return (
-    <div className="mx-auto max-w-[860px] px-5 py-8 md:py-10">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-          Lịch trống
-        </h1>
-        <p className="mt-1 text-muted-foreground">
-          Chọn những ngày bạn sẵn sàng nhận lịch chụp. Khách hàng sẽ chỉ đặt được
-          vào các ngày này.
-        </p>
-      </header>
+    <PageContainer>
+      <PageHeader
+        title="Lịch làm việc"
+        description="Đặt giờ làm cố định hằng tuần, rồi đánh dấu những ngày hoặc khung bạn bận. Khách chỉ đặt được vào khung còn trống."
+      />
 
-      <div className="grid gap-6 lg:grid-cols-[auto_1fr]">
-        <div className="rounded-2xl border border-border bg-card p-2">
-          {isLoading ? (
-            <Skeleton className="h-72 w-72 rounded-2xl" />
-          ) : (
-            <Calendar
-              mode="multiple"
-              selected={selectedDates}
-              disabled={{ before: today }}
-              onSelect={handleSelect}
-            />
-          )}
-        </div>
-
-        <div>
-          <h2 className="flex items-center gap-2 text-base font-semibold">
-            <CalendarCheck className="size-5 text-muted-foreground" />
-            Ngày rảnh sắp tới
-            {!isLoading && (
-              <span className="text-sm font-normal text-muted-foreground">
-                ({upcoming.length})
-              </span>
-            )}
-          </h2>
-
-          {isLoading ? (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {[0, 1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-8 w-24 rounded-full" />
-              ))}
-            </div>
-          ) : upcoming.length === 0 ? (
-            <p className="mt-4 rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              Bạn chưa chọn ngày trống nào. Hãy chọn trên lịch bên cạnh.
-            </p>
-          ) : (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {upcoming.map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  disabled={isPending}
-                  onClick={() => toggle(d)}
-                  className="focus-ring group flex items-center gap-1.5 rounded-full border border-border bg-muted/40 py-1.5 pl-3 pr-2 text-sm transition-colors hover:bg-muted disabled:opacity-50"
-                >
-                  {formatDateVN(d)}
-                  <span className="flex size-4 items-center justify-center rounded-full text-muted-foreground transition-colors group-hover:bg-foreground group-hover:text-background">
-                    <X className="size-3" />
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+        <StatCard
+          icon={CalendarCheck}
+          value={total("free")}
+          label="Khung còn trống"
+          hint="Trong 5 tuần tới"
+        />
+        <StatCard
+          icon={Users}
+          value={total("booked")}
+          label="Khung đã có khách"
+          hint="Không thể đổi — liên hệ khách nếu cần"
+        />
+        <StatCard
+          icon={CalendarX}
+          value={total("busy")}
+          label="Khung bạn đánh dấu bận"
+          hint="Khách không thấy các khung này"
+        />
       </div>
-    </div>
+
+      <form onSubmit={onSubmit} className="space-y-6">
+        <WeeklyHoursEditor schedule={schedule} onChange={setDraft} />
+        <BusyDaysEditor
+          schedule={schedule}
+          onChange={setDraft}
+          days={days}
+          bookingsByDate={bookingsByDate}
+        />
+        <SaveBar
+          dirty={dirty}
+          saving={save.isPending}
+          onReset={() => setDraft(null)}
+          resetLabel="Huỷ thay đổi"
+          saveLabel="Lưu lịch"
+        />
+      </form>
+
+      <UnsavedChangesGuard
+        when={dirty}
+        message="Các thay đổi lịch làm việc chưa được lưu sẽ bị bỏ. Khách vẫn thấy lịch cũ."
+      />
+    </PageContainer>
   );
+}
+
+export function DashboardAvailability() {
+  const { data: saved, isLoading } = useMySchedule();
+  const incoming = useIncomingBookings();
+
+  if (isLoading || !saved || incoming.isLoading) {
+    return (
+      <PageContainer>
+        <Skeleton className="h-9 w-56" />
+        <div className="mt-7 grid gap-4 sm:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="h-28 rounded-3xl" />
+          ))}
+        </div>
+        <Skeleton className="mt-6 h-96 rounded-3xl" />
+      </PageContainer>
+    );
+  }
+
+  return <ScheduleEditor saved={saved} bookings={incoming.data ?? []} />;
 }

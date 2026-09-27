@@ -4,7 +4,6 @@ import { Menu } from "lucide-react";
 import { Button, Logo, scrollToHash } from "@lens/ui";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@lens/ui";
 import { ThemeToggle } from "@lens/ui";
-import { useAuthModal } from "@/components/auth/auth-modal-context";
 
 type NavLinkItem = { label: string; hash: string };
 
@@ -19,7 +18,6 @@ const pillClass =
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
-  const { openLogin, openSignup } = useAuthModal();
   const location = useLocation();
 
   // Same-page anchor: scroll smoothly (via Lenis) instead of letting the browser
@@ -55,11 +53,11 @@ export function Navbar() {
 
         <div className="hidden items-center gap-2 md:flex">
           <ThemeToggle />
-          <Button variant="ghost" className="rounded-full" onClick={openLogin}>
-            Đăng nhập
+          <Button asChild variant="ghost" className="rounded-full">
+            <Link to="/login">Đăng nhập</Link>
           </Button>
-          <Button className="rounded-full" onClick={openSignup}>
-            Đăng ký
+          <Button asChild className="rounded-full">
+            <Link to="/signup">Đăng ký</Link>
           </Button>
         </div>
 
@@ -90,24 +88,11 @@ export function Navbar() {
                 ))}
               </nav>
               <div className="mt-4 flex flex-col gap-2 px-3">
-                <Button
-                  variant="outline"
-                  className="rounded-full"
-                  onClick={() => {
-                    setOpen(false);
-                    openLogin();
-                  }}
-                >
-                  Đăng nhập
+                <Button asChild variant="outline" className="rounded-full">
+                  <Link to="/login">Đăng nhập</Link>
                 </Button>
-                <Button
-                  className="rounded-full"
-                  onClick={() => {
-                    setOpen(false);
-                    openSignup();
-                  }}
-                >
-                  Đăng ký
+                <Button asChild className="rounded-full">
+                  <Link to="/signup">Đăng ký</Link>
                 </Button>
               </div>
             </SheetContent>

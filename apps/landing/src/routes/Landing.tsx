@@ -14,7 +14,6 @@ const lazySection = (load: () => Promise<Record<string, React.ComponentType>>, k
 
 const StatsStrip = lazySection(() => import("@/components/landing/StatsStrip"), "StatsStrip");
 const GalleryMasonry = lazySection(() => import("@/components/landing/GalleryMasonry"), "GalleryMasonry");
-const KineticBand = lazySection(() => import("@/components/landing/KineticBand"), "KineticBand");
 const StyleShowcase = lazySection(() => import("@/components/landing/StyleShowcase"), "StyleShowcase");
 
 const Spacer = ({ h }: { h: number }) => <div style={{ height: h }} aria-hidden />;
@@ -33,11 +32,8 @@ export function Landing() {
       </Suspense>
       <Statement />
       <HowItWorks />
-      <Suspense fallback={<Spacer h={140} />}>
-        <KineticBand />
-      </Suspense>
       <StyleCategories />
-      <Suspense fallback={<Spacer h={500} />}>
+      <Suspense fallback={<Spacer h={640} />}>
         <StyleShowcase />
       </Suspense>
       <FooterCTA />

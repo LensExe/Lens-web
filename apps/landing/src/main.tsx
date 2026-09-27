@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "@lens/ui";
 import { TooltipProvider } from "@lens/ui";
@@ -9,12 +9,16 @@ import { markMockReady } from "./lib/mockReady";
 import "lenis/dist/lenis.css";
 import "./index.css";
 import App from "./App.tsx";
+import { RouteError } from "./components/RouteError";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 60_000,
       refetchOnWindowFocus: false,
+      // An HTML-instead-of-JSON response will not fix itself — fail fast.
+      retry: (count, error) =>
+        (error as { code?: string }).code !== "ERR_HTML_RESPONSE" && count < 3,
     },
   },
 });
@@ -41,16 +45,27 @@ async function enableMocking() {
   }
 }
 
+// A page restored from the back/forward cache keeps its old JS state, but the
+// mock worker unregistered itself when we navigated away and the session may
+// have changed (logout). Start fresh instead of running on stale state.
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted) window.location.reload();
+});
+
 enableMocking();
+
+// Data router (one splat route around the <Routes> tree in App) so a render
+// error lands on a friendly error page instead of a blank screen.
+const router = createBrowserRouter([
+  { path: "*", element: <App />, errorElement: <RouteError /> },
+]);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider delayDuration={200}>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
+          <RouterProvider router={router} />
           <Toaster />
         </TooltipProvider>
       </QueryClientProvider>

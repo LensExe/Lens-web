@@ -11,6 +11,7 @@ import {
 } from "@lens/ui";
 import {
   CITY_OPTIONS,
+  EXPERIENCE_OPTIONS,
   PRICE_MAX,
   PRICE_MIN,
   PRICE_STEP,
@@ -154,7 +155,8 @@ export function FilterPanel({ filters, onChange, onClear }: FilterPanelProps) {
   const activeCount = countActiveFilters(filters);
 
   return (
-    <div className="space-y-7">
+    // Hairlines between the groups keep a long panel easy to scan.
+    <div className="space-y-5 [&>*+*]:border-t [&>*+*]:border-border [&>*+*]:pt-5">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold">Bộ lọc</h2>
         {activeCount > 0 && (
@@ -203,6 +205,21 @@ export function FilterPanel({ filters, onChange, onClear }: FilterPanelProps) {
             onClick={() => onChange({ rating: filters.rating === r.value ? "" : r.value })}
           >
             {r.label}
+          </Chip>
+        ))}
+      </Section>
+
+      <Section title="Kinh nghiệm">
+        <Chip active={!filters.exp} onClick={() => onChange({ exp: "" })}>
+          Tất cả
+        </Chip>
+        {EXPERIENCE_OPTIONS.map((o) => (
+          <Chip
+            key={o.value}
+            active={filters.exp === o.value}
+            onClick={() => onChange({ exp: filters.exp === o.value ? "" : o.value })}
+          >
+            {o.label}
           </Chip>
         ))}
       </Section>

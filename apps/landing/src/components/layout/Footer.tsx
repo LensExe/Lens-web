@@ -2,9 +2,8 @@ import { Link } from "react-router-dom";
 import { AtSign, Globe, MessageCircle } from "lucide-react";
 import { Logo } from "@lens/ui";
 import { portalBrowse } from "@/lib/links";
-import { useAuthModal } from "@/components/auth/auth-modal-context";
 
-type FooterLink = { label: string; to?: string; href?: string; action?: "login" | "signup" };
+type FooterLink = { label: string; to?: string; href?: string };
 
 const columns: { title: string; links: FooterLink[] }[] = [
   {
@@ -18,8 +17,8 @@ const columns: { title: string; links: FooterLink[] }[] = [
   {
     title: "Tài khoản",
     links: [
-      { label: "Trở thành nhiếp ảnh gia", action: "signup" },
-      { label: "Đăng nhập", action: "login" },
+      { label: "Trở thành nhiếp ảnh gia", to: "/signup?role=photographer" },
+      { label: "Đăng nhập", to: "/login" },
     ],
   },
   {
@@ -32,7 +31,6 @@ const columns: { title: string; links: FooterLink[] }[] = [
 ];
 
 export function Footer() {
-  const { openLogin, openSignup } = useAuthModal();
   return (
     <footer className="border-t border-border/60 bg-muted/30">
       <div className="mx-auto max-w-[1200px] px-5 py-14">
@@ -68,15 +66,7 @@ export function Footer() {
               <ul className="mt-4 space-y-2.5">
                 {col.links.map((link, i) => (
                   <li key={i}>
-                    {link.action ? (
-                      <button
-                        type="button"
-                        onClick={link.action === "signup" ? openSignup : openLogin}
-                        className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                      >
-                        {link.label}
-                      </button>
-                    ) : link.href ? (
+                    {link.href ? (
                       <a
                         href={link.href}
                         className="text-sm text-muted-foreground transition-colors hover:text-foreground"

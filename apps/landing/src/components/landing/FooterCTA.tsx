@@ -55,7 +55,7 @@ export function FooterCTA() {
               size="lg"
               variant="outline"
               className="rounded-full border-white/30 bg-transparent px-6 text-snow hover:bg-white/10 hover:text-snow"
-              onClick={() => navigate("/signup")}
+              onClick={() => navigate("/signup?role=photographer")}
             >
               <Camera className="size-4" />
               Trở thành nhiếp ảnh gia

@@ -28,7 +28,8 @@ export interface Photographer {
   experienceYears: number;
   featured: boolean;
   portfolio: string[];
-  /** Upcoming dates the photographer is free, as ISO `yyyy-MM-dd` strings. */
+  /** Upcoming dates with at least one free slot, as ISO `yyyy-MM-dd` strings.
+   *  Computed by the API from the photographer's work schedule + bookings. */
   availableDates: string[];
   /** Service packages this photographer offers. Empty/absent → default tiers. */
   packages?: PhotographerPackage[];
@@ -41,11 +42,56 @@ export interface Photographer {
 export interface PhotographerPackage {
   id: string;
   name: string;
-  /** Short description, e.g. "2 giờ chụp". */
-  duration: string;
+  /** General description (what's included, the vibe…) — free text. */
+  description: string;
   /** Price for this package (VND). */
   price: number;
+  /** Edited photos delivered — a booking only completes once this many arrive. */
+  photoCount: number;
+  /** Shooting time, in hours. */
+  durationHours: number;
+  /** Days after the shoot within which the photos are delivered. */
+  deliveryDays: number;
 }
+
+/**
+ * A photographer's working hours. `weekly[d]` lists the bookable time slots on
+ * weekday `d` (0 = Sunday, like `Date.getDay()`); an empty list is a day off.
+ * `busy` carves exceptions out of that: a date with `slots: []` is busy all day.
+ */
+export interface WorkSchedule {
+  weekly: string[][];
+  busy: BusyBlock[];
+}
+
+export interface BusyBlock {
+  date: string;
+  slots: string[];
+}
+
+/** free = bookable · busy = marked busy by the photographer · booked = a client holds it. */
+export type SlotStatus = "free" | "busy" | "booked";
+
+/** One day of a photographer's public availability (only slots they work). */
+export interface DayAvailability {
+  date: string;
+  slots: { time: string; status: SlotStatus }[];
+}
+
+/** A photographer's payouts (after platform fee) per month, oldest → newest. */
+export interface EarningsSummary {
+  months: { label: string; amount: number }[];
+  thisMonth: number;
+  lastMonth: number;
+  /** % change this month vs last; null when last month had nothing. */
+  changePct: number | null;
+}
+
+/** The package terms frozen onto a booking when it's made (later edits don't change it). */
+export type PackageTerms = Pick<
+  PhotographerPackage,
+  "name" | "photoCount" | "durationHours" | "deliveryDays"
+>;
 
 // ── Career Achievement (ranks + badges) ─────────────────────────────────────
 export type RankId = "newbie" | "bronze" | "silver" | "gold" | "diamond";
@@ -121,13 +167,14 @@ export interface User {
   city: string;
 }
 
-// Escrow lifecycle: the client pays in full once the photographer confirms; the
-// platform HOLDS the money, then RELEASES it to the photographer after the
-// client confirms the photos were delivered.
+// Escrow lifecycle: the client books and pays a DEPOSIT to hold the slot; the
+// photographer then accepts; the client pays the REMAINDER before the shoot; the
+// platform HOLDS the money and RELEASES it after the client confirms delivery.
 export type BookingStatus =
-  | "pending" // client requested, awaiting photographer
-  | "confirmed" // photographer accepted, awaiting payment
-  | "held" // client paid in full, platform holds the money in escrow
+  | "awaiting_deposit" // booked, deposit not paid yet (hidden from the photographer)
+  | "pending" // deposit paid, awaiting the photographer's decision
+  | "confirmed" // photographer accepted, awaiting the remaining payment
+  | "held" // paid in full, platform holds the money in escrow
   | "released" // client confirmed delivery, money released to photographer (done)
   | "cancelled";
 
@@ -143,6 +190,19 @@ export interface Booking {
   location: string;
   price: number;
   status: BookingStatus;
+  packageId?: string;
+  /** Snapshot of the chosen package's terms (photo count gates completion). */
+  packageSnapshot?: PackageTerms;
+  /** "HH:mm" start time. */
+  timeSlot?: string;
+  contactPhone?: string;
+  note?: string;
+  /** Deposit that holds the slot (VND), part of `price`. */
+  depositAmount: number;
+  /** ISO datetime the deposit was paid. */
+  depositPaidAt?: string;
+  /** ISO datetime after which an unpaid booking is released. */
+  depositDeadline?: string;
   /** Lens Xu applied at checkout (reduces the cash paid). Set on pay. */
   coinsRedeemed?: number;
   /** Lens Xu cashback credited when the shoot completed. Set on release. */
@@ -165,7 +225,12 @@ export interface BookingCollaborator {
 /** Mock payment methods offered at the payment step (UI phase only). */
 export type PaymentMethod = "bank" | "card" | "momo";
 
-/** Payload sent when a client pays in full for a confirmed booking. */
+/** Payload sent when a client pays the deposit for a new booking. */
+export interface DepositInput {
+  method: PaymentMethod;
+}
+
+/** Payload sent when a client pays the remainder of a confirmed booking. */
 export interface PaymentInput {
   method: PaymentMethod;
   /** Lens Xu to apply, reducing the cash charged. Capped server-side. */
@@ -240,9 +305,18 @@ export interface CoinTransaction {
   note: string;
 }
 
-/** Real-money wallet summary (derived from the wallet ledger). */
+/** Real-money wallet summary (derived from the wallet ledger + bookings). */
 export interface WalletSummary {
   balance: number;
+  /** Photographer: their share (after fees) of shoots the platform still holds. */
+  pendingPayout: number;
+  pendingPayoutCount: number;
+  /** Payouts received this calendar month. */
+  receivedThisMonth: number;
+  /** Cashed out to the bank, all time. */
+  withdrawnTotal: number;
+  /** Refunds received, all time. */
+  refundedTotal: number;
 }
 
 /** Lens Xu summary (derived from the coin ledger). */
@@ -252,6 +326,9 @@ export interface CoinSummary {
   expiringSoon: number;
   /** ISO date of the soonest upcoming expiry, if any. */
   nextExpiryAt?: string;
+  /** All-time coins earned as cashback / spent on bookings. */
+  earnedTotal: number;
+  redeemedTotal: number;
 }
 
 export interface Message {
@@ -291,7 +368,8 @@ export interface AssistantConfig {
 
 export interface Conversation {
   id: string;
-  /** The other participant in the thread. */
+  /** The other participant in the thread (their user / photographer id). */
+  participantId: string;
   participantName: string;
   participantAvatar: string;
   /** Their role, shown as a subtle label in the thread. */
@@ -302,6 +380,50 @@ export interface Conversation {
   lastMessageAt: string;
   /** Unread messages from the other participant. */
   unreadCount: number;
-  /** Whether the photographer's AI assistant is answering this thread. */
+  /** Whether the photographer's AI assistant is answering this thread. Only a
+   *  client ↔ photographer thread can have one. */
   aiEnabled?: boolean;
+}
+
+// ── Account profile & settings (both roles) ──────────────────────────────────
+export type Gender = "male" | "female" | "other";
+
+/** Which notifications the user wants to receive. */
+export interface NotificationPrefs {
+  bookingUpdates: boolean;
+  messages: boolean;
+  promotions: boolean;
+  emailDigest: boolean;
+}
+
+/** The signed-in user's personal info — also used to pre-fill booking forms. */
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+  phone: string;
+  /** ISO `yyyy-MM-dd`, empty = not set. */
+  birthday: string;
+  gender: Gender | "";
+  /** Default city + address for bookings. */
+  city: string;
+  addressDetail: string;
+  notifications: NotificationPrefs;
+}
+
+/** Editable profile fields (email + id are fixed). */
+export type ProfileInput = Partial<Omit<UserProfile, "id" | "email" | "avatar">>;
+
+export interface ChangePasswordInput {
+  currentPassword: string;
+  newPassword: string;
+}
+
+/** Rating overview for a photographer's reviews tab (computed by the backend). */
+export interface ReviewSummary {
+  average: number;
+  total: number;
+  /** Review counts per star, 5 → 1. */
+  breakdown: { stars: number; count: number }[];
 }

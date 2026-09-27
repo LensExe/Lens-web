@@ -1,5 +1,5 @@
 import { api } from "@/lib/api";
-import type { Photographer } from "@/types";
+import type { DayAvailability, Photographer } from "@/types";
 
 // Layer 3 — Service / API. Thin HTTP calls; the mock backend (src/msw) answers
 // these in the UI phase. No change needed to go live — disable mocking and
@@ -15,6 +15,10 @@ export async function getFeaturedPhotographers(): Promise<Photographer[]> {
       params: { featured: true },
     })
   ).data;
+}
+
+export async function getAvailability(id: string): Promise<DayAvailability[]> {
+  return (await api.get<DayAvailability[]>(`/photographers/${id}/availability`)).data;
 }
 
 export async function getPhotographerById(

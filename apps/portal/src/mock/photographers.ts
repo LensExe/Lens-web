@@ -1,8 +1,8 @@
 import { photo as img } from "@lens/ui";
-import type { Photographer } from "@/types";
+import type { Photographer, PhotoStyle } from "@/types";
 import { myPhotographer } from "@/mock/dashboard";
 
-// Mock photographers (Vietnamese). Imported ONLY by the service layer.
+// Mock photographers (Vietnamese). Imported ONLY by src/msw (the mock backend).
 // `img` returns local `/photos/<genre>/...` files (the 4th arg pins the genre);
 // seeds ending in `-av` resolve to a face automatically (see @lens/ui placeholderImg).
 
@@ -33,7 +33,7 @@ const basePhotographers: Omit<Photographer, "availableDates">[] = [
     rating: 5.0,
     reviewCount: 26,
     bio: "Kể câu chuyện ngày trọng đại của bạn qua từng khung hình chân thật và cảm xúc.",
-    experienceYears: 4,
+    experienceYears: 6,
     featured: true,
     portfolio: [img("quocbao-1", 600, 800, "family"), img("quocbao-2", 600, 600, "family"), img("quocbao-3", 600, 400, "family")],
   },
@@ -183,7 +183,7 @@ const basePhotographers: Omit<Photographer, "availableDates">[] = [
     rating: 5.0,
     reviewCount: 23,
     bio: "Ảnh cưới biển Đà Nẵng, ánh sáng hoàng hôn và cảm xúc tự nhiên.",
-    experienceYears: 4,
+    experienceYears: 8,
     featured: true,
     portfolio: [img("myduyen-1", 600, 800, "family"), img("myduyen-2", 600, 600, "portrait"), img("myduyen-3", 600, 600, "family")],
   },
@@ -198,7 +198,7 @@ const basePhotographers: Omit<Photographer, "availableDates">[] = [
     rating: 4.6,
     reviewCount: 6,
     bio: "Phóng sự sự kiện và đời sống đô thị, giao ảnh nhanh trong 48 giờ.",
-    experienceYears: 1,
+    experienceYears: 0,
     featured: false,
     portfolio: [img("haidang-1", 600, 400, "event"), img("haidang-2", 600, 600, "street"), img("haidang-3", 600, 800, "event")],
   },
@@ -243,36 +243,47 @@ const basePhotographers: Omit<Photographer, "availableDates">[] = [
     rating: 4.5,
     reviewCount: 5,
     bio: "Ảnh ẩm thực miền Tây và gia đình, màu sắc tươi sáng, gần gũi.",
-    experienceYears: 1,
+    experienceYears: 0,
     featured: false,
     portfolio: [img("tuyetnhi-1", 600, 600, "food"), img("tuyetnhi-2", 600, 400, "family"), img("tuyetnhi-3", 600, 800, "food")],
   },
 ];
 
-// Availability (UI phase mock). Build a pool of the next ~5 weeks of dates
-// (anchored to "today" so they're always upcoming), then give each
-// photographer a deterministic ~1/3 subset, offset by index so different
-// photographers are free on different days.
-const toISODate = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+// Photo folder (see @lens/ui placeholderImg) for each style.
+const STYLE_KEYWORD: Record<PhotoStyle, string> = {
+  "Chân dung": "portrait",
+  "Cưới": "wedding",
+  "Sự kiện": "event",
+  "Thời trang": "fashion",
+  "Sản phẩm": "product",
+  "Gia đình": "family",
+  "Du lịch": "travel",
+  "Ẩm thực": "food",
+  "Kiến trúc": "architecture",
+  "Đường phố": "street",
+};
 
-const today = new Date();
-today.setHours(0, 0, 0, 0);
-const DATE_POOL = Array.from({ length: 35 }, (_, i) => {
-  const d = new Date(today);
-  d.setDate(d.getDate() + 1 + i);
-  return toISODate(d);
-});
-
-const availabilityFor = (index: number): string[] =>
-  DATE_POOL.filter((_, day) => (day + index * 2) % 3 === 0);
+// Grow each portfolio to 12–15 distinct shots (a real "Tác phẩm" wall), drawn
+// from the photographer's own styles. Deduped — each photo folder holds a
+// limited set of files, so two styles sharing a folder simply yield fewer.
+const withGallery = (p: Omit<Photographer, "availableDates">, index: number) => {
+  const target = 12 + (index % 4);
+  const keywords = p.styles.map((s) => STYLE_KEYWORD[s]);
+  const portfolio = [...p.portfolio];
+  for (let n = 0; portfolio.length < target && n < 80; n++) {
+    const src = img(`${p.id}-g${n}`, 600, 800, keywords[n % keywords.length]);
+    if (!portfolio.includes(src)) portfolio.push(src);
+  }
+  return { ...p, portfolio };
+};
 
 // The signed-in photographer (id "me") is a real, browsable roster member, so
 // the dashboard profile and her public profile are one and the same account.
 export const mockPhotographers: Photographer[] = [
   myPhotographer,
   ...basePhotographers.map((p, i) => ({
-    ...p,
-    availableDates: availabilityFor(i),
+    ...withGallery(p, i),
+    // Filled in by the mock backend from the work schedule (mock/schedules.ts).
+    availableDates: [],
   })),
 ];

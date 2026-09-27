@@ -7,6 +7,7 @@ import {
   Switch,
   Textarea,
   toast,
+  PageContainer,
 } from "@lens/ui";
 import {
   useAssistantConfig,
@@ -78,15 +79,15 @@ export function DashboardAssistant() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-[760px] px-5 py-8 md:py-10">
+      <PageContainer>
         <Skeleton className="h-8 w-56" />
         <Skeleton className="mt-6 h-96 w-full rounded-3xl" />
-      </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="mx-auto max-w-[760px] px-5 py-8 md:py-10">
+    <PageContainer>
       <header>
         <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight md:text-3xl">
           <Sparkles className="size-6 text-ember" />
@@ -197,6 +198,6 @@ export function DashboardAssistant() {
           </Button>
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }

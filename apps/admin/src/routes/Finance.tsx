@@ -1,13 +1,10 @@
 import { useMemo, useState } from "react";
-import { Check, Coins, Wallet, Clock, X } from "lucide-react";
+import { BanknoteArrowDown, Check, Clock, Coins, Wallet, X } from "lucide-react";
 import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
   Button,
-  DataGridColumnHeader,
-  Skeleton,
-  cn,
+  PageContainer,
+  PageHeader,
+  StatCard,
   formatPrice,
   toast,
 } from "@lens/ui";
@@ -19,115 +16,105 @@ import {
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DataTable } from "@/components/DataTable";
-import { StatCard } from "@/components/StatCard";
-import {
-  useFinance,
-  useSetWithdrawalStatus,
-  useWithdrawals,
-} from "@/queries/useFinance";
+import { ColumnHeader } from "@/components/data-table/ColumnHeader";
+import { ACTIONS, NUM } from "@/components/data-table/columns";
+import { EmptyState } from "@/components/EmptyState";
+import { StatusPill } from "@/components/StatusPill";
+import { UserCell } from "@/components/UserCell";
+import { useFinance, useSetWithdrawalStatus, useWithdrawals } from "@/queries/useFinance";
 import { WITHDRAWAL_STATUS_META } from "@/lib/status";
-import { formatCount, formatDate } from "@/lib/format";
-import type { AdminWithdrawal } from "@/types";
+import { formatCount, formatDate, formatRelative } from "@/lib/format";
+import type { AdminWithdrawal, WithdrawalStatus } from "@/types";
 
-const initialsOf = (name: string) =>
-  name.split(" ").slice(-2).map((w) => w[0]).join("");
+type Filter = "all" | WithdrawalStatus;
+type Decision = { withdrawal: AdminWithdrawal; status: "approved" | "rejected" };
 
 export function Finance() {
   // TanStack Table mutates in place; the React Compiler's memoization freezes it.
   "use no memo";
   const { data: withdrawals = [], isLoading } = useWithdrawals();
   const { data: finance } = useFinance();
-  const { mutate, isPending } = useSetWithdrawalStatus();
+  const setStatus = useSetWithdrawalStatus();
+  const [filter, setFilter] = useState<Filter>("pending");
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [decision, setDecision] = useState<Decision | null>(null);
+
+  const countOf = (s: WithdrawalStatus) => withdrawals.filter((w) => w.status === s).length;
+  const data = useMemo(
+    () => (filter === "all" ? withdrawals : withdrawals.filter((w) => w.status === filter)),
+    [withdrawals, filter]
+  );
 
   const columns = useMemo<ColumnDef<AdminWithdrawal>[]>(
     () => [
       {
         accessorKey: "photographerName",
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Nhiếp ảnh gia" />,
-        cell: ({ row }) => {
-          const w = row.original;
-          return (
-            <div className="flex items-center gap-3">
-              <Avatar className="size-9 shrink-0">
-                <AvatarImage src={w.avatar} alt={w.photographerName} />
-                <AvatarFallback>{initialsOf(w.photographerName)}</AvatarFallback>
-              </Avatar>
-              <p className="font-medium leading-tight">{w.photographerName}</p>
-            </div>
-          );
-        },
-        size: 260,
+        header: ({ column }) => <ColumnHeader column={column} title="Nhiếp ảnh gia" />,
+        cell: ({ row }) => <UserCell name={row.original.photographerName} avatar={row.original.avatar} />,
       },
       {
         accessorKey: "amount",
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Số tiền" />,
-        cell: ({ row }) => (
-          <span className="font-medium">{formatPrice(row.original.amount)}</span>
-        ),
+        header: ({ column }) => <ColumnHeader column={column} title="Số tiền" align="right" />,
+        meta: NUM,
+        cell: ({ row }) => <span className="font-semibold tabular-nums">{formatPrice(row.original.amount)}</span>,
       },
       {
         accessorKey: "requestedAt",
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Ngày yêu cầu" />,
+        header: ({ column }) => <ColumnHeader column={column} title="Ngày yêu cầu" />,
         cell: ({ row }) => (
-          <span className="text-sm text-muted-foreground">{formatDate(row.original.requestedAt)}</span>
+          <div className="text-sm">
+            <p>{formatDate(row.original.requestedAt)}</p>
+            <p className="text-xs text-muted-foreground">{formatRelative(row.original.requestedAt)} trước</p>
+          </div>
         ),
       },
       {
         accessorKey: "status",
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Trạng thái" />,
-        cell: ({ row }) => {
-          const meta = WITHDRAWAL_STATUS_META[row.original.status];
-          return (
-            <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", meta.className)}>
-              {meta.label}
-            </span>
-          );
-        },
+        header: ({ column }) => <ColumnHeader column={column} title="Trạng thái" />,
+        cell: ({ row }) => <StatusPill meta={WITHDRAWAL_STATUS_META[row.original.status]} />,
       },
       {
         id: "actions",
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Hành động" />,
+        header: () => <span className="sr-only">Hành động</span>,
         enableSorting: false,
         cell: ({ row }) => {
           const w = row.original;
-          if (w.status !== "pending")
-            return <span className="text-xs text-muted-foreground">—</span>;
-          const decide = (status: "approved" | "rejected") =>
-            mutate(
-              { id: w.id, status },
-              {
-                onSuccess: () =>
-                  toast.success(
-                    status === "approved"
-                      ? `Đã duyệt rút ${formatPrice(w.amount)} cho ${w.photographerName}`
-                      : `Đã từ chối yêu cầu của ${w.photographerName}`
-                  ),
-                onError: () => toast.error("Không thể cập nhật, vui lòng thử lại"),
-              }
-            );
+          if (w.status !== "pending") return <span className="text-xs text-muted-foreground">—</span>;
+          const busy = setStatus.isPending && setStatus.variables?.id === w.id;
           return (
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" className="rounded-full" disabled={isPending} onClick={() => decide("rejected")}>
+            <div className="flex justify-end gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-full"
+                disabled={busy}
+                onClick={() => setDecision({ withdrawal: w, status: "rejected" })}
+              >
                 <X className="size-3.5" />
                 Từ chối
               </Button>
-              <Button size="sm" className="rounded-full" disabled={isPending} onClick={() => decide("approved")}>
+              <Button
+                size="sm"
+                className="rounded-full"
+                disabled={busy}
+                onClick={() => setDecision({ withdrawal: w, status: "approved" })}
+              >
                 <Check className="size-3.5" />
                 Duyệt
               </Button>
             </div>
           );
         },
-        size: 200,
+        meta: ACTIONS,
       },
     ],
-    [mutate, isPending]
+    [setStatus.isPending, setStatus.variables]
   );
 
   const table = useReactTable({
-    data: withdrawals,
+    data,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
@@ -138,26 +125,97 @@ export function Finance() {
     getRowId: (row) => row.id,
   });
 
+  const approving = decision?.status === "approved";
+  const confirm = () => {
+    if (!decision) return;
+    const { withdrawal: w, status } = decision;
+    setStatus.mutate(
+      { id: w.id, status },
+      {
+        onSuccess: () => {
+          toast.success(
+            status === "approved"
+              ? `Đã duyệt rút ${formatPrice(w.amount)} cho ${w.photographerName}`
+              : `Đã từ chối yêu cầu của ${w.photographerName}`
+          );
+          setDecision(null);
+        },
+        onError: () => toast.error("Không thể cập nhật, vui lòng thử lại"),
+      }
+    );
+  };
+
   return (
-    <div className="mx-auto max-w-[1080px] px-6 py-8 md:py-10">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Tài chính</h1>
-        <p className="mt-1 text-muted-foreground">
-          Duyệt yêu cầu rút tiền và theo dõi quỹ nền tảng.
-        </p>
-      </header>
+    <PageContainer>
+      <PageHeader title="Rút tiền & quỹ" description="Duyệt yêu cầu rút tiền của nhiếp ảnh gia và theo dõi quỹ nền tảng." />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <StatCard icon={Wallet} value={finance ? formatPrice(finance.walletReserve) : "…"} label="Quỹ ví đang giữ" />
-        <StatCard icon={Coins} value={finance ? `${formatCount(finance.coinsOutstanding)} xu` : "…"} label="Lens Xu lưu hành" />
-        <StatCard icon={Clock} value={finance ? formatPrice(finance.pendingWithdrawalTotal) : "…"} label={finance ? `${finance.pendingCount} yêu cầu chờ duyệt` : "Chờ duyệt"} />
+        <StatCard
+          icon={Wallet}
+          value={finance ? formatPrice(finance.walletReserve) : "…"}
+          label="Quỹ ví nhiếp ảnh gia"
+          hint={<span className="text-xs text-muted-foreground">Tiền thật đang nằm trong ví thợ</span>}
+        />
+        <StatCard
+          icon={Coins}
+          value={finance ? `${formatCount(finance.coinsOutstanding)} xu` : "…"}
+          label="Lens Xu đang lưu hành"
+        />
+        <StatCard
+          icon={Clock}
+          value={finance ? formatPrice(finance.pendingWithdrawalTotal) : "…"}
+          label="Đang chờ duyệt rút"
+          hint={
+            finance && finance.pendingCount > 0 ? (
+              <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                {finance.pendingCount} yêu cầu cần xử lý
+              </span>
+            ) : undefined
+          }
+        />
       </div>
 
-      {isLoading ? (
-        <Skeleton className="h-80 rounded-2xl" />
-      ) : (
-        <DataTable table={table} recordCount={withdrawals.length} />
-      )}
-    </div>
+      <DataTable
+        table={table}
+        recordCount={data.length}
+        isLoading={isLoading}
+        tabs={{
+          value: filter,
+          onChange: setFilter,
+          items: [
+          { value: "pending", label: "Chờ duyệt", count: countOf("pending") },
+          { value: "approved", label: "Đã duyệt", count: countOf("approved") },
+          { value: "rejected", label: "Từ chối", count: countOf("rejected") },
+          { value: "all", label: "Tất cả", count: withdrawals.length },
+        ],
+        }}
+        empty={
+          <EmptyState
+            bare
+            icon={BanknoteArrowDown}
+            title={filter === "pending" ? "Không có yêu cầu rút tiền nào chờ duyệt" : "Không có yêu cầu ở trạng thái này"}
+          />
+        }
+      />
+
+      <ConfirmDialog
+        open={!!decision}
+        onOpenChange={(open) => !open && setDecision(null)}
+        title={
+          approving
+            ? `Duyệt rút ${decision ? formatPrice(decision.withdrawal.amount) : ""}?`
+            : "Từ chối yêu cầu rút tiền?"
+        }
+        description={
+          approving
+            ? `Tiền sẽ được chuyển về tài khoản ngân hàng của ${decision?.withdrawal.photographerName} trong 1–2 ngày làm việc.`
+            : `Số tiền được giữ lại trong ví của ${decision?.withdrawal.photographerName}.`
+        }
+        confirmLabel={approving ? "Duyệt rút tiền" : "Từ chối"}
+        destructive={!approving}
+        pending={setStatus.isPending}
+        onConfirm={confirm}
+      />
+    </PageContainer>
   );
 }

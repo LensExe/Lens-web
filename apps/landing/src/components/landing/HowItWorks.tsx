@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { portalBrowse } from "@/lib/links";
 import { ArrowRight, CalendarCheck, Images, Search } from "lucide-react";
 import { Button } from "@lens/ui";
 import { useReveal } from "@lens/ui";
@@ -21,12 +21,11 @@ const steps = [
     icon: CalendarCheck,
     title: "Đặt lịch & chụp",
     description:
-      "Chọn ngày trống trên lịch, xác nhận và sẵn sàng cho buổi chụp của bạn.",
+      "Chọn ngày trống, đặt cọc để giữ lịch và sẵn sàng cho buổi chụp của bạn.",
   },
 ];
 
 export function HowItWorks() {
-  const navigate = useNavigate();
   const scope = useRef<HTMLElement>(null);
   useReveal(scope);
 
@@ -45,12 +44,11 @@ export function HowItWorks() {
           <p className="mt-3 max-w-sm text-muted-foreground">
             Từ lúc tìm kiếm đến khi cầm máy, mọi thứ gọn gàng trên một nền tảng.
           </p>
-          <Button
-            className="mt-6 rounded-full px-6"
-            onClick={() => navigate("/photographers")}
-          >
-            Bắt đầu ngay
-            <ArrowRight className="size-4" />
+          <Button asChild className="mt-6 rounded-full px-6">
+            <a href={portalBrowse()}>
+              Bắt đầu ngay
+              <ArrowRight className="size-4" />
+            </a>
           </Button>
         </div>
 

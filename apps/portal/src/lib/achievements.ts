@@ -12,7 +12,7 @@ export interface RankTier {
   minSessions: number;
   /** Platform commission at this rank (lower = better perk). */
   commissionRate: number;
-  /** Tinted pill style for the rank badge. */
+  /** Tier colour: the rank pill and the medal tile on Thành tựu. */
   className: string;
 }
 
@@ -29,7 +29,8 @@ export const RANKS: RankTier[] = [
     name: "Thợ Đồng",
     minSessions: 10,
     commissionRate: 0.09,
-    className: "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-400",
+    // Copper-brown, clearly apart from gold's yellow.
+    className: "bg-[#f4e4d8] text-[#7c4420] dark:bg-[#b0703f]/20 dark:text-[#e3a978]",
   },
   {
     id: "silver",

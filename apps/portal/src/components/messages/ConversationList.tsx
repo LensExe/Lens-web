@@ -1,5 +1,5 @@
 import { MessagesSquare } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage, Skeleton, cn } from "@lens/ui";
+import { Avatar, AvatarFallback, AvatarImage, CountBadge, Skeleton, cn } from "@lens/ui";
 import { formatRelative } from "@/lib/time";
 import type { Conversation } from "@/types";
 
@@ -85,11 +85,7 @@ export function ConversationList({
                 >
                   {c.lastMessage}
                 </p>
-                {c.unreadCount > 0 && (
-                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-foreground text-[11px] font-medium text-background">
-                    {c.unreadCount}
-                  </span>
-                )}
+                <CountBadge count={c.unreadCount} />
               </div>
             </div>
           </button>

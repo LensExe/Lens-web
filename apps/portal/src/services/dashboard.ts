@@ -1,5 +1,11 @@
 import { api } from "@/lib/api";
-import type { Booking, BookingStatus, Photographer } from "@/types";
+import type {
+  Booking,
+  BookingStatus,
+  EarningsSummary,
+  Photographer,
+  WorkSchedule,
+} from "@/types";
 
 // Layer 3 — Service / API for the signed-in photographer's dashboard. Thin HTTP
 // calls; the mock backend (src/msw) owns the request/availability stores.
@@ -25,11 +31,15 @@ export async function updateBookingStatus(
   return (await api.patch<Booking>(`/me/bookings/${id}`, { status })).data;
 }
 
-export async function getMyAvailability(): Promise<string[]> {
-  return (await api.get<string[]>("/me/availability")).data;
+export async function getMyEarnings(): Promise<EarningsSummary> {
+  return (await api.get<EarningsSummary>("/me/earnings")).data;
 }
 
-/** Toggle a single date on/off the photographer's free list. Returns the new set. */
-export async function toggleAvailability(date: string): Promise<string[]> {
-  return (await api.put<string[]>("/me/availability", { date })).data;
+export async function getMySchedule(): Promise<WorkSchedule> {
+  return (await api.get<WorkSchedule>("/me/schedule")).data;
+}
+
+/** Replace the whole work schedule (weekly hours + busy dates). */
+export async function saveMySchedule(schedule: WorkSchedule): Promise<WorkSchedule> {
+  return (await api.put<WorkSchedule>("/me/schedule", schedule)).data;
 }

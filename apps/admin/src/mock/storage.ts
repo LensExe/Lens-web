@@ -38,7 +38,7 @@ export const mockStorageRows: AdminStorageRow[] = [
   row("u1", "Lý Gia Hân", "giahan-av", "free", 2.4, 6), // over quota
   row("u2", "Nguyễn Minh Anh", "minhanh-av", "pro", 12.5, 18),
   row("u3", "Trần Quốc Bảo", "quocbao-av", "studio", 64, 41),
-  row("u8", "Vũ Hoàng Lan", "hoanglan-av", "free", 1.1, 3),
-  row("u9", "Đỗ Khánh Vy", "khanhvy-av", "pro", 21.2, 24), // over quota
-  row("u10", "Bùi Thanh Tùng", "thanhtung-av", "free", 0.6, 2),
+  row("u13", "Vũ Hoàng Lan", "hoanglan-av", "free", 1.6, 4), // nearly full
+  row("u14", "Đỗ Khánh Vy", "khanhvy-av", "pro", 21.2, 24), // over quota
+  row("u15", "Bùi Thanh Tùng", "thanhtung-av", "free", 0.6, 2),
 ];

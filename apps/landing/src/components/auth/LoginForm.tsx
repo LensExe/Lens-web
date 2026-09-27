@@ -1,149 +1,109 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { ArrowRight } from "lucide-react";
-import { Button, Input, cn } from "@lens/ui";
+import { Button, Spinner } from "@lens/ui";
+import { AuthInput } from "./AuthInput";
+import { DemoAccounts } from "./DemoAccounts";
+import { FormError } from "./FormError";
+import { FormField } from "./FormField";
+import { PasswordInput } from "./PasswordInput";
+import { useLogin } from "@/queries/useAuth";
+import { loginSchema, type LoginValues } from "@/lib/auth";
+import { portalHomeFor } from "@/lib/links";
+import type { DemoAccount } from "@/types";
 
-// UI phase: no real auth. Pick a role, "log in", and redirect to the matching
-// app — carrying the role in the URL hash (#role=) so the destination signs in
-// as that account. The hash is never sent to the server and the portal strips
-// it on arrival. URLs come from env so dev/prod just work.
-const PORTAL_URL = import.meta.env.VITE_PORTAL_URL ?? "http://localhost:5174";
-const ADMIN_URL = import.meta.env.VITE_ADMIN_URL ?? "http://localhost:5175";
+// No role picker: the account's role (from the server) decides where the user
+// lands — their portal home, or back to the page that asked them to log in
+// (`?redirect=`, portal URLs only).
+export function LoginForm() {
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get("redirect");
+  const login = useLogin();
 
-type Role = "client" | "photographer" | "admin";
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors },
+  } = useForm<LoginValues>({
+    resolver: standardSchemaResolver(loginSchema),
+    mode: "onTouched",
+    defaultValues: { email: "", password: "" },
+  });
 
-const roles: { value: Role; label: string }[] = [
-  { value: "client", label: "Khách hàng" },
-  { value: "photographer", label: "Nhiếp ảnh gia" },
-  { value: "admin", label: "Quản trị" },
-];
-
-// Demo credentials per role — autofilled when a role is picked (UI phase only).
-const demoAccounts: Record<Role, { email: string; password: string }> = {
-  client: { email: "khachhang@lens.vn", password: "demo1234" },
-  photographer: { email: "nhiepanhgia@lens.vn", password: "demo1234" },
-  admin: { email: "admin@lens.vn", password: "demo1234" },
-};
-
-// Where each role lands after login (and the account it signs in as).
-// Portal roles (client/photographer) land on the portal root (browse); the
-// account menu there reflects the signed-in role. Admin goes to the admin app.
-function destinationFor(role: Role): string {
-  if (role === "admin") return ADMIN_URL;
-  return `${PORTAL_URL}/#role=${role}`;
-}
-
-/** Shared login form — used by the auth modal and the `/login` page. */
-export function LoginForm({
-  onNavigateAway,
-  showHeading = true,
-  showSwitchLink = true,
-}: {
-  onNavigateAway?: () => void;
-  /** The modal renders its own DialogTitle/Description instead. */
-  showHeading?: boolean;
-  /** The modal switches via tabs, so it hides this footer link. */
-  showSwitchLink?: boolean;
-}) {
-  const [role, setRole] = useState<Role>("client");
-  const [email, setEmail] = useState(demoAccounts.client.email);
-  const [password, setPassword] = useState(demoAccounts.client.password);
-
-  // Picking a role autofills its demo credentials.
-  const selectRole = (value: Role) => {
-    setRole(value);
-    setEmail(demoAccounts[value].email);
-    setPassword(demoAccounts[value].password);
+  const onSubmit = (values: LoginValues) => {
+    login.mutate(values, {
+      // Full navigation: the portal is another app/origin.
+      onSuccess: (user) => {
+        window.location.href = portalHomeFor(user.role, redirect);
+      },
+    });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Redirect to the matching app, carrying the role so it signs in correctly.
-    window.location.href = destinationFor(role);
+  const fillDemo = ({ email, password }: DemoAccount) => {
+    setValue("email", email, { shouldValidate: true });
+    setValue("password", password, { shouldValidate: true });
+    login.reset();
   };
+
+  // Stay busy after success while the browser leaves for the portal.
+  const busy = login.isPending || login.isSuccess;
+  const carry = redirect ? `?redirect=${encodeURIComponent(redirect)}` : "";
 
   return (
     <div>
-      {showHeading && (
-        <>
-          <h2 className="text-2xl font-semibold tracking-tight">Đăng nhập</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Chào mừng trở lại. Chọn vai trò và đăng nhập để tiếp tục.
-          </p>
-        </>
-      )}
+      <h1 className="text-3xl font-semibold tracking-tight">Chào mừng trở lại</h1>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Đăng nhập để đặt lịch và quản lý các buổi chụp của bạn.
+      </p>
 
-      <form onSubmit={handleSubmit} className={cn("space-y-4", showHeading && "mt-6")}>
-        <div className="space-y-2">
-          <label htmlFor="email" className="text-sm font-medium">
-            Email
-          </label>
-          <Input
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-8 space-y-4">
+        <FormField id="email" label="Email" error={errors.email?.message}>
+          <AuthInput
             id="email"
             type="email"
+            autoComplete="email"
             placeholder="ban@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            aria-invalid={!!errors.email}
+            {...register("email")}
           />
-        </div>
+        </FormField>
 
-        <div className="space-y-2">
-          <label htmlFor="password" className="text-sm font-medium">
-            Mật khẩu
-          </label>
-          <Input
+        <FormField id="password" label="Mật khẩu" error={errors.password?.message}>
+          <PasswordInput
             id="password"
-            type="password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            placeholder="Nhập mật khẩu"
+            aria-invalid={!!errors.password}
+            {...register("password")}
           />
-        </div>
+        </FormField>
 
-        <div className="space-y-2">
-          <span className="text-sm font-medium">Vai trò</span>
-          <div className="grid grid-cols-3 gap-2">
-            {roles.map((r) => (
-              <button
-                key={r.value}
-                type="button"
-                onClick={() => selectRole(r.value)}
-                className={cn(
-                  "rounded-xl border px-3 py-2 text-sm transition-colors",
-                  role === r.value
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border text-muted-foreground hover:bg-muted"
-                )}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        {login.isError && <FormError message={login.error.message} />}
 
-        <Button type="submit" size="lg" className="w-full rounded-full">
-          Đăng nhập
-          <ArrowRight className="size-4" />
+        <Button type="submit" size="lg" disabled={busy} className="h-11 w-full rounded-full">
+          {busy ? (
+            <Spinner />
+          ) : (
+            <>
+              Đăng nhập
+              <ArrowRight className="size-4" />
+            </>
+          )}
         </Button>
       </form>
 
-      {showSwitchLink && (
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          Chưa có tài khoản?{" "}
-          <Link
-            to="/signup"
-            onClick={onNavigateAway}
-            className="font-medium text-foreground hover:underline"
-          >
-            Đăng ký
-          </Link>
-        </p>
-      )}
-
-      <p className="mt-4 text-center text-xs text-muted-foreground">
-        Giai đoạn UI: chọn vai trò sẽ tự điền tài khoản demo và đăng nhập vào
-        ứng dụng tương ứng (Portal / Admin).
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        Chưa có tài khoản?{" "}
+        <Link to={`/signup${carry}`} className="font-medium text-foreground hover:underline">
+          Đăng ký
+        </Link>
       </p>
+
+      <div className="mt-8">
+        <DemoAccounts onPick={fillDemo} />
+      </div>
     </div>
   );
 }

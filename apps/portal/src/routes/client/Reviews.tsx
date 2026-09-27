@@ -6,6 +6,7 @@ import {
   Button,
   Skeleton,
   toast,
+  PageContainer,
 } from "@lens/ui";
 import { useMyBookings } from "@/queries/useBookings";
 
@@ -37,7 +38,7 @@ export function ClientReviews() {
   });
 
   return (
-    <div className="mx-auto max-w-[860px] px-5 py-8 md:py-10">
+    <PageContainer>
       <header className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
           Đánh giá của tôi
@@ -48,7 +49,7 @@ export function ClientReviews() {
       </header>
 
       {isLoading ? (
-        <div className="space-y-3">
+        <div className="grid gap-3 lg:grid-cols-2">
           <Skeleton className="h-20 rounded-2xl" />
           <Skeleton className="h-20 rounded-2xl" />
         </div>
@@ -64,7 +65,7 @@ export function ClientReviews() {
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid gap-3 lg:grid-cols-2">
           {targets.map(({ key, booking, person }) => (
             <div
               key={key}
@@ -99,6 +100,6 @@ export function ClientReviews() {
           ))}
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

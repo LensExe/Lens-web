@@ -13,11 +13,22 @@ export interface PhotographerApplication {
   experienceYears: number;
   /** Giá khởi điểm / buổi (VND). */
   pricePerSession: number;
-  portfolioCount: number;
+  /** Portfolio shots submitted for review (image URLs). */
+  portfolio: string[];
   bio: string;
   /** ISO date string the application was submitted. */
   submittedAt: string;
   status: ApprovalStatus;
+  /** The admin's note on the decision — always present on a rejection. */
+  reviewNote?: string;
+  /** ISO datetime of the decision. */
+  reviewedAt?: string;
+}
+
+/** Approve, or reject with a reason the applicant will see. */
+export interface ApplicationDecision {
+  status: "approved" | "rejected";
+  note?: string;
 }
 
 export type UserRole = "client" | "photographer";
@@ -43,11 +54,23 @@ export interface OverviewStats {
   totalBookings: number;
   /** Doanh thu tháng này (VND). */
   monthlyRevenue: number;
+  /** % change of each headline number vs last month. */
+  change: { users: number; photographers: number; bookings: number; revenue: number };
+}
+
+/** What's waiting on an admin — drives the overview queue and sidebar badges. */
+export interface AdminQueue {
+  pendingApplications: number;
+  pendingWithdrawals: number;
+  /** VND. */
+  pendingWithdrawalTotal: number;
+  overQuota: number;
+  suspendedUsers: number;
 }
 
 export interface ActivityItem {
   id: string;
-  type: "signup" | "booking" | "application" | "report";
+  type: "signup" | "booking" | "application" | "report" | "withdrawal";
   text: string;
   /** ISO datetime string. */
   at: string;
@@ -99,6 +122,7 @@ export interface FinanceSummary {
 
 // ── Bookings & collaboration (Feature: liên kết thợ) ────────────────────────
 export type EscrowStatus =
+  | "awaiting_deposit"
   | "pending"
   | "confirmed"
   | "held"
@@ -107,6 +131,7 @@ export type EscrowStatus =
 
 export interface AdminCollaborator {
   name: string;
+  avatar?: string;
   /** Payout share 0–100. */
   sharePct: number;
   status: "invited" | "accepted" | "declined";
@@ -115,7 +140,9 @@ export interface AdminCollaborator {
 export interface AdminBooking {
   id: string;
   clientName: string;
+  clientAvatar?: string;
   photographerName: string;
+  photographerAvatar?: string;
   collaborators?: AdminCollaborator[];
   style: string;
   /** ISO date string. */
@@ -123,6 +150,20 @@ export interface AdminBooking {
   /** VND. */
   price: number;
   status: EscrowStatus;
+}
+
+export interface BookingSummary {
+  /** Money the platform holds right now — deposits + fully paid shoots (VND). */
+  escrowHeld: number;
+  /** Bookings not yet finished or cancelled. */
+  activeCount: number;
+  /** Bookings with at least one collaborating photographer. */
+  collabCount: number;
+}
+
+export interface AdminBookingsReport {
+  summary: BookingSummary;
+  rows: AdminBooking[];
 }
 
 // ── Storage & plans (Feature: cloud lưu trữ) ────────────────────────────────
@@ -178,4 +219,24 @@ export interface QualityOverview {
 export interface QualityReport {
   overview: QualityOverview;
   rows: AdminQualityRow[];
+}
+
+// ── Auth (UI phase — admins sign in on this app only) ─────────────────────────
+/** The signed-in admin, as returned by the login endpoint and kept in session. */
+export interface AdminSession {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+}
+
+export interface AdminLoginInput {
+  email: string;
+  password: string;
+}
+
+/** A demo admin login shown on the login page (UI phase only). */
+export interface AdminDemoAccount {
+  email: string;
+  password: string;
 }

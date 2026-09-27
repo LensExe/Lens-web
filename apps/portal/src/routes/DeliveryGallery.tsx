@@ -1,9 +1,11 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Check, Loader2 } from "lucide-react";
-import { Button, formatPrice, toast } from "@lens/ui";
+import { Button, formatPrice, toast, PageContainer } from "@lens/ui";
 import { GalleryPanel } from "@/components/storage/GalleryPanel";
 import { useConfirmReceipt, useMyBookings } from "@/queries/useBookings";
+import { useIncomingBookings } from "@/queries/useDashboard";
 import { useGallery } from "@/queries/useStorage";
+import { deliveryProgress } from "@/lib/booking";
 import { formatCoins } from "@/lib/wallet";
 
 export function DeliveryGallery({
@@ -16,17 +18,17 @@ export function DeliveryGallery({
   const canUpload = mode === "photographer";
   const backTo = canUpload ? "/dashboard/bookings" : "/client/bookings";
 
-  // Client can confirm receipt straight from the gallery (→ released + cashback).
-  const { data: bookings = [] } = useMyBookings();
+  // Each side reads its own list (client: bookings made, photographer: requests received).
+  const clientBookings = useMyBookings();
+  const incoming = useIncomingBookings();
+  const booking = ((canUpload ? incoming : clientBookings).data ?? []).find((b) => b.id === id);
+
   const { data: gallery } = useGallery(id);
   const confirmReceipt = useConfirmReceipt();
-  const booking = bookings.find((b) => b.id === id);
-  // Match the backend guard (+ BookingCard/BookingDetail): the client can only
-  // confirm once the photographer has actually delivered photos.
-  const canConfirm =
-    mode === "client" &&
-    booking?.status === "held" &&
-    !!gallery?.photos.length;
+  // Match the backend guard (+ BookingCard/BookingDetail): the client confirms
+  // only once the package's photo count has been delivered.
+  const progress = booking && deliveryProgress(booking, gallery?.photos.length ?? 0);
+  const showConfirm = mode === "client" && booking?.status === "held";
 
   const confirm = () =>
     confirmReceipt.mutate(id, {
@@ -43,7 +45,7 @@ export function DeliveryGallery({
     });
 
   return (
-    <div className="mx-auto max-w-[1000px] px-5 py-8">
+    <PageContainer>
       <button
         type="button"
         onClick={() => navigate(backTo)}
@@ -57,15 +59,16 @@ export function DeliveryGallery({
         Ảnh buổi chụp{booking ? ` ${booking.style}` : ""}
       </h1>
 
-      {canConfirm && booking && (
+      {showConfirm && booking && progress && (
         <div className="mb-5 mt-3 flex flex-col gap-3 rounded-2xl border border-border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-muted-foreground">
-            Sau khi xác nhận, sàn sẽ giải ngân {formatPrice(booking.price)} cho
-            nhiếp ảnh gia và hoàn Lens Xu cho bạn.
+            {progress.complete
+              ? `Sau khi xác nhận, sàn sẽ giải ngân ${formatPrice(booking.price)} cho nhiếp ảnh gia và hoàn Lens Xu cho bạn.`
+              : `Bạn có thể xác nhận khi nhiếp ảnh gia giao đủ ${progress.required} ảnh (hiện có ${progress.delivered}/${progress.required}).`}
           </p>
           <Button
             className="shrink-0 rounded-full"
-            disabled={confirmReceipt.isPending}
+            disabled={confirmReceipt.isPending || !progress.complete}
             onClick={confirm}
           >
             {confirmReceipt.isPending && <Loader2 className="size-4 animate-spin" />}
@@ -76,8 +79,12 @@ export function DeliveryGallery({
       )}
 
       <div className="mt-4">
-        <GalleryPanel bookingId={id} canUpload={canUpload} />
+        <GalleryPanel
+          bookingId={id}
+          canUpload={canUpload}
+          required={booking?.packageSnapshot?.photoCount}
+        />
       </div>
-    </div>
+    </PageContainer>
   );
 }

@@ -3,6 +3,7 @@ import {
   Award,
   Check,
   ImageOff,
+  Lightbulb,
   Loader2,
   MapPin,
   Pencil,
@@ -26,14 +27,20 @@ import {
   formatPrice,
   photo,
   toast,
+  PageContainer,
 } from "@lens/ui";
 import {
   useMyPhotographerProfile,
   useUpdateMyPhotographerProfile,
 } from "@/queries/useDashboard";
-import { CITY_OPTIONS, STYLE_OPTIONS } from "@/lib/photographer-filters";
+import { CITY_OPTIONS, STYLE_OPTIONS, experienceLabel } from "@/lib/photographer-filters";
 import { currentUser } from "@/lib/session";
 import type { Photographer, PhotoStyle } from "@/types";
+
+/** Longest "Giới thiệu" a photographer can write (no minimum). */
+const BIO_MAX = 500;
+/** Suggested number of portfolio shots — shown as advice, never enforced. */
+const RECOMMENDED_PORTFOLIO = 12;
 
 const ASPECTS = ["4 / 5", "1 / 1", "3 / 4", "5 / 7"];
 
@@ -126,6 +133,7 @@ function ProfileEditor({
 
   const valid =
     draft.bio.trim().length > 0 &&
+    draft.bio.length <= BIO_MAX &&
     draft.pricePerSession > 0 &&
     draft.styles.length > 0;
 
@@ -144,7 +152,7 @@ function ProfileEditor({
   };
 
   return (
-    <div className="mx-auto max-w-[860px] px-5 py-8 md:py-10">
+    <PageContainer>
       <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
@@ -245,10 +253,14 @@ function ProfileEditor({
             <Field label="Giới thiệu">
               <textarea
                 rows={4}
+                maxLength={BIO_MAX}
                 value={draft.bio}
                 onChange={(e) => patch({ bio: e.target.value })}
                 className="w-full resize-none rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring"
               />
+              <p className="mt-1 text-right text-xs tabular-nums text-muted-foreground">
+                {draft.bio.length}/{BIO_MAX} ký tự
+              </p>
             </Field>
           </div>
         </div>
@@ -261,7 +273,21 @@ function ProfileEditor({
             {draft.portfolio.length} ảnh
           </span>
         </h2>
-        <div className="columns-2 gap-4 md:columns-3 [&>*]:mb-4">
+        {/* Advice only — saving never depends on it. */}
+        <p
+          className={cn(
+            "-mt-2 mb-4 flex items-start gap-2 text-sm",
+            draft.portfolio.length >= RECOMMENDED_PORTFOLIO
+              ? "text-foreground"
+              : "text-muted-foreground"
+          )}
+        >
+          <Lightbulb className="mt-0.5 size-4 shrink-0" />
+          {draft.portfolio.length >= RECOMMENDED_PORTFOLIO
+            ? `Tuyệt vời! Hồ sơ đã có đủ ${RECOMMENDED_PORTFOLIO} ảnh khuyến nghị để khách hàng cảm nhận rõ phong cách của bạn.`
+            : `Khuyến nghị nên tải lên khoảng ${RECOMMENDED_PORTFOLIO} ảnh đã hậu kỳ để khách hàng cảm nhận rõ phong cách của bạn (hiện có ${draft.portfolio.length}/${RECOMMENDED_PORTFOLIO}).`}
+        </p>
+        <div className="columns-2 gap-4 md:columns-3 xl:columns-4 [&>*]:mb-4">
           {draft.portfolio.map((src, i) => (
             <PortfolioImage
               key={`${src}-${i}`}
@@ -281,7 +307,7 @@ function ProfileEditor({
           </button>
         </div>
       </section>
-    </div>
+    </PageContainer>
   );
 }
 
@@ -293,7 +319,7 @@ function ProfileView({
   onEdit: () => void;
 }) {
   return (
-    <div className="mx-auto max-w-[860px] px-5 py-8 md:py-10">
+    <PageContainer>
       <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
@@ -323,13 +349,13 @@ function ProfileView({
                 {profile.city}
               </span>
               <span className="flex items-center gap-1">
-                <Star className="size-3.5 fill-amber-400 text-amber-400" />
+                <Star className="size-3.5 fill-ember text-ember" />
                 <span className="font-medium text-foreground">{profile.rating.toFixed(1)}</span>
                 ({profile.reviewCount} đánh giá)
               </span>
               <span className="flex items-center gap-1">
                 <Award className="size-3.5" />
-                {profile.experienceYears} năm kinh nghiệm
+                {experienceLabel(profile.experienceYears)}
               </span>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -371,7 +397,7 @@ function ProfileView({
             </p>
           </div>
         ) : (
-          <div className="columns-2 gap-4 md:columns-3 [&>*]:mb-4">
+          <div className="columns-2 gap-4 md:columns-3 xl:columns-4 [&>*]:mb-4">
             {profile.portfolio.map((src, i) => (
               <PortfolioImage
                 key={`${src}-${i}`}
@@ -383,7 +409,7 @@ function ProfileView({
           </div>
         )}
       </section>
-    </div>
+    </PageContainer>
   );
 }
 
@@ -393,14 +419,14 @@ export function DashboardPortfolio() {
 
   if (isLoading || !profile) {
     return (
-      <div className="mx-auto max-w-[860px] px-5 py-8 md:py-10">
+      <PageContainer>
         <Skeleton className="h-40 rounded-2xl" />
-        <div className="mt-6 columns-2 gap-4 md:columns-3 [&>*]:mb-4">
+        <div className="mt-6 columns-2 gap-4 md:columns-3 xl:columns-4 [&>*]:mb-4">
           {[200, 260, 180, 240, 200, 280].map((h, i) => (
             <Skeleton key={i} style={{ height: h }} className="rounded-2xl" />
           ))}
         </div>
-      </div>
+      </PageContainer>
     );
   }
 

@@ -29,6 +29,7 @@ import { cva } from "class-variance-authority"
 
 import { cn } from "../../../lib/utils"
 import { Checkbox } from "../../ui/checkbox"
+import { Skeleton } from "../../ui/skeleton"
 import { Spinner } from "../../ui/spinner"
 
 const headerCellSpacingVariants = cva("", {
@@ -1220,7 +1221,7 @@ function DataGridTableBodyRows<TData>({ table }: { table: Table<TData> }) {
           <DataGridTableBodyRowSkeleton key={rowIndex}>
             {table.getVisibleFlatColumns().map((column, colIndex) => (
               <DataGridTableBodyRowSkeletonCell column={column} key={colIndex}>
-                {column.columnDef.meta?.skeleton}
+                {column.columnDef.meta?.skeleton ?? <Skeleton className="h-4 w-24 rounded" />}
               </DataGridTableBodyRowSkeletonCell>
             ))}
           </DataGridTableBodyRowSkeleton>

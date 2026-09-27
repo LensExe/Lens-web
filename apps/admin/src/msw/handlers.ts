@@ -8,10 +8,18 @@ import { mockFinance, mockWithdrawals } from "@/mock/finance";
 import { mockBookings } from "@/mock/bookings";
 import { mockStorageRows } from "@/mock/storage";
 import { mockQualityRows } from "@/mock/quality";
+import { mockAdminAccounts } from "@/mock/admins";
 import type {
+  AdminBooking,
+  AdminBookingsReport,
+  AdminDemoAccount,
+  AdminQueue,
+  ApplicationDecision,
+  OverviewStats,
+  AdminLoginInput,
+  AdminSession,
   AdminUser,
   AdminWithdrawal,
-  ApprovalStatus,
   PhotographerApplication,
   QualityOverview,
   RankId,
@@ -26,10 +34,36 @@ import type {
 // in the services (sorting, status changes). State resets on a full reload.
 
 let users: AdminUser[] = mockUsers.map((u) => ({ ...u }));
+const avatarOf = (name: string) => users.find((u) => u.name === name)?.avatar;
 let applications: PhotographerApplication[] = mockApplications.map((a) => ({
   ...a,
 }));
 let withdrawals: AdminWithdrawal[] = mockWithdrawals.map((w) => ({ ...w }));
+
+// % change, one decimal (e.g. 9.3).
+const changePct = (now: number, before: number) =>
+  before ? Math.round(((now - before) / before) * 1000) / 10 : 0;
+
+// Deposit share clients pay upfront (mirrors the portal's booking rule).
+const DEPOSIT_RATE = 0.3;
+// What the platform is holding for a booking right now.
+const escrowOf = (b: AdminBooking) =>
+  b.status === "held"
+    ? b.price
+    : b.status === "pending" || b.status === "confirmed"
+      ? Math.round((b.price * DEPOSIT_RATE) / 1_000) * 1_000
+      : 0;
+
+const queue = (): AdminQueue => {
+  const pendingW = withdrawals.filter((w) => w.status === "pending");
+  return {
+    pendingApplications: applications.filter((a) => a.status === "pending").length,
+    pendingWithdrawals: pendingW.length,
+    pendingWithdrawalTotal: pendingW.reduce((sum, w) => sum + w.amount, 0),
+    overQuota: storageOverview().overQuotaCount,
+    suspendedUsers: users.filter((u) => u.status === "suspended").length,
+  };
+};
 
 const financeSummary = () => {
   const pending = withdrawals.filter((w) => w.status === "pending");
@@ -108,26 +142,57 @@ export const handlers = [
     );
   }),
 
+  // Approve, or reject with a reason (required — the applicant sees it).
   http.patch("/api/admin/applications/:id", async ({ params, request }) => {
     await delay();
-    const { status } = (await request.json()) as { status: ApprovalStatus };
-    applications = applications.map((a) =>
-      a.id === params.id ? { ...a, status } : a
-    );
-    const updated = applications.find((a) => a.id === params.id);
-    if (!updated) {
-      return HttpResponse.json(
-        { message: "Không tìm thấy hồ sơ" },
-        { status: 404 }
-      );
+    const { status, note } = (await request.json()) as ApplicationDecision;
+    const app = applications.find((a) => a.id === params.id);
+    if (!app) {
+      return HttpResponse.json({ message: "Không tìm thấy hồ sơ" }, { status: 404 });
     }
+    if (app.status !== "pending") {
+      return HttpResponse.json({ message: "Hồ sơ này đã được xử lý" }, { status: 409 });
+    }
+    const reason = note?.trim();
+    if (status === "rejected" && !reason) {
+      return HttpResponse.json({ message: "Vui lòng nhập lý do từ chối" }, { status: 400 });
+    }
+    const updated: PhotographerApplication = {
+      ...app,
+      status,
+      reviewNote: reason || undefined,
+      reviewedAt: new Date().toISOString(),
+    };
+    applications = applications.map((a) => (a.id === app.id ? updated : a));
     return HttpResponse.json(updated);
   }),
 
   // ── Stats & reports (read-only) ───────────────────────────────────────────
   http.get("/api/admin/stats", async () => {
     await delay();
-    return HttpResponse.json(mockStats);
+    const { lastMonth } = mockStats;
+    const months = mockReports.monthly;
+    const revenue = months[months.length - 1].revenue;
+    const prevRevenue = months[months.length - 2].revenue;
+    const stats: OverviewStats = {
+      totalUsers: mockStats.totalUsers,
+      totalPhotographers: mockStats.totalPhotographers,
+      totalBookings: mockStats.totalBookings,
+      monthlyRevenue: revenue,
+      change: {
+        users: changePct(mockStats.totalUsers, lastMonth.totalUsers),
+        photographers: changePct(mockStats.totalPhotographers, lastMonth.totalPhotographers),
+        bookings: changePct(mockStats.totalBookings, lastMonth.totalBookings),
+        revenue: changePct(revenue, prevRevenue),
+      },
+    };
+    return HttpResponse.json(stats);
+  }),
+
+  // Everything waiting on an admin, in one call (overview + sidebar badges).
+  http.get("/api/admin/queue", async () => {
+    await delay();
+    return HttpResponse.json(queue());
   }),
 
   http.get("/api/admin/activity", async () => {
@@ -178,9 +243,23 @@ export const handlers = [
   // ── Bookings & collaboration (read-only monitor) ──────────────────────────
   http.get("/api/admin/bookings", async () => {
     await delay();
-    return HttpResponse.json(
-      [...mockBookings].sort((a, b) => b.date.localeCompare(a.date))
-    );
+    const report: AdminBookingsReport = {
+      summary: {
+        escrowHeld: mockBookings.reduce((sum, b) => sum + escrowOf(b), 0),
+        activeCount: mockBookings.filter((b) => b.status !== "released" && b.status !== "cancelled").length,
+        collabCount: mockBookings.filter((b) => (b.collaborators ?? []).length > 0).length,
+      },
+      // Join the people's avatars, like a backend joining the users table.
+      rows: mockBookings
+        .map((b) => ({
+          ...b,
+          photographerAvatar: avatarOf(b.photographerName),
+          clientAvatar: avatarOf(b.clientName),
+          collaborators: b.collaborators?.map((c) => ({ ...c, avatar: avatarOf(c.name) })),
+        }))
+        .sort((a, b) => b.date.localeCompare(a.date)),
+    };
+    return HttpResponse.json(report);
   }),
 
   // ── Storage & plans ───────────────────────────────────────────────────────
@@ -199,5 +278,34 @@ export const handlers = [
       overview: qualityOverview(),
       rows: [...mockQualityRows],
     });
+  }),
+
+  // ── Auth (UI phase — no tokens; the session is kept client-side) ─────────
+  http.post("/api/auth/login", async ({ request }) => {
+    await delay();
+    const { email, password } = (await request.json()) as AdminLoginInput;
+    const key = email.trim().toLowerCase();
+    const account = mockAdminAccounts.find((a) => a.email.toLowerCase() === key);
+    if (!account || account.password !== password) {
+      return HttpResponse.json(
+        { message: "Email hoặc mật khẩu không đúng" },
+        { status: 401 }
+      );
+    }
+    const session: AdminSession = {
+      id: account.id,
+      name: account.name,
+      email: account.email,
+      avatar: account.avatar,
+    };
+    return HttpResponse.json(session);
+  }),
+
+  http.get("/api/auth/demo-accounts", async () => {
+    await delay();
+    const demo: AdminDemoAccount[] = mockAdminAccounts
+      .filter((a) => a.demo)
+      .map(({ email, password }) => ({ email, password }));
+    return HttpResponse.json(demo);
   }),
 ];

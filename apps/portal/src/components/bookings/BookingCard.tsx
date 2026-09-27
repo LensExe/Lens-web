@@ -1,10 +1,15 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, Check, Loader2, MapPin } from "lucide-react";
+import { CalendarDays, Check, MapPin } from "lucide-react";
 import { Avatar, AvatarFallback, Button, cn, formatPrice, toast } from "@lens/ui";
-import { BOOKING_STATUS_META } from "@/lib/booking";
+import {
+  BOOKING_STATUS_META,
+  canCancel,
+  deliveryProgress,
+  remainingAmount,
+} from "@/lib/booking";
 import { formatCoins } from "@/lib/wallet";
-import { useCancelBooking, useConfirmReceipt } from "@/queries/useBookings";
+import { useConfirmReceipt } from "@/queries/useBookings";
+import { CancelBookingDialog } from "@/components/bookings/CancelBookingDialog";
 import { useGallery } from "@/queries/useStorage";
 import type { Booking } from "@/types";
 
@@ -18,11 +23,10 @@ const formatDate = (iso: string) => {
 export function BookingCard({ booking }: { booking: Booking }) {
   const status = BOOKING_STATUS_META[booking.status];
   const confirmReceipt = useConfirmReceipt();
-  const cancelBooking = useCancelBooking();
   const { data: gallery } = useGallery(booking.id);
-  const [confirmingCancel, setConfirmingCancel] = useState(false);
-  // Client can only complete once the photographer has delivered photos.
-  const hasPhotos = !!gallery?.photos.length;
+  // Client can only complete once the package's photo count has been delivered.
+  const delivered = gallery?.photos.length ?? 0;
+  const progress = deliveryProgress(booking, delivered);
 
   const release = () =>
     confirmReceipt.mutate(booking.id, {
@@ -35,13 +39,6 @@ export function BookingCard({ booking }: { booking: Booking }) {
         );
       },
       onError: () => toast.error("Không thể xác nhận, vui lòng thử lại"),
-    });
-
-  const cancel = () =>
-    cancelBooking.mutate(booking.id, {
-      onSuccess: () =>
-        toast.success(`Đã huỷ và hoàn lại ${formatPrice(booking.price)}`),
-      onError: () => toast.error("Không thể huỷ lịch, vui lòng thử lại"),
     });
 
   return (
@@ -81,9 +78,21 @@ export function BookingCard({ booking }: { booking: Booking }) {
 
         <div className="flex shrink-0 flex-col items-end gap-1.5 text-right">
           <p className="font-semibold">{formatPrice(booking.price)}</p>
-          {booking.status === "confirmed" ? (
+          {booking.status === "awaiting_deposit" ? (
+            <Button asChild size="sm" className="rounded-full bg-ember text-white hover:bg-ember/90">
+              <Link to={`/client/bookings/${booking.id}/deposit`}>
+                Đặt cọc {formatPrice(booking.depositAmount)}
+              </Link>
+            </Button>
+          ) : booking.status === "pending" ? (
+            <span className="text-xs text-muted-foreground">
+              Đã cọc {formatPrice(booking.depositAmount)}
+            </span>
+          ) : booking.status === "confirmed" ? (
             <Button asChild size="sm" className="rounded-full">
-              <Link to={`/client/bookings/${booking.id}/pay`}>Thanh toán</Link>
+              <Link to={`/client/bookings/${booking.id}/pay`}>
+                Thanh toán {formatPrice(remainingAmount(booking))}
+              </Link>
             </Button>
           ) : booking.status === "held" ? (
             <>
@@ -91,30 +100,24 @@ export function BookingCard({ booking }: { booking: Booking }) {
                 size="sm"
                 variant="outline"
                 className="rounded-full"
-                disabled={confirmReceipt.isPending || !hasPhotos}
+                disabled={confirmReceipt.isPending || !progress.complete}
                 onClick={release}
               >
                 <Check className="size-4" />
                 Đã nhận ảnh
               </Button>
-              {!hasPhotos && (
+              {delivered === 0 ? (
                 <span className="text-xs text-muted-foreground">
                   Chờ nhiếp ảnh gia giao ảnh
                 </span>
-              )}
-              <button
-                type="button"
-                onClick={() => setConfirmingCancel(true)}
-                className="text-xs text-muted-foreground transition-colors hover:text-destructive"
-              >
-                Huỷ & hoàn tiền
-              </button>
-              {hasPhotos && (
+              ) : (
                 <Link
                   to={`/client/bookings/${booking.id}/gallery`}
                   className="text-xs text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  Xem ảnh
+                  {progress.complete
+                    ? "Xem ảnh"
+                    : `Đã giao ${delivered}/${progress.required} ảnh`}
                 </Link>
               )}
             </>
@@ -140,42 +143,22 @@ export function BookingCard({ booking }: { booking: Booking }) {
               Xem hồ sơ
             </Link>
           )}
+          {canCancel(booking) && (
+            <CancelBookingDialog
+              booking={booking}
+              trigger={
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground transition-colors hover:text-destructive"
+                >
+                  Huỷ lịch
+                </button>
+              }
+            />
+          )}
         </div>
       </div>
 
-      {/* Inline confirm — escrow refunds the full amount on cancellation. */}
-      {confirmingCancel && booking.status === "held" && (
-        <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-muted-foreground">
-            Huỷ buổi chụp và hoàn lại{" "}
-            <span className="font-medium text-foreground">
-              {formatPrice(booking.price)}
-            </span>{" "}
-            cho bạn?
-          </p>
-          <div className="flex justify-end gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className="rounded-full"
-              disabled={cancelBooking.isPending}
-              onClick={() => setConfirmingCancel(false)}
-            >
-              Giữ lịch
-            </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              className="rounded-full"
-              disabled={cancelBooking.isPending}
-              onClick={cancel}
-            >
-              {cancelBooking.isPending && <Loader2 className="size-4 animate-spin" />}
-              Huỷ & hoàn tiền
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

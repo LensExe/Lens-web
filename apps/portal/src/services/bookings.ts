@@ -1,5 +1,5 @@
 import { api } from "@/lib/api";
-import type { Booking, BookingInput, PaymentInput } from "@/types";
+import type { Booking, BookingInput, DepositInput, PaymentInput } from "@/types";
 
 // Layer 3 — Service / API. Thin HTTP calls; the mock backend (src/msw) owns the
 // in-memory store + sorting and answers these in the UI phase.
@@ -28,4 +28,9 @@ export async function confirmReceipt(id: string): Promise<Booking> {
 /** Client cancels a held booking → escrow refunds in full ("cancelled"). */
 export async function cancelBooking(id: string): Promise<Booking> {
   return (await api.post<Booking>(`/bookings/${id}/cancel`, {})).data;
+}
+
+/** Client pays the deposit → the request goes to the photographer ("pending"). */
+export async function payDeposit(id: string, input: DepositInput): Promise<Booking> {
+  return (await api.post<Booking>(`/bookings/${id}/deposit`, input)).data;
 }

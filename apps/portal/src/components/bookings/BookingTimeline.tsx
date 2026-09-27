@@ -2,12 +2,14 @@ import { Check, XCircle } from "lucide-react";
 import { cn } from "@lens/ui";
 import type { BookingStatus } from "@/types";
 
-// The escrow lifecycle as an ordered stepper. "cancelled" is off-path → shown as
-// a distinct banner instead of a step.
+// The escrow lifecycle as an ordered stepper. Each step is the status a booking
+// sits in while that step is in progress. "cancelled" is off-path → shown as a
+// distinct banner instead of a step.
 const STEPS: { status: Exclude<BookingStatus, "cancelled">; title: string; desc: string }[] = [
-  { status: "pending", title: "Đã gửi yêu cầu", desc: "Chờ nhiếp ảnh gia xác nhận" },
-  { status: "confirmed", title: "Đã xác nhận", desc: "Chờ khách thanh toán" },
-  { status: "held", title: "Đã thanh toán", desc: "Sàn giữ tiền, chờ giao ảnh" },
+  { status: "awaiting_deposit", title: "Đặt cọc", desc: "Cọc để giữ lịch chụp" },
+  { status: "pending", title: "Nhiếp ảnh gia xác nhận", desc: "Đã cọc, chờ nhiếp ảnh gia duyệt" },
+  { status: "confirmed", title: "Thanh toán phần còn lại", desc: "Hoàn tất trước buổi chụp" },
+  { status: "held", title: "Chụp & giao ảnh", desc: "Sàn giữ tiền đến khi bạn nhận ảnh" },
   { status: "released", title: "Hoàn thành", desc: "Đã giao ảnh & giải ngân" },
 ];
 const ORDER = STEPS.map((s) => s.status);
@@ -20,8 +22,8 @@ export function BookingTimeline({ status }: { status: BookingStatus }) {
         <div>
           <p className="font-medium">Buổi chụp đã huỷ</p>
           <p className="mt-0.5 text-destructive/80">
-            Nếu bạn đã thanh toán, toàn bộ số tiền (và Lens Xu đã dùng) đã được
-            hoàn lại.
+            Tiền đã trả được hoàn vào ví theo chính sách huỷ (huỷ muộn có thể mất
+            tiền cọc). Xem chi tiết trong Ví của bạn.
           </p>
         </div>
       </div>
@@ -29,12 +31,14 @@ export function BookingTimeline({ status }: { status: BookingStatus }) {
   }
 
   const currentIndex = ORDER.indexOf(status);
+  // "released" is the end state — show it as done, not in progress.
+  const doneThrough = status === "released" ? currentIndex + 1 : currentIndex;
 
   return (
     <ol>
       {STEPS.map((step, i) => {
-        const done = i < currentIndex;
-        const active = i === currentIndex;
+        const done = i < doneThrough;
+        const active = i === currentIndex && !done;
         const isLast = i === STEPS.length - 1;
         return (
           <li key={step.status} className="relative flex gap-3 pb-6 last:pb-0">
@@ -52,8 +56,8 @@ export function BookingTimeline({ status }: { status: BookingStatus }) {
                 done
                   ? "border-foreground bg-foreground text-background"
                   : active
-                    ? "border-foreground text-foreground"
-                    : "border-border text-muted-foreground"
+                    ? "border-foreground bg-background text-foreground ring-4 ring-foreground/10"
+                    : "border-border bg-background text-muted-foreground"
               )}
             >
               {done ? <Check className="size-3.5" /> : i + 1}

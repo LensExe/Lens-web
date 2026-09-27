@@ -7,7 +7,17 @@ import {
   Loader2,
   Lock,
 } from "lucide-react";
-import { Button, Progress, Skeleton, cn, toast } from "@lens/ui";
+import {
+  Button,
+  PageContainer,
+  PageHeader,
+  Progress,
+  Skeleton,
+  TONE_FILL,
+  cn,
+  toast,
+  type Tone,
+} from "@lens/ui";
 import {
   STORAGE_PLANS,
   daysUntil,
@@ -28,6 +38,9 @@ function retentionLabel(days: number | null) {
   return `Lưu ${days} ngày`;
 }
 
+// Usage colour: plain ink until it gets close to the soft capacity (a warning).
+const usageTone = (pct: number): Tone => (pct >= 90 ? "rose" : pct >= 70 ? "amber" : "neutral");
+
 function GalleryRow({ gallery }: { gallery: ShootGallery }) {
   const level = expiryLevel(gallery.expiresAt);
   const days = gallery.expiresAt ? daysUntil(gallery.expiresAt) : 0;
@@ -36,7 +49,7 @@ function GalleryRow({ gallery }: { gallery: ShootGallery }) {
       to={`/dashboard/bookings/${gallery.bookingId}/gallery`}
       className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:bg-muted/30"
     >
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground">
         <Images className="size-5" />
       </span>
       <div className="min-w-0 flex-1">
@@ -90,37 +103,46 @@ export function DashboardStorage() {
   // Soft capacity for the usage bar: per-shoot quota × delivered galleries.
   const capacity = s ? s.quotaBytesPerShoot * Math.max(s.galleryCount, 1) : 0;
   const usedPct = s && capacity > 0 ? Math.min(100, (s.usedBytes / capacity) * 100) : 0;
+  const tone = usageTone(usedPct);
 
   return (
-    <div className="mx-auto max-w-[860px] px-5 py-8 md:py-10">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-          Lưu trữ ảnh
-        </h1>
-        <p className="mt-1 text-muted-foreground">
-          Quản lý dung lượng và gói lưu trữ ảnh cho các buổi chụp.
-        </p>
-      </header>
+    <PageContainer>
+      <PageHeader
+        title="Lưu trữ ảnh"
+        description="Quản lý dung lượng và gói lưu trữ ảnh cho các buổi chụp."
+      />
 
       {/* Usage overview */}
-      <section className="mt-7 rounded-3xl border border-border bg-card p-6">
+      <section className="rounded-3xl border border-border bg-card p-6">
         {summary.isLoading || !s ? (
           <Skeleton className="h-24 w-full" />
         ) : (
           <>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <HardDrive className="size-4" />
+                <span className="flex size-8 items-center justify-center rounded-lg bg-muted text-foreground">
+                  <HardDrive className="size-4" />
+                </span>
                 Đã dùng
               </div>
               <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium">
                 Gói {planById(s.plan).name}
               </span>
             </div>
-            <p className="mt-3 text-3xl font-semibold tracking-tight">
+            <p className="mt-3 flex items-baseline gap-2 text-3xl font-semibold tracking-tight">
               {formatBytes(s.usedBytes)}
+              <span className="text-sm font-medium text-muted-foreground">
+                / {formatBytes(capacity)} · {Math.round(usedPct)}%
+              </span>
             </p>
-            <Progress value={usedPct} className="mt-3" />
+            <Progress value={usedPct} className="mt-3 h-2.5" indicatorClassName={TONE_FILL[tone]} />
+            {tone !== "neutral" && (
+              <p className={cn("mt-2 text-sm font-medium", tone === "rose" ? "text-rose-600 dark:text-rose-400" : "text-amber-700 dark:text-amber-400")}>
+                {tone === "rose"
+                  ? "Sắp hết dung lượng — nâng cấp gói để không bị khoá bộ sưu tập."
+                  : "Dung lượng đã dùng trên 70% — cân nhắc nâng cấp gói."}
+              </p>
+            )}
             <p className="mt-2 text-sm text-muted-foreground">
               {s.galleryCount} buổi · {formatBytes(s.quotaBytesPerShoot)} mỗi buổi ·{" "}
               {retentionLabel(s.retentionDays)}
@@ -140,7 +162,7 @@ export function DashboardStorage() {
                 key={plan.id}
                 className={cn(
                   "flex flex-col rounded-2xl border p-5",
-                  current ? "border-foreground ring-1 ring-foreground" : "border-border"
+                  current ? "border-foreground bg-card ring-1 ring-foreground" : "border-border bg-card"
                 )}
               >
                 <p className="font-semibold">{plan.name}</p>
@@ -191,6 +213,6 @@ export function DashboardStorage() {
           </div>
         )}
       </section>
-    </div>
+    </PageContainer>
   );
 }

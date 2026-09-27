@@ -1,5 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
-import { getOverviewStats, getRecentActivity } from "@/services/stats";
+import { getOverviewStats, getQueue, getRecentActivity } from "@/services/stats";
+
+/** Invalidated by every mutation that adds or clears an admin task. */
+export const queueKey = ["queue"] as const;
+
+export function useAdminQueue() {
+  return useQuery({
+    queryKey: queueKey,
+    queryFn: getQueue,
+  });
+}
 
 // Layer 2 — Query hooks.
 export function useOverviewStats() {

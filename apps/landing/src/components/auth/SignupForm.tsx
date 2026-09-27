@@ -1,120 +1,176 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
-import { Button, Input, cn } from "@lens/ui";
+import { Link, useSearchParams } from "react-router-dom";
+import { useForm, useWatch } from "react-hook-form";
+import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
+import { ArrowRight, Camera, Check, Search } from "lucide-react";
+import { Button, Spinner, cn } from "@lens/ui";
+import { AuthInput } from "./AuthInput";
+import { FormError } from "./FormError";
+import { FormField } from "./FormField";
+import { PasswordInput } from "./PasswordInput";
+import { useRegister } from "@/queries/useAuth";
+import { isPortalRole, signupSchema, type SignupValues } from "@/lib/auth";
+import { portalHomeFor } from "@/lib/links";
+import type { PortalRole } from "@/types";
 
-// UI phase: no real auth. Pick an account type, "sign up", and redirect to
-// the portal. URL comes from env so dev/prod just work.
-const PORTAL_URL = import.meta.env.VITE_PORTAL_URL ?? "http://localhost:5174";
-
-type Role = "client" | "photographer";
-
-const roles: { value: Role; label: string; hint: string }[] = [
-  { value: "client", label: "Khách hàng", hint: "Tôi muốn đặt lịch chụp" },
-  { value: "photographer", label: "Nhiếp ảnh gia", hint: "Tôi muốn nhận lịch chụp" },
+const ROLE_OPTIONS: {
+  value: PortalRole;
+  title: string;
+  hint: string;
+  Icon: typeof Camera;
+}[] = [
+  {
+    value: "client",
+    title: "Tôi muốn thuê nhiếp ảnh gia",
+    hint: "Tìm, so sánh và đặt lịch chụp",
+    Icon: Search,
+  },
+  {
+    value: "photographer",
+    title: "Tôi là nhiếp ảnh gia",
+    hint: "Nhận lịch và phát triển thương hiệu",
+    Icon: Camera,
+  },
 ];
 
-/** Shared signup form — used by the auth modal and the `/signup` page. */
-export function SignupForm({
-  showHeading = true,
-  showSwitchLink = true,
-  onNavigateAway,
-}: {
-  showHeading?: boolean;
-  showSwitchLink?: boolean;
-  onNavigateAway?: () => void;
-}) {
-  const [role, setRole] = useState<Role>("client");
+const SUBTITLES: Record<PortalRole, string> = {
+  client: "Tìm và đặt lịch với nhiếp ảnh gia phù hợp chỉ trong vài phút.",
+  photographer: "Tạo hồ sơ, nhận lịch chụp và phát triển thương hiệu của bạn.",
+};
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // UI phase: both client and photographer land in the portal.
-    window.location.href = PORTAL_URL;
+// `?role=photographer` (from the "Trở thành nhiếp ảnh gia" CTAs) preselects the
+// account type; the chosen role is carried to the portal on success.
+export function SignupForm() {
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get("redirect");
+  const presetRole = searchParams.get("role");
+  const signup = useRegister();
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    control,
+    formState: { errors },
+  } = useForm<SignupValues>({
+    resolver: standardSchemaResolver(signupSchema),
+    mode: "onTouched",
+    defaultValues: {
+      role: isPortalRole(presetRole) ? presetRole : "client",
+      name: "",
+      email: "",
+      password: "",
+    },
+  });
+
+  const role = useWatch({ control, name: "role" });
+
+  const onSubmit = (values: SignupValues) => {
+    signup.mutate(values, {
+      onSuccess: (user) => {
+        window.location.href = portalHomeFor(user.role, redirect);
+      },
+    });
   };
+
+  const busy = signup.isPending || signup.isSuccess;
+  const carry = redirect ? `?redirect=${encodeURIComponent(redirect)}` : "";
 
   return (
     <div>
-      {showHeading && (
-        <>
-          <h2 className="text-2xl font-semibold tracking-tight">Tạo tài khoản</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Tham gia Lens — chọn loại tài khoản để bắt đầu.
-          </p>
-        </>
-      )}
+      <h1 className="text-3xl font-semibold tracking-tight">Tạo tài khoản Lens</h1>
+      <p className="mt-2 text-sm text-muted-foreground">{SUBTITLES[role]}</p>
 
-      <form onSubmit={handleSubmit} className={cn("space-y-4", showHeading && "mt-6")}>
-        <div className="space-y-2">
-          <span className="text-sm font-medium">Tôi là</span>
-          <div className="grid grid-cols-2 gap-2">
-            {roles.map((r) => (
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-8 space-y-4">
+        <div role="radiogroup" aria-label="Loại tài khoản" className="grid gap-2 sm:grid-cols-2">
+          {ROLE_OPTIONS.map(({ value, title, hint, Icon }) => {
+            const selected = role === value;
+            return (
               <button
-                key={r.value}
+                key={value}
                 type="button"
-                onClick={() => setRole(r.value)}
+                role="radio"
+                aria-checked={selected}
+                onClick={() => setValue("role", value)}
                 className={cn(
-                  "rounded-xl border px-3 py-2.5 text-left text-sm transition-colors",
-                  role === r.value
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border text-muted-foreground hover:bg-muted"
+                  "focus-ring relative rounded-2xl border p-4 text-left transition-colors",
+                  selected
+                    ? "border-foreground bg-foreground/3 ring-1 ring-foreground"
+                    : "border-border hover:bg-muted/60"
                 )}
               >
-                <span className="block font-medium">{r.label}</span>
                 <span
                   className={cn(
-                    "mt-0.5 block text-xs",
-                    role === r.value ? "text-background/70" : "text-muted-foreground"
+                    "flex size-9 items-center justify-center rounded-full",
+                    selected ? "bg-foreground text-background" : "bg-muted"
                   )}
                 >
-                  {r.hint}
+                  <Icon className="size-4" />
                 </span>
+                <span className="mt-3 block text-sm font-semibold">{title}</span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">{hint}</span>
+                {selected && (
+                  <Check className="absolute right-3 top-3 size-4" aria-hidden />
+                )}
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="signup-name" className="text-sm font-medium">
-            Họ và tên
-          </label>
-          <Input id="signup-name" type="text" placeholder="Nguyễn Văn A" defaultValue="Người dùng Lens" />
-        </div>
+        <FormField id="signup-name" label="Họ và tên" error={errors.name?.message}>
+          <AuthInput
+            id="signup-name"
+            autoComplete="name"
+            placeholder="Nguyễn Văn A"
+            aria-invalid={!!errors.name}
+            {...register("name")}
+          />
+        </FormField>
 
-        <div className="space-y-2">
-          <label htmlFor="signup-email" className="text-sm font-medium">
-            Email
-          </label>
-          <Input id="signup-email" type="email" placeholder="ban@example.com" defaultValue="demo@lens.vn" />
-        </div>
+        <FormField id="signup-email" label="Email" error={errors.email?.message}>
+          <AuthInput
+            id="signup-email"
+            type="email"
+            autoComplete="email"
+            placeholder="ban@example.com"
+            aria-invalid={!!errors.email}
+            {...register("email")}
+          />
+        </FormField>
 
-        <div className="space-y-2">
-          <label htmlFor="signup-password" className="text-sm font-medium">
-            Mật khẩu
-          </label>
-          <Input id="signup-password" type="password" placeholder="Ít nhất 8 ký tự" defaultValue="demo1234" />
-        </div>
+        <FormField id="signup-password" label="Mật khẩu" error={errors.password?.message}>
+          <PasswordInput
+            id="signup-password"
+            autoComplete="new-password"
+            placeholder="Ít nhất 8 ký tự"
+            aria-invalid={!!errors.password}
+            {...register("password")}
+          />
+        </FormField>
 
-        <Button type="submit" size="lg" className="w-full rounded-full">
-          Tạo tài khoản
-          <ArrowRight className="size-4" />
+        {signup.isError && <FormError message={signup.error.message} />}
+
+        <Button type="submit" size="lg" disabled={busy} className="h-11 w-full rounded-full">
+          {busy ? (
+            <Spinner />
+          ) : (
+            <>
+              Tạo tài khoản
+              <ArrowRight className="size-4" />
+            </>
+          )}
         </Button>
+
+        <p className="text-center text-xs text-muted-foreground">
+          Bằng việc đăng ký, bạn đồng ý với Điều khoản dịch vụ và Chính sách bảo mật
+          của Lens.
+        </p>
       </form>
 
-      {showSwitchLink && (
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          Đã có tài khoản?{" "}
-          <Link
-            to="/login"
-            onClick={onNavigateAway}
-            className="font-medium text-foreground hover:underline"
-          >
-            Đăng nhập
-          </Link>
-        </p>
-      )}
-
-      <p className="mt-4 text-center text-xs text-muted-foreground">
-        Giai đoạn UI: tạo tài khoản sẽ chuyển tới Portal.
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        Đã có tài khoản?{" "}
+        <Link to={`/login${carry}`} className="font-medium text-foreground hover:underline">
+          Đăng nhập
+        </Link>
       </p>
     </div>
   );

@@ -22,5 +22,8 @@ export const mockUsers: AdminUser[] = [
   { id: "u9", name: "Lê Thị Hương", email: "lehuong@example.com", avatar: av("lehuong-av"), role: "photographer", status: "active", city: "Đà Nẵng", joinedAt: daysAgo(140), bookingsCount: 18 },
   { id: "u10", name: "Đỗ Thu Giang", email: "thugiang@example.com", avatar: av("thugiang-av"), role: "client", status: "active", city: "Cần Thơ", joinedAt: daysAgo(15), bookingsCount: 1 },
   { id: "u11", name: "Phạm Đức Duy", email: "ducduy@example.com", avatar: av("ducduy-av"), role: "photographer", status: "suspended", city: "Hà Nội", joinedAt: daysAgo(120), bookingsCount: 15 },
+  { id: "u13", name: "Vũ Hoàng Lan", email: "hoanglan@example.com", avatar: av("hoanglan-av"), role: "photographer", status: "active", city: "TP. Hồ Chí Minh", joinedAt: daysAgo(110), bookingsCount: 14 },
+  { id: "u14", name: "Đỗ Khánh Vy", email: "khanhvy@example.com", avatar: av("khanhvy-av"), role: "photographer", status: "active", city: "Đà Nẵng", joinedAt: daysAgo(100), bookingsCount: 11 },
+  { id: "u15", name: "Bùi Thanh Tùng", email: "thanhtung@example.com", avatar: av("thanhtung-av"), role: "photographer", status: "active", city: "Cần Thơ", joinedAt: daysAgo(60), bookingsCount: 4 },
   { id: "u12", name: "Bùi Thanh Thảo", email: "thanhthao@example.com", avatar: av("thanhthao-av"), role: "photographer", status: "active", city: "Đà Lạt", joinedAt: daysAgo(160), bookingsCount: 30 },
 ];

@@ -1,16 +1,6 @@
 import { useMemo, useState } from "react";
-import { Ban, RotateCcw, Search, UserX } from "lucide-react";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-  Button,
-  DataGridColumnHeader,
-  Input,
-  Skeleton,
-  cn,
-  toast,
-} from "@lens/ui";
+import { Ban, Camera, RotateCcw, Search, UserRound, UserX, Users as UsersIcon } from "lucide-react";
+import { Button, Input, PageContainer, PageHeader, StatCard, toast } from "@lens/ui";
 import {
   getCoreRowModel,
   getPaginationRowModel,
@@ -19,149 +9,114 @@ import {
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DataTable } from "@/components/DataTable";
-import { useUsers, useSetUserStatus } from "@/queries/useUsers";
-import { ROLE_LABEL, USER_STATUS_META } from "@/lib/status";
+import { ColumnHeader } from "@/components/data-table/ColumnHeader";
+import { ACTIONS, NUM } from "@/components/data-table/columns";
+import { EmptyState } from "@/components/EmptyState";
+import { StatusPill } from "@/components/StatusPill";
+import { UserCell } from "@/components/UserCell";
+import { useSetUserStatus, useUsers } from "@/queries/useUsers";
+import { ROLE_META, USER_STATUS_META } from "@/lib/status";
 import { formatCount, formatDate } from "@/lib/format";
-import type { AdminUser, UserRole } from "@/types";
+import type { AdminUser } from "@/types";
 
-type RoleFilter = "all" | UserRole;
+type Filter = "all" | "client" | "photographer" | "suspended";
 
-const ROLE_FILTERS: { value: RoleFilter; label: string }[] = [
-  { value: "all", label: "Tất cả" },
-  { value: "client", label: "Khách hàng" },
-  { value: "photographer", label: "Nhiếp ảnh gia" },
-];
-
-const initialsOf = (name: string) =>
-  name.split(" ").slice(-2).map((w) => w[0]).join("");
+// Accent-insensitive search ("thuy an" finds "Thuý An").
+const fold = (s: string) =>
+  s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/gi, "d").toLowerCase();
 
 export function Users() {
   // TanStack Table keeps mutable state on the table instance; the React
   // Compiler's memoization breaks its updates (sorting/pagination no-op).
   "use no memo";
   const { data: users = [], isLoading } = useUsers();
-  const { mutate, isPending } = useSetUserStatus();
-  const [role, setRole] = useState<RoleFilter>("all");
+  const setStatus = useSetUserStatus();
+  const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [target, setTarget] = useState<AdminUser | null>(null);
+
+  const count = {
+    all: users.length,
+    client: users.filter((u) => u.role === "client").length,
+    photographer: users.filter((u) => u.role === "photographer").length,
+    suspended: users.filter((u) => u.status === "suspended").length,
+  };
 
   const data = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = fold(search.trim());
     return users.filter((u) => {
-      const matchesRole = role === "all" || u.role === role;
-      const matchesSearch =
-        !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
-      return matchesRole && matchesSearch;
+      const inTab =
+        filter === "all" ||
+        (filter === "suspended" ? u.status === "suspended" : u.role === filter);
+      return inTab && (!q || fold(`${u.name} ${u.email}`).includes(q));
     });
-  }, [users, role, search]);
+  }, [users, filter, search]);
 
   const columns = useMemo<ColumnDef<AdminUser>[]>(
     () => [
       {
         accessorKey: "name",
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Người dùng" />,
-        cell: ({ row }) => {
-          const u = row.original;
-          return (
-            <div className="flex items-center gap-3">
-              <Avatar className="size-9 shrink-0">
-                <AvatarImage src={u.avatar} alt={u.name} />
-                <AvatarFallback>{initialsOf(u.name)}</AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <p className="font-medium leading-tight">{u.name}</p>
-                <p className="text-xs text-muted-foreground">{u.email}</p>
-              </div>
-            </div>
-          );
-        },
-        size: 260,
+        header: ({ column }) => <ColumnHeader column={column} title="Người dùng" />,
+        cell: ({ row }) => <UserCell name={row.original.name} avatar={row.original.avatar} sub={row.original.email} />,
       },
       {
         accessorKey: "role",
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Vai trò" />,
-        cell: ({ row }) => (
-          <span className="text-sm text-muted-foreground">{ROLE_LABEL[row.original.role]}</span>
-        ),
+        header: ({ column }) => <ColumnHeader column={column} title="Vai trò" />,
+        cell: ({ row }) => <StatusPill meta={ROLE_META[row.original.role]} dot={false} />,
       },
       {
         accessorKey: "city",
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Khu vực" />,
-        cell: ({ row }) => (
-          <span className="text-sm text-muted-foreground">{row.original.city}</span>
-        ),
+        header: ({ column }) => <ColumnHeader column={column} title="Khu vực" />,
+        cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.original.city}</span>,
       },
       {
         accessorKey: "joinedAt",
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Tham gia" />,
-        cell: ({ row }) => (
-          <span className="text-sm text-muted-foreground">{formatDate(row.original.joinedAt)}</span>
-        ),
+        header: ({ column }) => <ColumnHeader column={column} title="Tham gia" />,
+        cell: ({ row }) => <span className="text-sm text-muted-foreground">{formatDate(row.original.joinedAt)}</span>,
       },
       {
         accessorKey: "bookingsCount",
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Lượt đặt" />,
-        cell: ({ row }) => (
-          <span className="text-sm font-medium">{formatCount(row.original.bookingsCount)}</span>
-        ),
+        header: ({ column }) => <ColumnHeader column={column} title="Lượt đặt" align="right" />,
+        cell: ({ row }) => <span className="text-sm font-medium">{formatCount(row.original.bookingsCount)}</span>,
+        meta: NUM,
       },
       {
         accessorKey: "status",
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Trạng thái" />,
-        cell: ({ row }) => {
-          const status = USER_STATUS_META[row.original.status];
-          return (
-            <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", status.className)}>
-              {status.label}
-            </span>
-          );
-        },
+        header: ({ column }) => <ColumnHeader column={column} title="Trạng thái" />,
+        cell: ({ row }) => <StatusPill meta={USER_STATUS_META[row.original.status]} />,
       },
       {
         id: "actions",
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Hành động" />,
+        header: () => <span className="sr-only">Hành động</span>,
         enableSorting: false,
         cell: ({ row }) => {
           const u = row.original;
           const suspended = u.status === "suspended";
-          const toggle = () =>
-            mutate(
-              { id: u.id, status: suspended ? "active" : "suspended" },
-              {
-                onSuccess: () =>
-                  toast.success(
-                    suspended ? `Đã mở khoá ${u.name}` : `Đã tạm khoá ${u.name}`
-                  ),
-                onError: () => toast.error("Không thể cập nhật người dùng, vui lòng thử lại"),
-              }
-            );
+          const busy = setStatus.isPending && setStatus.variables?.id === u.id;
           return (
             <Button
               size="sm"
               variant="outline"
-              className="rounded-full"
-              disabled={isPending}
-              onClick={toggle}
+              className={
+                suspended
+                  ? "rounded-full"
+                  : "rounded-full hover:border-rose-300 hover:text-rose-700 dark:hover:text-rose-400"
+              }
+              disabled={busy}
+              onClick={() => setTarget(u)}
             >
-              {suspended ? (
-                <>
-                  <RotateCcw className="size-3.5" />
-                  Mở khoá
-                </>
-              ) : (
-                <>
-                  <Ban className="size-3.5" />
-                  Tạm khoá
-                </>
-              )}
+              {suspended ? <RotateCcw className="size-3.5" /> : <Ban className="size-3.5" />}
+              {suspended ? "Mở khoá" : "Tạm khoá"}
             </Button>
           );
         },
-        size: 150,
+        meta: ACTIONS,
       },
     ],
-    [mutate, isPending]
+    [setStatus.isPending, setStatus.variables]
   );
 
   const table = useReactTable({
@@ -176,60 +131,76 @@ export function Users() {
     getRowId: (row) => row.id,
   });
 
-  return (
-    <div className="mx-auto max-w-[1080px] px-6 py-8 md:py-10">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-          Quản lý người dùng
-        </h1>
-        <p className="mt-1 text-muted-foreground">
-          {isLoading ? "Đang tải..." : `${formatCount(users.length)} tài khoản`}
-        </p>
-      </header>
+  const unlocking = target?.status === "suspended";
+  const confirm = () => {
+    if (!target) return;
+    const u = target;
+    setStatus.mutate(
+      { id: u.id, status: unlocking ? "active" : "suspended" },
+      {
+        onSuccess: () => {
+          toast.success(unlocking ? `Đã mở khoá ${u.name}` : `Đã tạm khoá ${u.name}`);
+          setTarget(null);
+        },
+        onError: () => toast.error("Không thể cập nhật người dùng, vui lòng thử lại"),
+      }
+    );
+  };
 
-      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-2">
-          {ROLE_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              onClick={() => setRole(f.value)}
-              aria-pressed={role === f.value}
-              className={cn(
-                "focus-ring rounded-full border px-3.5 py-1.5 text-sm transition-colors",
-                role === f.value
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <div className="relative sm:w-64">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm theo tên hoặc email..."
-            className="pl-9"
-            aria-label="Tìm người dùng"
-          />
-        </div>
+  return (
+    <PageContainer>
+      <PageHeader title="Người dùng" description="Tài khoản khách hàng và nhiếp ảnh gia trên nền tảng." />
+
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard icon={UsersIcon} value={formatCount(count.all)} label="Tổng tài khoản" />
+        <StatCard icon={UserRound} value={formatCount(count.client)} label="Khách hàng" />
+        <StatCard icon={Camera} value={formatCount(count.photographer)} label="Nhiếp ảnh gia" />
+        <StatCard icon={Ban} value={formatCount(count.suspended)} label="Đang bị khoá" />
       </div>
 
-      {isLoading ? (
-        <Skeleton className="h-80 rounded-2xl" />
-      ) : data.length === 0 ? (
-        <div className="flex flex-col items-center rounded-2xl border border-dashed border-border p-10 text-center">
-          <span className="mb-3 flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-            <UserX className="size-6" />
-          </span>
-          <p className="font-medium">Không tìm thấy người dùng phù hợp</p>
-        </div>
-      ) : (
-        <DataTable table={table} recordCount={data.length} />
-      )}
-    </div>
+      <DataTable
+        table={table}
+        recordCount={data.length}
+        isLoading={isLoading}
+        tabs={{
+          value: filter,
+          onChange: setFilter,
+          items: [
+            { value: "all", label: "Tất cả", count: count.all },
+            { value: "client", label: "Khách hàng", count: count.client },
+            { value: "photographer", label: "Nhiếp ảnh gia", count: count.photographer },
+            { value: "suspended", label: "Bị khoá", count: count.suspended },
+          ],
+        }}
+        toolbar={
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Tìm theo tên hoặc email"
+              className="h-9 rounded-full pl-9"
+              aria-label="Tìm người dùng"
+            />
+          </div>
+        }
+        empty={<EmptyState bare icon={UserX} title="Không tìm thấy người dùng phù hợp" />}
+      />
+
+      <ConfirmDialog
+        open={!!target}
+        onOpenChange={(open) => !open && setTarget(null)}
+        title={unlocking ? `Mở khoá tài khoản ${target?.name}?` : `Tạm khoá tài khoản ${target?.name}?`}
+        description={
+          unlocking
+            ? "Người dùng có thể đăng nhập và sử dụng Lens trở lại."
+            : "Người dùng sẽ không thể đăng nhập, đặt lịch hay nhận lịch cho tới khi được mở khoá."
+        }
+        confirmLabel={unlocking ? "Mở khoá" : "Tạm khoá"}
+        destructive={!unlocking}
+        pending={setStatus.isPending}
+        onConfirm={confirm}
+      />
+    </PageContainer>
   );
 }

@@ -1,78 +1,93 @@
-import Stack from "@lens/ui/components/effects/Stack";
-import TiltedCard from "@lens/ui/components/effects/TiltedCard";
-import { Star } from "lucide-react";
+import { useEffect } from "react";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { Button, cn } from "@lens/ui";
+import { ShowcaseCard } from "@/components/landing/ShowcaseCard";
+import { useDriftMode, useDriftRail } from "@/hooks/useDriftRail";
 import { useFeaturedPhotographers } from "@/queries/usePhotographers";
+import { portalBrowse } from "@/lib/links";
 
+const MAX_CARDS = 8;
+const pad = (n: number) => String(n).padStart(2, "0");
+
+// "Xem trước phong cách" — never hijacks the page scroll. On desktop the rail
+// drifts slowly and loops (useDriftRail): hover pauses it, the wheel over it
+// scrolls it sideways, drag and ‹ › move it. On touch / narrow screens it's a
+// plain native swipe rail with scroll-snap — no JS animation at all.
 export function StyleShowcase() {
   const { data } = useFeaturedPhotographers();
+  const drift = useDriftMode();
+  const items = data?.slice(0, MAX_CARDS) ?? [];
+  const total = items.length;
+  const { viewport, track, counter, bar, step } = useDriftRail({ enabled: drift, total });
 
-  if (!data || data.length === 0) {
+  // This section mounts lazily and changes the page height: re-measure the
+  // scroll-triggered reveals further down.
+  useEffect(() => {
+    if (total > 0) ScrollTrigger.refresh();
+  }, [total]);
+
+  if (total === 0) {
     return <section className="px-5 py-20" aria-hidden />;
   }
 
-  const spotlight = data[0];
-  const stackCards = data.slice(0, 5).map((p) => (
-    <img
-      key={p.id}
-      src={p.cover}
-      alt={p.name}
-      draggable={false}
-      className="size-full object-cover"
-    />
-  ));
-
   return (
-    <section className="bg-muted/30 px-5 py-20 lg:py-28">
-      <div className="mx-auto max-w-[1200px]">
-        <div className="mx-auto mb-12 max-w-2xl text-center">
+    <section className="overflow-hidden bg-muted/30 py-20 lg:py-28">
+      <div className="mx-auto grid w-full max-w-[1200px] gap-10 px-5 lg:grid-cols-[380px_1fr] lg:items-center">
+        {/* Left: title, position + controls */}
+        <div>
           <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
             Xem trước phong cách
           </h2>
-          <p className="mt-2 text-muted-foreground">
-            Nghiêng để cảm nhận, vuốt để khám phá. Mỗi nhiếp ảnh gia một dấu ấn riêng.
+          <p className="mt-3 max-w-sm text-muted-foreground">
+            Lướt qua tác phẩm của những nhiếp ảnh gia nổi bật — mỗi người một dấu
+            ấn riêng.
           </p>
+
+          {drift && (
+            <div className="mt-8 flex items-center gap-4">
+              <span className="font-medium tabular-nums" aria-hidden>
+                <span ref={counter}>01</span>
+                <span className="text-muted-foreground"> / {pad(total)}</span>
+              </span>
+              <span className="relative h-px flex-1 overflow-hidden bg-border" aria-hidden>
+                <span ref={bar} className="absolute inset-0 origin-left scale-x-0 bg-foreground" />
+              </span>
+              <div className="flex gap-2">
+                <Button variant="outline" size="icon-lg" className="rounded-full" aria-label="Ảnh trước" onClick={() => step(-1)}>
+                  <ChevronLeft className="size-4" />
+                </Button>
+                <Button variant="outline" size="icon-lg" className="rounded-full" aria-label="Ảnh tiếp theo" onClick={() => step(1)}>
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <a
+            href={portalBrowse()}
+            className="group mt-8 inline-flex items-center gap-1.5 text-sm font-medium"
+          >
+            Xem tất cả nhiếp ảnh gia
+            <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+          </a>
         </div>
 
-        <div className="grid items-center gap-12 lg:grid-cols-2">
-          {/* Spotlight — tilt on hover */}
-          <div className="flex justify-center">
-            <TiltedCard
-              imageSrc={spotlight.cover}
-              altText={spotlight.name}
-              containerHeight="420px"
-              containerWidth="340px"
-              imageHeight="420px"
-              imageWidth="340px"
-              rotateAmplitude={12}
-              scaleOnHover={1.06}
-              showMobileWarning={false}
-              showTooltip={false}
-              displayOverlayContent
-              overlayContent={
-                <div className="m-3 rounded-2xl bg-black/55 px-4 py-3 text-white backdrop-blur-sm">
-                  <p className="text-base font-semibold leading-tight">{spotlight.name}</p>
-                  <p className="mt-1 flex items-center gap-1 text-xs text-white/80">
-                    <Star className="size-3 fill-ember text-ember" />
-                    {spotlight.rating.toFixed(1)} · {spotlight.styles.join(", ")}
-                  </p>
-                </div>
-              }
-            />
-          </div>
-
-          {/* Draggable stack */}
-          <div className="flex flex-col items-center gap-4">
-            <div className="h-[360px] w-[290px]">
-              <Stack
-                randomRotation
-                sensitivity={140}
-                sendToBackOnClick
-                cards={stackCards}
-                animationConfig={{ stiffness: 260, damping: 20 }}
-              />
-            </div>
-            <p className="text-sm text-muted-foreground">Kéo hoặc bấm để xem ảnh tiếp theo</p>
-          </div>
+        {/* Right: the rail */}
+        <div
+          ref={viewport}
+          className={cn(
+            drift
+              ? "cursor-grab overflow-hidden select-none [mask-image:linear-gradient(to_right,transparent,black_5%,black_85%,transparent)] active:cursor-grabbing"
+              : "-mx-5 snap-x snap-mandatory scroll-px-5 overflow-x-auto px-5 pb-2 [scrollbar-width:none]"
+          )}
+        >
+          <ul ref={track} className={cn("flex w-max gap-5", drift && "will-change-transform")}>
+            {items.map((p) => (
+              <ShowcaseCard key={p.id} photographer={p} />
+            ))}
+            {drift && items.map((p) => <ShowcaseCard key={`${p.id}-loop`} photographer={p} clone />)}
+          </ul>
         </div>
       </div>
     </section>
