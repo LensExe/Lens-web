@@ -8,8 +8,6 @@ const ROLE_ICONS: Record<PortalRole, typeof Camera> = {
   photographer: Camera,
 };
 
-// UI phase only: one-click demo logins, replacing the old role picker. The
-// account's role — not a user choice — decides where login redirects.
 export function DemoAccounts({ onPick }: { onPick: (account: DemoAccount) => void }) {
   const { data } = useDemoAccounts();
   if (!data?.length) return null;

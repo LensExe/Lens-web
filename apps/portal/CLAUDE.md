@@ -4,7 +4,7 @@
 
 **Role:** clients + photographers app, PLUS the public discovery pages. Dev port **5174**.
 
-**Session (UI phase):** `src/lib/session.ts`. The landing login redirects here with `#role=`; without it the visitor is a **guest** (`sessionUser === null`). Public pages read `sessionUser`/`isSignedIn`; `currentUser` is only safe inside `RequireAuth`. Guests who try to book/message/open the app are sent to `VITE_LANDING_URL/login?redirect=<this url>` (`src/lib/links.ts`).
+**Session (UI phase):** `src/lib/session.ts`. Login and register live in this app at `/login` and `/signup`; without a saved session the visitor is a **guest** (`sessionUser === null`). Public pages read `sessionUser`/`isSignedIn`; `currentUser` is only safe inside `RequireAuth`. Guests who try to book/message/open the app are sent to `/login?redirect=<this url>` (`src/lib/links.ts`).
 
 **Zones / layouts:**
 - **Public (guests welcome)** under `PublicLayout` — header shows "Đăng nhập / Đăng ký" for guests, the avatar menu when signed in.

@@ -10,6 +10,7 @@ import { PasswordInput } from "./PasswordInput";
 import { useRegister } from "@/queries/useAuth";
 import { isPortalRole, signupSchema, type SignupValues } from "@/lib/auth";
 import { portalHomeFor } from "@/lib/links";
+import { saveSession } from "@/lib/session";
 import type { PortalRole } from "@/types";
 
 const ROLE_OPTIONS: {
@@ -37,8 +38,6 @@ const SUBTITLES: Record<PortalRole, string> = {
   photographer: "Tạo hồ sơ, nhận lịch chụp và phát triển thương hiệu của bạn.",
 };
 
-// `?role=photographer` (from the "Trở thành nhiếp ảnh gia" CTAs) preselects the
-// account type; the chosen role is carried to the portal on success.
 export function SignupForm() {
   const [searchParams] = useSearchParams();
   const redirect = searchParams.get("redirect");
@@ -67,7 +66,8 @@ export function SignupForm() {
   const onSubmit = (values: SignupValues) => {
     signup.mutate(values, {
       onSuccess: (user) => {
-        window.location.href = portalHomeFor(user.role, redirect);
+        saveSession(user);
+        window.location.replace(portalHomeFor(user.role, redirect));
       },
     });
   };
@@ -108,9 +108,7 @@ export function SignupForm() {
                 </span>
                 <span className="mt-3 block text-sm font-semibold">{title}</span>
                 <span className="mt-0.5 block text-xs text-muted-foreground">{hint}</span>
-                {selected && (
-                  <Check className="absolute right-3 top-3 size-4" aria-hidden />
-                )}
+                {selected && <Check className="absolute right-3 top-3 size-4" aria-hidden />}
               </button>
             );
           })}
@@ -161,8 +159,7 @@ export function SignupForm() {
         </Button>
 
         <p className="text-center text-xs text-muted-foreground">
-          Bằng việc đăng ký, bạn đồng ý với Điều khoản dịch vụ và Chính sách bảo mật
-          của Lens.
+          Bằng việc đăng ký, bạn đồng ý với Điều khoản dịch vụ và Chính sách bảo mật của Lens.
         </p>
       </form>
 

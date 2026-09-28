@@ -1,6 +1,7 @@
 import { http, HttpResponse } from "msw";
-import { delay } from "@lens/ui";
+import { avatar, delay } from "@lens/ui";
 import { mockPhotographers } from "@/mock/photographers";
+import { mockAuthAccounts, type MockAuthAccount } from "@/mock/auth";
 import { mockReviews } from "@/mock/reviews";
 import {
   seedConversations,
@@ -63,6 +64,7 @@ import type {
   Booking,
   BookingInput,
   BookingStatus,
+  AuthUser,
   Conversation,
   DayAvailability,
   EarningsSummary,
@@ -70,6 +72,10 @@ import type {
   PaymentInput,
   Photographer,
   PhotographerAchievements,
+  DemoAccount,
+  LoginInput,
+  PortalRole,
+  SignupInput,
   AssistantConfig,
   ChangePasswordInput,
   ProfileInput,
@@ -178,6 +184,22 @@ const saveProfile = () => {
     /* storage blocked */
   }
 };
+
+// Auth is intentionally local to the portal now that its login/register pages
+// live here. The in-memory table resets on a full reload, matching the rest of
+// the UI-phase mock backend.
+let authAccounts: MockAuthAccount[] = [...mockAuthAccounts];
+const findAuthAccount = (email: string) => {
+  const key = email.trim().toLowerCase();
+  return authAccounts.find((account) => account.email.toLowerCase() === key);
+};
+const toAuthUser = ({ id, name, email, avatar, role }: MockAuthAccount): AuthUser => ({
+  id,
+  name,
+  email,
+  avatar,
+  role: role as PortalRole,
+});
 
 // The package list a photographer offers right now (the signed-in one is live).
 const packagesOf = (photographerId: string) => {
@@ -419,6 +441,50 @@ for (const c of seedConversations)
   for (const p of c.participants) participantRegistry[p.id] = p;
 
 export const handlers = [
+  // ── Auth (UI phase — no tokens; session is kept client-side) ──────────────
+  http.post("/api/auth/login", async ({ request }) => {
+    await delay();
+    const { email, password } = (await request.json()) as LoginInput;
+    const account = findAuthAccount(email);
+    if (!account || account.password !== password) {
+      return HttpResponse.json(
+        { message: "Email hoặc mật khẩu không đúng" },
+        { status: 401 }
+      );
+    }
+    return HttpResponse.json(toAuthUser(account));
+  }),
+
+  http.post("/api/auth/register", async ({ request }) => {
+    await delay();
+    const input = (await request.json()) as SignupInput;
+    if (findAuthAccount(input.email)) {
+      return HttpResponse.json(
+        { message: "Email này đã được sử dụng" },
+        { status: 409 }
+      );
+    }
+    const email = input.email.trim().toLowerCase();
+    const account: MockAuthAccount = {
+      id: `u-${Date.now()}`,
+      name: input.name.trim(),
+      email,
+      avatar: avatar(email),
+      role: input.role,
+      password: input.password,
+    };
+    authAccounts = [...authAccounts, account];
+    return HttpResponse.json(toAuthUser(account), { status: 201 });
+  }),
+
+  http.get("/api/auth/demo-accounts", async () => {
+    await delay();
+    const demo: DemoAccount[] = authAccounts
+      .filter((account) => account.demo)
+      .map(({ email, password, role }) => ({ email, password, role }));
+    return HttpResponse.json(demo);
+  }),
+
   // ── Photographers (public discovery) ──────────────────────────────────────
   http.get("/api/photographers", async ({ request }) => {
     await delay();

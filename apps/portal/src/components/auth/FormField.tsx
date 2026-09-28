@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-/** Label + control + Vietnamese validation message, for the auth forms. */
 export function FormField({
   id,
   label,

@@ -1,5 +1,4 @@
 import { lazy, Suspense, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useGSAP } from "@gsap/react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -7,7 +6,7 @@ import { Camera, Search, Sparkles } from "lucide-react";
 import { Button } from "@lens/ui";
 import { Magnet } from "@lens/ui";
 import { usePrefersReducedMotion } from "@lens/ui";
-import { portalBrowse, portalBrowseStyle } from "@/lib/links";
+import { portalBrowse, portalBrowseStyle, portalSignup } from "@/lib/links";
 import { AnimatedHeadline } from "./AnimatedHeadline";
 import { HeroVisual } from "./HeroVisual";
 
@@ -19,7 +18,6 @@ gsap.registerPlugin(useGSAP, ScrollTrigger);
 const popularStyles = ["Chân dung", "Cưới", "Thời trang", "Du lịch", "Ẩm thực"];
 
 export function Hero() {
-  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const scope = useRef<HTMLElement>(null);
   const visualRef = useRef<HTMLDivElement>(null);
@@ -180,7 +178,9 @@ export function Hero() {
                 variant="outline"
                 size="lg"
                 className="rounded-full px-6"
-                onClick={() => navigate("/signup?role=photographer")}
+                onClick={() => {
+                  window.location.href = portalSignup("photographer");
+                }}
               >
                 <Camera className="size-4" />
                 Trở thành nhiếp ảnh gia

@@ -4,7 +4,7 @@ import { MessageSquare } from "lucide-react";
 import { Button, Spinner, cn, toast } from "@lens/ui";
 import { useStartConversation } from "@/queries/useMessages";
 import { isSignedIn, sessionUser } from "@/lib/session";
-import { landingLogin } from "@/lib/links";
+import { portalLogin } from "@/lib/links";
 
 /** Who the conversation is with. */
 export interface MessageParticipant {
@@ -41,7 +41,7 @@ export function MessageButton({
   const open = () => {
     // Guests sign in first, then return to this page.
     if (!isSignedIn) {
-      window.location.href = landingLogin();
+      window.location.href = portalLogin();
       return;
     }
     startChat.mutate(

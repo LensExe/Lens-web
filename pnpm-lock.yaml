@@ -261,9 +261,6 @@ importers:
       '@gsap/react':
         specifier: 'catalog:'
         version: 2.1.2(gsap@3.15.0)(react@19.2.7)
-      '@hookform/resolvers':
-        specifier: 'catalog:'
-        version: 5.4.0(react-hook-form@7.79.0(react@19.2.7))
       '@lens/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -297,18 +294,12 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 19.2.7(react@19.2.7)
-      react-hook-form:
-        specifier: 'catalog:'
-        version: 7.79.0(react@19.2.7)
       react-router-dom:
         specifier: 'catalog:'
         version: 7.18.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       three:
         specifier: 'catalog:'
         version: 0.184.0
-      zod:
-        specifier: 'catalog:'
-        version: 4.4.3
     devDependencies:
       '@babel/core':
         specifier: 'catalog:'

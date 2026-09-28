@@ -11,11 +11,9 @@ import { PasswordInput } from "./PasswordInput";
 import { useLogin } from "@/queries/useAuth";
 import { loginSchema, type LoginValues } from "@/lib/auth";
 import { portalHomeFor } from "@/lib/links";
+import { saveSession } from "@/lib/session";
 import type { DemoAccount } from "@/types";
 
-// No role picker: the account's role (from the server) decides where the user
-// lands — their portal home, or back to the page that asked them to log in
-// (`?redirect=`, portal URLs only).
 export function LoginForm() {
   const [searchParams] = useSearchParams();
   const redirect = searchParams.get("redirect");
@@ -34,9 +32,9 @@ export function LoginForm() {
 
   const onSubmit = (values: LoginValues) => {
     login.mutate(values, {
-      // Full navigation: the portal is another app/origin.
       onSuccess: (user) => {
-        window.location.href = portalHomeFor(user.role, redirect);
+        saveSession(user);
+        window.location.replace(portalHomeFor(user.role, redirect));
       },
     });
   };
@@ -47,7 +45,6 @@ export function LoginForm() {
     login.reset();
   };
 
-  // Stay busy after success while the browser leaves for the portal.
   const busy = login.isPending || login.isSuccess;
   const carry = redirect ? `?redirect=${encodeURIComponent(redirect)}` : "";
 

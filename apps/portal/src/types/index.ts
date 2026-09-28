@@ -157,6 +157,7 @@ export interface StorageSummary {
 }
 
 export type UserRole = "client" | "photographer" | "admin";
+export type PortalRole = Exclude<UserRole, "admin">;
 
 export interface User {
   id: string;
@@ -165,6 +166,33 @@ export interface User {
   email: string;
   role: UserRole;
   city: string;
+}
+
+// ── Authentication (UI phase — mock backend) ────────────────────────────────
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+  role: PortalRole;
+}
+
+export interface LoginInput {
+  email: string;
+  password: string;
+}
+
+export interface SignupInput {
+  name: string;
+  email: string;
+  password: string;
+  role: PortalRole;
+}
+
+export interface DemoAccount {
+  email: string;
+  password: string;
+  role: PortalRole;
 }
 
 // Escrow lifecycle: the client books and pays a DEPOSIT to hold the slot; the

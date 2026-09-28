@@ -19,11 +19,12 @@ dist-ssr
 .claude
 skills-lock.json
 
-# Env files — hold per-environment config (and later real API URLs/secrets).
-# Managed on the host (Vercel dashboard), NOT committed. Keep .env.example only.
+# Environment variables and configuration files (completely ignored)
 .env
+.env*
 .env.*
-!.env.example
+*.env
+*.env.*
 
 # Vercel CLI
 .vercel

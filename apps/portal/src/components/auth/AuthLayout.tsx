@@ -3,9 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button, Logo, ThemeToggle } from "@lens/ui";
 import { useFeaturedPhotographers } from "@/queries/usePhotographers";
 
-// Auth pages (login / signup): a focused split screen WITHOUT the marketing
-// navbar — so nothing can open on top of the form. The right half shows a
-// featured photographer's work: on Lens, the photos are the product.
+/** Focused auth layout; the public landing remains marketing-only. */
 export function AuthLayout() {
   const { pathname } = useLocation();
   const { data } = useFeaturedPhotographers();

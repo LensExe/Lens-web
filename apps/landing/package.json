@@ -9,7 +9,6 @@
   },
   "dependencies": {
     "@gsap/react": "catalog:",
-    "@hookform/resolvers": "catalog:",
     "@lens/ui": "workspace:*",
     "@react-three/fiber": "catalog:",
     "@tanstack/react-query": "catalog:",
@@ -21,10 +20,8 @@
     "next-themes": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "react-hook-form": "catalog:",
     "react-router-dom": "catalog:",
-    "three": "catalog:",
-    "zod": "catalog:"
+    "three": "catalog:"
   },
   "devDependencies": {
     "@babel/core": "catalog:",

@@ -1,6 +1,5 @@
 import { AlertCircle } from "lucide-react";
 
-/** A form-level error returned by the server (e.g. wrong password). */
 export function FormError({ message }: { message: string }) {
   return (
     <p

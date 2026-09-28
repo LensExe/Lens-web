@@ -1,7 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { getDemoAccounts, login, register } from "@/services/auth";
 
-// Layer 2 — Query hooks for auth. The ONLY layer the View talks to.
 export const authKeys = {
   demoAccounts: ["auth", "demo-accounts"] as const,
 };

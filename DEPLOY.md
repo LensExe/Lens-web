@@ -77,7 +77,7 @@ Mỗi `vercel.json` đã cấu hình:
 - **SPA rewrites** (`/(.*) → /index.html`) → route client không 404 khi F5.
 
 ### Biến môi trường (set theo từng project, scope Production)
-**`.env` KHÔNG commit lên git** (đã gitignore) — toàn bộ env production set trên dashboard. File `.env.example` trong mỗi app liệt kê các biến cần có; local dev thì `cp .env.example .env`.
+**`.env` KHÔNG commit lên git** (đã gitignore) — toàn bộ env production set trên dashboard. File `.env` trong mỗi app chứa các biến cấu hình cho local dev.
 
 | Project  | Biến cần set (Production)                                   |
 | -------- | ---------------------------------------------------------- |

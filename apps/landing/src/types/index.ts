@@ -41,37 +41,6 @@ export interface User {
   city: string;
 }
 
-/** Roles that sign in through the public landing (admins use the admin app). */
-export type PortalRole = Exclude<UserRole, "admin">;
-
-/** The signed-in account returned by the auth endpoints. */
-export interface AuthUser {
-  id: string;
-  name: string;
-  email: string;
-  avatar: string;
-  role: PortalRole;
-}
-
-export interface LoginInput {
-  email: string;
-  password: string;
-}
-
-export interface SignupInput {
-  name: string;
-  email: string;
-  password: string;
-  role: PortalRole;
-}
-
-/** A demo account listed on the login page (UI phase only). */
-export interface DemoAccount {
-  email: string;
-  password: string;
-  role: PortalRole;
-}
-
 export type BookingStatus =
   | "pending"
   | "confirmed"

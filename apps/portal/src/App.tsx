@@ -1,6 +1,7 @@
 import { lazy, type ComponentType } from "react";
 import { Navigate, Routes, Route } from "react-router-dom";
 import { PublicLayout } from "@/components/PublicLayout";
+import { AuthLayout } from "@/components/auth/AuthLayout";
 import { PortalLayout } from "@/components/PortalLayout";
 import { MessagesLayout } from "@/components/messages/MessagesLayout";
 import { RequireAuth } from "@/components/RequireAuth";
@@ -10,6 +11,8 @@ import { Photographers } from "@/routes/Photographers";
 import { PhotographerProfile } from "@/routes/PhotographerProfile";
 import { BookingFlow } from "@/routes/BookingFlow";
 import { Placeholder } from "@/components/Placeholder";
+import { Login } from "@/routes/Login";
+import { Signup } from "@/routes/Signup";
 
 // Signed-in pages are code-split per workspace, so a client never downloads the
 // photographer studio (and vice versa). Public discovery pages stay eager.
@@ -49,6 +52,12 @@ const DeliveryGallery = lazy(() =>
 function App() {
   return (
     <Routes>
+      {/* Authentication lives in the portal; landing redirects here. */}
+      <Route element={<AuthLayout />}>
+        <Route path="login" element={<Login />} />
+        <Route path="signup" element={<Signup />} />
+      </Route>
+
       {/* Public discovery (guests welcome) — browse is the default route */}
       <Route element={<PublicLayout />}>
         <Route element={<BrowseGate />}>

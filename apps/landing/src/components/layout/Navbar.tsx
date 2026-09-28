@@ -4,6 +4,7 @@ import { Menu } from "lucide-react";
 import { Button, Logo, scrollToHash } from "@lens/ui";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@lens/ui";
 import { ThemeToggle } from "@lens/ui";
+import { portalLogin, portalSignup } from "@/lib/links";
 
 type NavLinkItem = { label: string; hash: string };
 
@@ -54,10 +55,10 @@ export function Navbar() {
         <div className="hidden items-center gap-2 md:flex">
           <ThemeToggle />
           <Button asChild variant="ghost" className="rounded-full">
-            <Link to="/login">Đăng nhập</Link>
+            <a href={portalLogin()}>Đăng nhập</a>
           </Button>
           <Button asChild className="rounded-full">
-            <Link to="/signup">Đăng ký</Link>
+            <a href={portalSignup()}>Đăng ký</a>
           </Button>
         </div>
 
@@ -89,10 +90,10 @@ export function Navbar() {
               </nav>
               <div className="mt-4 flex flex-col gap-2 px-3">
                 <Button asChild variant="outline" className="rounded-full">
-                  <Link to="/login">Đăng nhập</Link>
+                  <a href={portalLogin()}>Đăng nhập</a>
                 </Button>
                 <Button asChild className="rounded-full">
-                  <Link to="/signup">Đăng ký</Link>
+                  <a href={portalSignup()}>Đăng ký</a>
                 </Button>
               </div>
             </SheetContent>

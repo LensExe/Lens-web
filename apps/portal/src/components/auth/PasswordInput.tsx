@@ -3,7 +3,6 @@ import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@lens/ui";
 import { AuthInput } from "./AuthInput";
 
-/** Password field with a show/hide toggle. */
 export function PasswordInput({
   className,
   ...props

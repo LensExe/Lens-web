@@ -1,5 +1,5 @@
 import { avatar } from "@lens/ui";
-import type { UserRole } from "@/types";
+import type { AuthUser, PortalRole, UserRole } from "@/types";
 
 export interface SessionUser {
   /** Stable id sent to the mock backend so data is scoped to this user. */
@@ -9,20 +9,17 @@ export interface SessionUser {
   avatar: string;
   /** Initials shown when the avatar image fails to load. */
   initials: string;
-  role: UserRole;
+  role: PortalRole;
 }
 
-// UI phase — no real auth yet. The landing login redirects here with `#role=`,
-// which we persist so the portal shows the matching demo account. Without it the
-// visitor is a GUEST (null): they can browse + view profiles, while booking,
-// messaging and the signed-in app send them to the landing login.
+// UI phase — no real auth yet. Authentication now lives in this app. Without a
+// saved session the visitor is a GUEST (null): they can browse + view profiles,
+// while booking, messaging and the signed-in app send them to `/login`.
 // LATER (Phase 2): replace with the authenticated session from Supabase.
-const STORAGE_KEY = "lens.session.role";
+const STORAGE_KEY = "lens.session.v1";
+const LEGACY_ROLE_KEY = "lens.session.role";
 
-type PortalRole = "client" | "photographer";
-
-// One demo identity per role the portal can sign in as. Emails match the
-// credentials autofilled on the landing login form.
+// One demo identity per role the portal can sign in as.
 const DEMO_USERS: Record<PortalRole, SessionUser> = {
   client: {
     id: "u-khachhang",
@@ -46,25 +43,39 @@ const DEMO_USERS: Record<PortalRole, SessionUser> = {
 const isPortalRole = (v: unknown): v is PortalRole =>
   v === "client" || v === "photographer";
 
-// localStorage can throw (private mode / blocked storage). Never let that crash
-// the app — fall back to in-memory defaults if it's unavailable.
-function safeGetRole(): string | null {
+function safeGetSession(): SessionUser | null {
   try {
-    return localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const value = JSON.parse(raw) as Partial<SessionUser>;
+    return isPortalRole(value.role) && typeof value.id === "string" && typeof value.name === "string"
+      && typeof value.email === "string" && typeof value.avatar === "string" && typeof value.initials === "string"
+      ? (value as SessionUser)
+      : null;
   } catch {
     return null;
   }
 }
-function safeSetRole(role: PortalRole) {
+
+function safeGetLegacyRole(): string | null {
   try {
-    localStorage.setItem(STORAGE_KEY, role);
+    return localStorage.getItem(LEGACY_ROLE_KEY);
   } catch {
-    /* storage blocked — role still applies for this page load */
+    return null;
   }
 }
 
-// Read `#role=` from the URL hash (set by the landing login redirect). The hash
-// never reaches the server, so it's a clean handoff channel between origins.
+function safeSetSession(user: SessionUser) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+    localStorage.removeItem(LEGACY_ROLE_KEY);
+  } catch {
+    /* storage blocked — the session won't survive a reload */
+  }
+}
+
+// Read `#role=` from old landing-login links so existing open tabs can finish
+// the handoff while the new portal auth flow is being adopted.
 function readRoleFromHash(): PortalRole | null {
   const hash = window.location.hash.replace(/^#/, "");
   if (!hash) return null;
@@ -72,34 +83,32 @@ function readRoleFromHash(): PortalRole | null {
   return isPortalRole(role) ? role : null;
 }
 
-// Resolve the signed-in role for this page load:
-// 1) #role= from the landing login redirect → persist + strip it from the URL
-// 2) previously persisted role (so a reload keeps you signed in)
-// 3) none → guest
-function resolveRole(): PortalRole | null {
+function resolveSession(): SessionUser | null {
   const fromHash = readRoleFromHash();
   if (fromHash) {
-    safeSetRole(fromHash);
-    // Strip the hash from the address bar so refreshes stay clean.
+    const user = DEMO_USERS[fromHash];
+    safeSetSession(user);
     try {
-      window.history.replaceState(
-        {},
-        "",
-        window.location.pathname + window.location.search
-      );
+      window.history.replaceState({}, "", window.location.pathname + window.location.search);
     } catch {
       /* ignore */
     }
-    return fromHash;
+    return user;
   }
-  const saved = safeGetRole();
-  return isPortalRole(saved) ? saved : null;
+
+  const saved = safeGetSession();
+  if (saved) return saved;
+
+  // Migrate sessions created by the previous landing-auth implementation.
+  const legacyRole = safeGetLegacyRole();
+  if (!isPortalRole(legacyRole)) return null;
+  const user = DEMO_USERS[legacyRole];
+  safeSetSession(user);
+  return user;
 }
 
-const role = resolveRole();
-
 /** The signed-in user, or `null` for a guest. Public pages must use this. */
-export const sessionUser: SessionUser | null = role ? DEMO_USERS[role] : null;
+export const sessionUser: SessionUser | null = resolveSession();
 
 export const isSignedIn = sessionUser !== null;
 
@@ -110,10 +119,25 @@ export const isSignedIn = sessionUser !== null;
  */
 export const currentUser = sessionUser as SessionUser;
 
-/** Clear the signed-in session — called by "Đăng xuất" before going to landing. */
+/** Persist a user returned by the portal auth endpoint. Callers reload after
+ * this so module-level guards and API headers see the new session. */
+export function saveSession(user: AuthUser) {
+  safeSetSession({
+    ...user,
+    initials: user.name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(-2)
+      .map((part) => part[0]?.toUpperCase() ?? "")
+      .join(""),
+  });
+}
+
+/** Clear the signed-in session. */
 export function clearSession() {
   try {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(LEGACY_ROLE_KEY);
   } catch {
     /* ignore */
   }

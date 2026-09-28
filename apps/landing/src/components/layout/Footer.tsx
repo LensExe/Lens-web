@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { AtSign, Globe, MessageCircle } from "lucide-react";
 import { Logo } from "@lens/ui";
-import { portalBrowse } from "@/lib/links";
+import { portalBrowse, portalLogin, portalSignup } from "@/lib/links";
 
 type FooterLink = { label: string; to?: string; href?: string };
 
@@ -17,8 +17,8 @@ const columns: { title: string; links: FooterLink[] }[] = [
   {
     title: "Tài khoản",
     links: [
-      { label: "Trở thành nhiếp ảnh gia", to: "/signup?role=photographer" },
-      { label: "Đăng nhập", to: "/login" },
+      { label: "Trở thành nhiếp ảnh gia", href: portalSignup("photographer") },
+      { label: "Đăng nhập", href: portalLogin() },
     ],
   },
   {

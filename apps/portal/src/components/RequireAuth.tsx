@@ -2,19 +2,19 @@ import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { Spinner } from "@lens/ui";
 import { isSignedIn } from "@/lib/session";
-import { landingLogin } from "@/lib/links";
+import { portalLogin } from "@/lib/links";
 
 /**
  * Layout-route guard for everything that needs an account (the signed-in app,
- * the booking flow). A guest is sent to the landing login — another app, so a
- * full navigation — which brings them back to this exact URL afterwards.
+ * the booking flow). A guest is sent to the portal login and brought back to
+ * this exact URL afterwards.
  */
 export function RequireAuth() {
   const { pathname, search } = useLocation();
 
   useEffect(() => {
     if (!isSignedIn) {
-      window.location.replace(landingLogin(window.location.origin + pathname + search));
+      window.location.replace(portalLogin(window.location.origin + pathname + search));
     }
   }, [pathname, search]);
 

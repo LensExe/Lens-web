@@ -1,8 +1,8 @@
 import { useLocation } from "react-router-dom";
 import { Button } from "@lens/ui";
-import { landingLogin, landingSignup } from "@/lib/links";
+import { portalLogin, portalSignup } from "@/lib/links";
 
-/** Header actions for a guest: sign in / sign up on the landing, then come back here. */
+/** Header actions for a guest: sign in / sign up in the portal. */
 export function GuestActions() {
   const { pathname, search } = useLocation();
   const here = window.location.origin + pathname + search;
@@ -10,10 +10,10 @@ export function GuestActions() {
   return (
     <>
       <Button asChild variant="ghost" className="rounded-full">
-        <a href={landingLogin(here)}>Đăng nhập</a>
+        <a href={portalLogin(here)}>Đăng nhập</a>
       </Button>
       <Button asChild className="rounded-full">
-        <a href={landingSignup(here)}>Đăng ký</a>
+        <a href={portalSignup(here)}>Đăng ký</a>
       </Button>
     </>
   );
