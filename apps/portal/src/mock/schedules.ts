@@ -1,13 +1,13 @@
-import type { WorkSchedule } from "@/types";
+import type { TimeRange, WorkSchedule } from "@/types";
 
 // Work schedules (lịch làm việc) — imported ONLY by src/msw. `weekly` is indexed
 // by Date.getDay() (0 = Chủ nhật … 6 = Thứ 7). Busy dates are anchored to
 // "today" so the demo always has upcoming exceptions.
 
-const MORNING = ["08:00", "10:00"];
-const AFTERNOON = ["14:00", "16:00"];
-const EVENING = ["18:00", "20:00"];
-const FULL = [...MORNING, ...AFTERNOON, ...EVENING];
+const MORNING = [{ start: "08:00", end: "12:00" }];
+const AFTERNOON = [{ start: "14:00", end: "18:00" }];
+const EVENING = [{ start: "18:00", end: "22:00" }];
+const FULL = [{ start: "07:00", end: "24:00" }];
 
 const isoFromToday = (days: number) => {
   const d = new Date();
@@ -16,27 +16,27 @@ const isoFromToday = (days: number) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-// Lý Gia Hân ("me", the photographer demo account): weekday afternoons and
-// evenings, weekend mornings, Wednesdays off.
+// Lý Gia Hân ("me", the photographer demo account): free all day by default;
+// date-specific busy blocks and bookings carve unavailable windows out of it.
 export const seedMySchedule: WorkSchedule = {
   weekly: [
-    [...MORNING, ...AFTERNOON], // CN
-    [...AFTERNOON, ...EVENING], // T2
-    [...AFTERNOON], // T3
-    [], // T4 — nghỉ
-    [...AFTERNOON, ...EVENING], // T5
+    [...FULL], // CN
+    [...FULL], // T2
+    [...FULL], // T3
+    [...FULL], // T4
+    [...FULL], // T5
     [...FULL], // T6
-    [...MORNING, ...AFTERNOON], // T7
+    [...FULL], // T7
   ],
   busy: [
-    { date: isoFromToday(5), slots: [] },
-    { date: isoFromToday(9), slots: ["14:00"] },
+    { date: isoFromToday(5), ranges: [] },
+    { date: isoFromToday(9), ranges: [{ start: "14:00", end: "16:00" }] },
   ],
 };
 
 // Roster photographers rotate through a few realistic weeks (3–4 working days),
 // so the browse page's date filter still narrows the list.
-const PATTERNS: string[][][] = [
+const PATTERNS: TimeRange[][][] = [
   // Weekends full + Wednesday evening
   [FULL, [], [], EVENING, [], [], FULL],
   // Mon/Wed/Fri evenings + Saturday morning
@@ -50,6 +50,6 @@ const PATTERNS: string[][][] = [
 ];
 
 export const rosterSchedule = (index: number): WorkSchedule => ({
-  weekly: PATTERNS[index % PATTERNS.length].map((slots) => [...slots]),
-  busy: [{ date: isoFromToday(3 + (index % 6)), slots: [] }],
+  weekly: PATTERNS[index % PATTERNS.length].map((ranges) => ranges.map((range) => ({ ...range }))),
+  busy: [{ date: isoFromToday(3 + (index % 6)), ranges: [] }],
 });

@@ -6,9 +6,10 @@ import {
   countSlots,
   dayLabel,
   fromISODate,
+  removeBusyRange,
   setBusyAllDay,
+  setBusyRange,
   toISODate,
-  toggleBusySlot,
 } from "@/lib/schedule";
 import type { Booking, DayAvailability, WorkSchedule } from "@/types";
 
@@ -114,11 +115,17 @@ export function BusyDaysEditor({
         <div className="min-w-0 space-y-5">
           {day && (
             <DaySlotsPanel
+              key={day.date}
               day={day}
               bookings={bookingsByDate[day.date] ?? []}
-              busyAllDay={schedule.busy.some((b) => b.date === day.date && b.slots.length === 0)}
-              onToggleSlot={(time) => onChange(toggleBusySlot(schedule, day.date, time))}
+              busyRanges={schedule.busy.find((block) => block.date === day.date)?.ranges ?? []}
+              busyAllDay={schedule.busy.some((b) => b.date === day.date && b.ranges.length === 0)}
+              minDate={days[0]?.date}
+              maxDate={days.at(-1)?.date}
+              onSelectDate={setSelected}
               onBusyAllDay={(busy) => onChange(setBusyAllDay(schedule, day.date, busy))}
+              onBusyRange={(range) => onChange(setBusyRange(schedule, day.date, range))}
+              onRemoveBusyRange={(index) => onChange(removeBusyRange(schedule, day.date, index))}
             />
           )}
 
@@ -140,7 +147,7 @@ export function BusyDaysEditor({
                       onClick={() => setSelected(b.date)}
                       className="focus-ring rounded-full py-1.5 pl-3 pr-1"
                     >
-                      {dayLabel(b.date)} · {b.slots.length ? b.slots.join(", ") : "Cả ngày"}
+                      {dayLabel(b.date)} · {b.ranges.length ? b.ranges.map((r) => `${r.start}–${r.end}`).join(", ") : "Cả ngày"}
                     </button>
                     <button
                       type="button"

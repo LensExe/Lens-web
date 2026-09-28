@@ -159,15 +159,25 @@ export interface TimePeriod {
   slots: string[];
 }
 
-// Time slots grouped by part of day (feedback R1: 22% khó đặt lịch — thêm lựa
-// chọn khung giờ sáng/chiều/tối).
-export const TIME_PERIODS: TimePeriod[] = [
-  { id: "morning", label: "Buổi sáng", slots: ["08:00", "10:00"] },
-  { id: "afternoon", label: "Buổi chiều", slots: ["14:00", "16:00"] },
-  { id: "evening", label: "Buổi tối", slots: ["18:00", "20:00"] },
-];
+const halfHourSlots = (from: number, to: number) =>
+  Array.from({ length: (to - from) / 30 }, (_, i) => {
+    const minutes = from + i * 30;
+    return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+  });
 
-export const TIME_SLOTS = TIME_PERIODS.flatMap((p) => p.slots);
+/** Public booking window inside one day: start at 07:00, finish by midnight. */
+export const BOOKING_START_MINUTES = 7 * 60;
+export const BOOKING_END_MINUTES = 24 * 60;
+
+// Google Calendar-style precision: clients can start a booking every 30
+// minutes, while the package duration determines how much time is occupied.
+export const TIME_SLOTS = halfHourSlots(BOOKING_START_MINUTES, BOOKING_END_MINUTES);
+
+export const TIME_PERIODS: TimePeriod[] = [
+  { id: "morning", label: "Buổi sáng", slots: halfHourSlots(BOOKING_START_MINUTES, 12 * 60) },
+  { id: "afternoon", label: "Buổi chiều", slots: halfHourSlots(12 * 60, 18 * 60) },
+  { id: "evening", label: "Buổi tối", slots: halfHourSlots(18 * 60, BOOKING_END_MINUTES) },
+];
 
 // Price for a package. Rounded to a clean 10k VND — fine enough that the basic
 // package (×1) always equals the photographer's listed price (which is a
@@ -326,7 +336,9 @@ export const phoneSchema = z
 export const bookingSchema = z.object({
   packageId: z.string().min(1, "Vui lòng chọn gói chụp"),
   date: z.string().min(1, "Vui lòng chọn ngày chụp"),
-  timeSlot: z.string().min(1, "Vui lòng chọn khung giờ"),
+  timeSlot: z
+    .string()
+    .regex(/^(0[7-9]|1\d|2[0-3]):[03]0$/, "Chọn giờ bắt đầu từ 07:00 theo mỗi 30 phút"),
   city: z.string().min(1, "Vui lòng chọn tỉnh/thành phố"),
   addressDetail: z.string().trim().max(120, "Địa chỉ tối đa 120 ký tự").optional(),
   contactName: z.string().trim().min(2, "Vui lòng nhập họ tên"),

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { CalendarDays, Clock, MapPin, Package } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage, Separator, cn, formatPrice } from "@lens/ui";
 import { DEPOSIT_RATE, depositAmount } from "@/lib/booking";
+import { addMinutesToTime } from "@/lib/schedule";
 import type { Photographer } from "@/types";
 
 const initialsOf = (name: string) =>
@@ -32,6 +33,7 @@ export function BookingSummaryCard({
   packageInfo,
   date,
   timeSlot,
+  durationHours,
   location,
   price,
   children,
@@ -42,12 +44,15 @@ export function BookingSummaryCard({
   packageInfo?: string;
   date: string;
   timeSlot: string;
+  durationHours?: number;
   location: string;
   price: number;
   children: ReactNode;
 }) {
   const deposit = depositAmount(price);
   const pct = Math.round(DEPOSIT_RATE * 100);
+  const timeLabel =
+    timeSlot && durationHours ? `${timeSlot} – ${addMinutesToTime(timeSlot, durationHours * 60)}` : timeSlot;
 
   return (
     <div className="rounded-3xl border border-border bg-card p-6">
@@ -70,7 +75,7 @@ export function BookingSummaryCard({
           {packageInfo && <p className="mt-0.5 pl-6 text-xs text-muted-foreground">{packageInfo}</p>}
         </div>
         <Item icon={CalendarDays} value={date ? formatDateVN(date) : ""} empty="Chưa chọn ngày" />
-        <Item icon={Clock} value={timeSlot} empty="Chưa chọn giờ" />
+        <Item icon={Clock} value={timeLabel} empty="Chưa chọn giờ" />
         <Item icon={MapPin} value={location} empty="Chưa có địa điểm" />
       </div>
 

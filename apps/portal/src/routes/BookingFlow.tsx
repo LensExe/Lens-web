@@ -38,6 +38,7 @@ import {
 } from "@/lib/booking";
 import { CITY_OPTIONS } from "@/lib/photographer-filters";
 import { apiErrorMessage, isConflict } from "@/lib/errors";
+import { addMinutesToTime } from "@/lib/schedule";
 
 const INPUT = "h-10 rounded-xl px-3";
 const LAST_STEP = 2;
@@ -287,7 +288,10 @@ export function BookingFlow() {
                 <PackagePicker
                   packages={packages}
                   value={values.packageId ?? ""}
-                  onChange={(pkgId) => setValue("packageId", pkgId, { shouldValidate: true })}
+                  onChange={(pkgId) => {
+                    setValue("packageId", pkgId, { shouldValidate: true });
+                    setValue("timeSlot", "", { shouldValidate: false });
+                  }}
                 />
                 {errors.packageId && (
                   <p className="mt-3 text-sm text-destructive">{errors.packageId.message}</p>
@@ -300,6 +304,7 @@ export function BookingFlow() {
                   loading={availability.isLoading}
                   date={values.date ?? ""}
                   timeSlot={values.timeSlot ?? ""}
+                  durationHours={selectedPackage?.durationHours ?? 1}
                   onDateChange={(date) => {
                     setValue("date", date, { shouldValidate: true });
                     // Free slots differ per day — make them re-pick.
@@ -406,7 +411,15 @@ export function BookingFlow() {
                   <ReviewRow label="Gói chụp" value={selectedPackage ? `${selectedPackage.name} · ${packageSummary(selectedPackage)}` : "—"} onEdit={() => goTo(0)} />
                   <ReviewRow
                     label="Ngày & giờ"
-                    value={values.date ? `${formatDateVN(values.date)} · ${values.timeSlot}` : "—"}
+                    value={
+                      values.date
+                        ? `${formatDateVN(values.date)} · ${
+                            values.timeSlot
+                              ? `${values.timeSlot} – ${addMinutesToTime(values.timeSlot, (selectedPackage?.durationHours ?? 1) * 60)}`
+                              : "Chưa chọn giờ"
+                          }`
+                        : "—"
+                    }
                     onEdit={() => goTo(0)}
                   />
                   <ReviewRow label="Địa điểm" value={locationLabel || "—"} onEdit={() => goTo(1)} />
@@ -469,6 +482,7 @@ export function BookingFlow() {
             packageInfo={selectedPackage && packageSummary(selectedPackage)}
             date={values.date ?? ""}
             timeSlot={values.timeSlot ?? ""}
+            durationHours={selectedPackage?.durationHours}
             location={locationLabel}
             price={price}
           >

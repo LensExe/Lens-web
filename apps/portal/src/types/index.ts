@@ -54,22 +54,29 @@ export interface PhotographerPackage {
   deliveryDays: number;
 }
 
+/** A half-hour precision interval used by working hours and busy exceptions. */
+export interface TimeRange {
+  start: string;
+  end: string;
+}
+
 /**
- * A photographer's working hours. `weekly[d]` lists the bookable time slots on
- * weekday `d` (0 = Sunday, like `Date.getDay()`); an empty list is a day off.
- * `busy` carves exceptions out of that: a date with `slots: []` is busy all day.
+ * A photographer's working hours. `weekly[d]` lists one or more working
+ * windows for weekday `d` (0 = Sunday, like `Date.getDay()`). An empty list is
+ * a day off. `busy` carves date-specific exceptions out of that template.
  */
 export interface WorkSchedule {
-  weekly: string[][];
+  weekly: TimeRange[][];
   busy: BusyBlock[];
 }
 
 export interface BusyBlock {
   date: string;
-  slots: string[];
+  /** Empty ranges means the photographer is busy all day. */
+  ranges: TimeRange[];
 }
 
-/** free = bookable · busy = marked busy by the photographer · booked = a client holds it. */
+/** 30-minute start points: free = bookable · busy = blocked · booked = held by a client. */
 export type SlotStatus = "free" | "busy" | "booked";
 
 /** One day of a photographer's public availability (only slots they work). */

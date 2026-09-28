@@ -125,17 +125,39 @@ export function Storage() {
   });
 
   return (
-    <PageContainer>
-      <PageHeader
-        title="Lưu trữ ảnh"
-        description="Dung lượng, gói lưu trữ và cảnh báo vượt quota theo nhiếp ảnh gia."
-      />
+    <PageContainer className="max-w-[1480px] py-6 md:py-8 lg:py-10">
+      <div className="mb-6 rounded-3xl border border-border/70 bg-gradient-to-br from-muted/55 via-card to-card p-5 shadow-sm sm:p-6">
+        <PageHeader
+          className="mb-0 gap-5"
+          title={
+            <span className="flex items-center gap-3">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-foreground text-background shadow-sm">
+                <HardDrive className="size-5" />
+              </span>
+              <span>Lưu trữ ảnh</span>
+            </span>
+          }
+          description={
+            <span className="block max-w-3xl text-sm leading-relaxed">
+              Theo dõi dung lượng, gói lưu trữ và cảnh báo quota của từng nhiếp ảnh gia trên nền tảng.
+            </span>
+          }
+          actions={
+            <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/80 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-xs">
+              <span className="size-2 rounded-full bg-emerald-500" />
+              Hệ thống đang theo dõi
+            </span>
+          }
+        />
+      </div>
 
-      <div className="mb-6 grid gap-4 lg:grid-cols-3">
+      <div className="mb-7 grid gap-3 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,0.85fr)_minmax(0,1.3fr)]">
         <StatCard
           icon={HardDrive}
           value={overview ? formatBytes(overview.totalUsedBytes) : "…"}
           label="Tổng dung lượng nền tảng"
+          hint={<span className="text-xs text-muted-foreground">Tổng dung lượng đang được sử dụng</span>}
+          className="rounded-3xl border-border/70 shadow-sm"
         />
         <StatCard
           icon={AlertTriangle}
@@ -148,17 +170,33 @@ export function Storage() {
               </span>
             ) : undefined
           }
+          className={cn(
+            "rounded-3xl border-border/70 shadow-sm",
+            overview && overview.overQuotaCount > 0 && "border-rose-200/80 bg-rose-50/50 dark:border-rose-500/20 dark:bg-rose-500/5"
+          )}
         />
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <p className="flex items-center gap-2 text-sm font-medium">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-muted text-foreground">
-              <HardDriveDownload className="size-4" />
-            </span>
-            Tỉ lệ gói lưu trữ
-          </p>
+        <div className="rounded-3xl border border-border/70 bg-card p-5 shadow-sm sm:p-6">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="flex items-center gap-2 text-sm font-semibold">
+                <span className="flex size-9 items-center justify-center rounded-xl bg-muted text-foreground">
+                  <HardDriveDownload className="size-4" />
+                </span>
+                Tỉ lệ gói lưu trữ
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                Phân bổ số nhiếp ảnh gia theo từng gói dịch vụ.
+              </p>
+            </div>
+            {overview && (
+              <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-medium tabular-nums text-muted-foreground">
+                {formatCount(PLANS.reduce((sum, plan) => sum + overview.planBreakdown[plan], 0))} thợ
+              </span>
+            )}
+          </div>
           {overview ? (
             <SegmentedBar
-              className="mt-4"
+              className="mt-5"
               segments={PLANS.map((p) => ({
                 label: STORAGE_PLAN_META[p].label,
                 value: overview.planBreakdown[p],
@@ -170,6 +208,18 @@ export function Storage() {
             <Skeleton className="mt-4 h-16" />
           )}
         </div>
+      </div>
+
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight">Theo dõi theo nhiếp ảnh gia</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Kiểm tra mức sử dụng và các tài khoản cần được xử lý.
+          </p>
+        </div>
+        <span className="rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+          {formatCount(visible.length)} kết quả
+        </span>
       </div>
 
       <DataTable

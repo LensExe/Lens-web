@@ -24,11 +24,14 @@ import {
 } from "@/lib/booking";
 import {
   BOOKING_WINDOW_DAYS,
+  DEFAULT_WORKING_RANGE,
   addDaysISO,
+  bookingSlots,
   countSlots,
   dayAvailability,
   occupiesSlot,
   sanitizeSchedule,
+  slotsForDuration,
 } from "@/lib/schedule";
 import { rankForSessions } from "@/lib/achievements";
 import {
@@ -291,7 +294,13 @@ const SCHEDULE_DB_KEY = "lens.schedule.v1";
 const loadMySchedule = (): WorkSchedule => {
   try {
     const raw = localStorage.getItem(SCHEDULE_DB_KEY);
-    if (raw) return sanitizeSchedule(JSON.parse(raw) as WorkSchedule, todayISO());
+    if (raw) {
+      const saved = sanitizeSchedule(JSON.parse(raw) as WorkSchedule, todayISO());
+      return {
+        ...saved,
+        weekly: Array.from({ length: 7 }, () => [{ ...DEFAULT_WORKING_RANGE }]),
+      };
+    }
   } catch {
     /* storage blocked — fall back to the seed */
   }
@@ -321,7 +330,7 @@ const availabilityOf = (photographerId: string, days = BOOKING_WINDOW_DAYS): Day
   const from = addDaysISO(todayISO(), 1);
   return Array.from({ length: days }, (_, i) => {
     const date = addDaysISO(from, i);
-    const booked = held.filter((b) => b.date === date).flatMap((b) => b.timeSlot ?? []);
+    const booked = held.filter((b) => b.date === date).flatMap((b) => bookingSlots(b));
     return dayAvailability(schedule, date, booked);
   });
 };
@@ -593,14 +602,17 @@ export const handlers = [
       );
     }
     // The slot must still be open — another client may have just taken it.
-    const slot = availabilityOf(input.photographerId)
-      .find((d) => d.date === input.date)
-      ?.slots.find((t) => t.time === input.timeSlot);
-    if (slot?.status !== "free") {
+    const day = availabilityOf(input.photographerId).find((d) => d.date === input.date);
+    const required = slotsForDuration(input.timeSlot, pkg.durationHours);
+    const available =
+      required.length === Math.ceil((pkg.durationHours * 60) / 30) &&
+      required.every((time) => day?.slots.find((slot) => slot.time === time)?.status === "free");
+    const startSlot = day?.slots.find((slot) => slot.time === input.timeSlot);
+    if (!available) {
       return HttpResponse.json(
         {
           message:
-            slot?.status === "booked"
+            startSlot?.status === "booked"
               ? "Khung giờ này vừa có người đặt, vui lòng chọn khung khác"
               : "Nhiếp ảnh gia không nhận lịch vào khung giờ này, vui lòng chọn khung khác",
         },
