@@ -56,7 +56,7 @@ export function ClientBookings() {
       />
 
       {isLoading ? (
-        <div className="grid gap-3 xl:grid-cols-2">
+        <div className="mx-auto max-w-5xl space-y-3">
           {[0, 1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-24 rounded-2xl" />
           ))}
@@ -84,7 +84,7 @@ export function ClientBookings() {
           )}
         </div>
       ) : (
-        <div className="grid gap-3 xl:grid-cols-2">
+        <div className="mx-auto max-w-5xl space-y-3">
           {filtered.map((booking) => (
             <BookingCard key={booking.id} booking={booking} />
           ))}

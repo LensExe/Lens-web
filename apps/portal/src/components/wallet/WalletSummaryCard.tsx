@@ -17,11 +17,8 @@ const dayMonth = (iso?: string) => {
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
 };
 
-/**
- * Both balances side by side on one card — money (with "Rút tiền" for
- * photographers) and Lens Xu (with the expiry warning and the rules one click
- * away). Neutral by design: the numbers are the content.
- */
+/** Balanced balance overview — money is primary, Lens Xu is secondary, and
+ * both panels keep the same visual weight across screen sizes. */
 export function WalletSummaryCard({
   wallet,
   coins,
@@ -32,32 +29,44 @@ export function WalletSummaryCard({
   canWithdraw: boolean;
 }) {
   return (
-    <section className="grid overflow-hidden rounded-3xl border border-border bg-card md:grid-cols-2 md:divide-x md:divide-border">
-      <div className="flex flex-col p-6 md:p-7">
-        <p className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-          <WalletMinimal className="size-4" />
-          Ví tiền
-        </p>
-        <p className="mt-3 flex items-baseline gap-1">
-          <span className="text-4xl font-semibold tracking-tight tabular-nums">{number(wallet.balance)}</span>
-          <span className="text-xl font-semibold">₫</span>
-        </p>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          {canWithdraw
-            ? "Tiền giải ngân sau khi khách xác nhận đã nhận đủ ảnh. Rút về ngân hàng bất cứ lúc nào."
-            : "Tiền hoàn từ các lịch đã huỷ nằm ở đây."}
-        </p>
+    <section className="grid gap-3 lg:grid-cols-[1.12fr_0.88fr]">
+      <div className="flex min-h-[230px] flex-col rounded-3xl border border-border bg-card p-5 shadow-xs sm:p-6">
+        <div className="flex items-center justify-between gap-3">
+          <p className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <span className="flex size-9 items-center justify-center rounded-xl bg-muted text-foreground">
+              <WalletMinimal className="size-4" />
+            </span>
+            Ví tiền
+          </p>
+          <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+            Số dư khả dụng
+          </span>
+        </div>
+        <div className="mt-7">
+          <p className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+            <span className="text-4xl font-semibold tracking-tight tabular-nums sm:text-5xl">{number(wallet.balance)}</span>
+            <span className="text-lg font-semibold text-muted-foreground">₫</span>
+          </p>
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
+            {canWithdraw
+              ? "Tiền giải ngân sau khi khách xác nhận đã nhận đủ ảnh. Bạn có thể rút về ngân hàng bất cứ lúc nào."
+              : "Tiền hoàn từ các lịch đã huỷ sẽ được cộng vào ví của bạn."}
+          </p>
+        </div>
         {canWithdraw && (
-          <div className="mt-auto pt-5">
+          <div className="mt-auto flex flex-wrap items-center gap-3 pt-6">
             <WithdrawDialog balance={wallet.balance} />
+            <span className="text-xs text-muted-foreground">Xử lý trong 1–2 ngày làm việc</span>
           </div>
         )}
       </div>
 
-      <div className="flex flex-col border-t border-border p-6 md:border-t-0 md:p-7">
+      <div className="flex min-h-[230px] flex-col rounded-3xl border border-border bg-muted/25 p-5 shadow-xs sm:p-6">
         <div className="flex items-center justify-between gap-2">
           <p className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-            <Coins className="size-4" />
+            <span className="flex size-9 items-center justify-center rounded-xl bg-background text-foreground">
+              <Coins className="size-4" />
+            </span>
             {COIN_LABEL}
           </p>
           <Popover>
@@ -84,19 +93,21 @@ export function WalletSummaryCard({
             </PopoverContent>
           </Popover>
         </div>
-        <p className="mt-3 flex items-baseline gap-1.5">
-          <span className="text-4xl font-semibold tracking-tight tabular-nums">{number(coins.balance)}</span>
-          <span className="text-xl font-semibold">xu</span>
+        <p className="mt-7 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+          <span className="text-4xl font-semibold tracking-tight tabular-nums sm:text-5xl">{number(coins.balance)}</span>
+          <span className="text-lg font-semibold text-muted-foreground">xu</span>
         </p>
-        <p className="mt-1.5 text-sm text-muted-foreground">1 xu = 1 ₫ khi thanh toán buổi chụp.</p>
-        {coins.expiringSoon > 0 && (
-          <p className="mt-auto pt-5">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
-              <Clock3 className="size-3.5" />
-              {formatXu(coins.expiringSoon)} hết hạn ngày {dayMonth(coins.nextExpiryAt)}
+        <p className="mt-2 text-sm text-muted-foreground">1 xu = 1 ₫ khi thanh toán buổi chụp.</p>
+        <div className="mt-auto pt-6">
+          {coins.expiringSoon > 0 ? (
+            <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1.5 text-xs font-medium text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
+              <Clock3 className="size-3.5 shrink-0" />
+              <span className="truncate">{formatXu(coins.expiringSoon)} hết hạn ngày {dayMonth(coins.nextExpiryAt)}</span>
             </span>
-          </p>
-        )}
+          ) : (
+            <p className="text-xs text-muted-foreground">Không có xu sắp hết hạn.</p>
+          )}
+        </div>
       </div>
     </section>
   );

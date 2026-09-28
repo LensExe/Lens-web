@@ -51,8 +51,8 @@ const TILE_CTA: Partial<Record<BookingStatus, string>> = {
   confirmed: "Thanh toán →",
 };
 
-/** Compact stat tile — coloured left accent + dot, big number, small label.
- *  Used for the total and each booking status. */
+/** Compact status tile — the full lifecycle stays visible in one calm, grouped
+ * surface without any tile competing with the others. */
 function Tile({
   count,
   label,
@@ -68,16 +68,32 @@ function Tile({
 }) {
   const body = (
     <>
-      <span className={cn("block size-2.5 rounded-full", dot)} />
-      <p className="mt-3 text-2xl font-semibold tracking-tight tabular-nums">{count}</p>
-      <p className="mt-0.5 text-xs font-medium text-muted-foreground">{label}</p>
-      {cta && (
-        <p className="mt-1 text-xs font-medium text-foreground underline underline-offset-2">{cta}</p>
-      )}
+      <div className="flex items-center justify-between gap-2">
+        <span className={cn("size-2 rounded-full ring-4 ring-muted/50", dot)} />
+        {to && (
+          <ArrowRight className="size-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+        )}
+      </div>
+      <div className="mt-auto pt-4">
+        <div className="flex items-end justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-xl font-semibold tracking-tight tabular-nums">{count}</p>
+            <p className="mt-0.5 truncate text-xs font-medium text-muted-foreground">{label}</p>
+          </div>
+          {cta && (
+            <span className="shrink-0 rounded-full bg-ember/10 px-1.5 py-0.5 text-[10px] font-medium text-ember">
+              Cần xử lý
+            </span>
+          )}
+        </div>
+      </div>
     </>
   );
 
-  const cls = "rounded-2xl border border-border bg-card p-4";
+  const cls = cn(
+    "group flex min-h-[104px] flex-col rounded-xl border border-border/80 bg-card p-3 shadow-xs sm:p-3.5",
+    to && "transition-colors hover:bg-muted/40"
+  );
   if (to) {
     return (
       <Link to={to} className={cn(cls, "transition-colors hover:bg-muted/40")}>
@@ -180,34 +196,59 @@ export function ClientOverview() {
         }
       />
 
-      {isLoading ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7">
-          {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-            <Skeleton key={i} className="h-28 rounded-2xl" />
-          ))}
+      <section className="mt-6">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="flex size-7 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+              <CalendarCheck className="size-3.5" />
+            </span>
+            <div>
+              <h2 className="text-base font-semibold">Tổng quan lịch đặt</h2>
+              <p className="hidden text-xs text-muted-foreground sm:block">
+                Toàn bộ hành trình buổi chụp
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/client/bookings"
+            className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Xem tất cả <ArrowRight className="size-3" />
+          </Link>
         </div>
-      ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7">
-          <Tile
-            count={bookings.length}
-            label="Tổng buổi chụp"
-            dot="bg-foreground"
-          />
-          {STATUS_ORDER.map((status) => {
-            const count = countOf(status);
-            return (
+
+        <div className="rounded-2xl border border-border/70 bg-muted/20 p-2 sm:p-3">
+          {isLoading ? (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7">
+              {(["total", ...STATUS_ORDER] as const).map((status) => (
+                <Skeleton key={status} className="h-[104px] rounded-xl" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7">
               <Tile
-                key={status}
-                count={count}
-                label={BOOKING_STATUS_META[status].label}
-                dot={STATUS_DOT[status]}
-                to={TILE_CTA[status] && count > 0 ? "/client/bookings" : undefined}
-                cta={count > 0 ? TILE_CTA[status] : undefined}
+                count={bookings.length}
+                label="Tổng buổi chụp"
+                dot="bg-foreground"
+                to="/client/bookings"
               />
-            );
-          })}
+              {STATUS_ORDER.map((status) => {
+                const count = countOf(status);
+                return (
+                  <Tile
+                    key={status}
+                    count={count}
+                    label={BOOKING_STATUS_META[status].label}
+                    dot={STATUS_DOT[status]}
+                    to={TILE_CTA[status] && count > 0 ? "/client/bookings" : undefined}
+                    cta={count > 0 ? TILE_CTA[status] : undefined}
+                  />
+                );
+              })}
+            </div>
+          )}
         </div>
-      )}
+      </section>
 
       <div className="mt-8 grid gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
         <section className="min-w-0">

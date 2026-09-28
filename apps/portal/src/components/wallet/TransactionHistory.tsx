@@ -99,8 +99,8 @@ export function TransactionHistory({
   const format = (n: number) => (ledger === "money" ? formatPrice(Math.abs(n)) : formatXu(Math.abs(n)));
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-border bg-card">
-      <div className="flex flex-col gap-3 border-b border-border px-5 pt-2 md:flex-row md:items-end md:justify-between">
+    <section className="overflow-hidden rounded-3xl border border-border bg-card shadow-xs">
+      <div className="flex flex-col gap-3 border-b border-border bg-muted/15 px-4 pt-3 sm:px-5 md:flex-row md:items-end md:justify-between">
         <StatusTabs
           className="mx-0 border-b-0 px-0 md:px-0"
           value={ledger}
@@ -110,7 +110,7 @@ export function TransactionHistory({
             { value: "coins", label: "Lens Xu", count: coins.length },
           ]}
         />
-        <div role="radiogroup" aria-label="Lọc giao dịch" className="mb-3 flex gap-1 rounded-full bg-muted p-1 text-sm">
+        <div role="radiogroup" aria-label="Lọc giao dịch" className="mb-3 grid w-full grid-cols-3 gap-1 rounded-full bg-muted p-1 text-xs sm:w-auto sm:text-sm">
           {(
             [
               { value: "all", label: "Tất cả" },
@@ -125,7 +125,7 @@ export function TransactionHistory({
               aria-checked={direction === o.value}
               onClick={() => setDirection(o.value)}
               className={cn(
-                "focus-ring rounded-full px-3 py-1 font-medium transition-colors",
+                "focus-ring rounded-full px-2.5 py-1.5 font-medium transition-colors sm:px-3 sm:py-1",
                 direction === o.value ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -136,9 +136,9 @@ export function TransactionHistory({
       </div>
 
       {loading ? (
-        <div className="space-y-3 p-5">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-12 rounded-xl" />
+        <div className="space-y-2 p-4 sm:p-5">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-16 rounded-xl" />
           ))}
         </div>
       ) : groups.length === 0 ? (
@@ -157,7 +157,7 @@ export function TransactionHistory({
         <div>
           {groups.map((g) => (
             <div key={g.month}>
-              <p className="bg-muted/40 px-5 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <p className="bg-muted/35 px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground sm:px-5">
                 {g.month}
               </p>
               <ul className="divide-y divide-border">
@@ -165,20 +165,24 @@ export function TransactionHistory({
                   const Icon = ICON[r.type];
                   const plus = r.amount > 0;
                   return (
-                    <li key={r.id} className="flex items-center gap-4 px-5 py-3.5">
-                      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground">
+                    <li key={r.id} className="group flex gap-3 px-4 py-4 transition-colors hover:bg-muted/20 sm:items-center sm:gap-4 sm:px-5">
+                      <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground sm:mt-0">
                         <Icon className="size-4" />
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{r.note}</p>
                         <p className="truncate text-xs text-muted-foreground">
                           {r.label} · {dateOf(r.createdAt)}
-                          {r.extra ? ` · ${r.extra}` : ""}
                         </p>
+                        {r.extra && (
+                          <span className="mt-1 inline-flex max-w-full rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                            {r.extra}
+                          </span>
+                        )}
                       </div>
                       <span
                         className={cn(
-                          "shrink-0 text-sm font-semibold tabular-nums",
+                          "shrink-0 self-start pt-0.5 text-right text-sm font-semibold tabular-nums sm:self-center sm:pt-0",
                           plus ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"
                         )}
                       >

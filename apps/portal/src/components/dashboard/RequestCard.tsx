@@ -43,38 +43,40 @@ export function RequestCard({ booking }: { booking: Booking }) {
     );
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 transition-colors hover:bg-muted/30">
-      <div className="flex items-center gap-4">
-        <Avatar className="size-12 shrink-0">
-          <AvatarFallback>{initialsOf(booking.clientName)}</AvatarFallback>
-        </Avatar>
+    <div className="rounded-3xl border border-border bg-card p-4 shadow-xs transition-colors hover:bg-muted/30 sm:p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center sm:gap-4">
+          <Avatar className="size-11 shrink-0 sm:size-12">
+            <AvatarFallback>{initialsOf(booking.clientName)}</AvatarFallback>
+          </Avatar>
 
-        <Link to={`/dashboard/bookings/${booking.id}`} className="group/detail min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate font-semibold group-hover/detail:underline">
-              {booking.clientName}
-            </p>
-            <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", status.className)}>
-              {status.label}
-            </span>
-          </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted-foreground">
-            <span>{booking.style}</span>
-            <span className="flex items-center gap-1">
-              <CalendarDays className="size-3.5" />
-              {formatDate(booking.date)}
-            </span>
-            <span className="flex items-center gap-1">
-              <MapPin className="size-3.5" />
-              {booking.location}
-            </span>
-          </div>
-        </Link>
+          <Link to={`/dashboard/bookings/${booking.id}`} className="group/detail min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="truncate font-semibold group-hover/detail:underline">
+                {booking.clientName}
+              </p>
+              <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", status.className)}>
+                {status.label}
+              </span>
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+              <span>{booking.style}</span>
+              <span className="flex items-center gap-1">
+                <CalendarDays className="size-3.5" />
+                {formatDate(booking.date)}
+              </span>
+              <span className="flex min-w-0 items-center gap-1">
+                <MapPin className="size-3.5 shrink-0" />
+                <span className="truncate">{booking.location}</span>
+              </span>
+            </div>
+          </Link>
+        </div>
 
-        <div className="shrink-0 text-right">
-          <p className="font-semibold">{formatPrice(booking.price)}</p>
+        <div className="flex items-center justify-between gap-3 border-t border-border pt-3 sm:block sm:shrink-0 sm:border-0 sm:pt-0 sm:text-right">
+          <p className="font-semibold tabular-nums">{formatPrice(booking.price)}</p>
           {isActionable && (
-            <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
+            <p className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
               <ShieldCheck className="size-3" />
               Khách đã cọc {formatPrice(booking.depositAmount)}
             </p>
