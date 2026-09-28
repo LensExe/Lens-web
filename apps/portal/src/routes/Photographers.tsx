@@ -115,7 +115,7 @@ export function Photographers() {
   useScrollReveal(scopeRef, [isLoading]);
 
   return (
-    <div ref={scopeRef} className="mx-auto max-w-[1280px] px-5 py-8 md:px-8 md:py-10">
+    <div ref={scopeRef} className="portal-frame-container py-8 md:py-10">
       {/* Editorial header */}
       <header data-reveal className="max-w-2xl">
         <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">

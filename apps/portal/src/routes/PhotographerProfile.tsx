@@ -44,7 +44,7 @@ const initialsOf = (name: string) =>
 
 function ProfileSkeleton() {
   return (
-    <div className="mx-auto max-w-[1280px] px-5 py-6 md:px-8">
+    <div className="portal-frame-container py-6">
       <Skeleton className="h-56 w-full rounded-3xl md:h-72" />
       <div className="mt-6 space-y-4">
         <Skeleton className="h-9 w-72" />
@@ -104,7 +104,7 @@ export function PhotographerProfile() {
 
   if (isError || !photographer) {
     return (
-      <div className="mx-auto flex min-h-[60vh] max-w-[1280px] flex-col items-center justify-center px-5 text-center">
+      <div className="portal-frame-container flex min-h-[60vh] flex-col items-center justify-center text-center">
         <h1 className="text-2xl font-semibold">Không tìm thấy nhiếp ảnh gia</h1>
         <p className="mt-2 text-muted-foreground">
           Hồ sơ bạn tìm không tồn tại hoặc đã bị gỡ.
@@ -120,7 +120,7 @@ export function PhotographerProfile() {
   }
 
   return (
-    <div ref={scopeRef} className="mx-auto max-w-[1280px] px-5 pb-28 pt-6 md:px-8 lg:pb-16">
+    <div ref={scopeRef} className="portal-frame-container pb-28 pt-6 lg:pb-16">
       <Link
         to={back.to}
         className="group mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"

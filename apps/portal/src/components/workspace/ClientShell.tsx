@@ -11,7 +11,7 @@ export function ClientShell() {
   return (
     <div className="flex min-h-dvh flex-col">
       <SiteHeader />
-      <main className="mx-auto w-full max-w-[1280px] flex-1">
+      <main className="portal-client-main mx-auto w-full max-w-[1480px] flex-1">
         <Suspense fallback={<PageFallback />}>
           <Outlet />
         </Suspense>

@@ -89,10 +89,20 @@ export interface Breakdown {
   count: number;
 }
 
+export interface RatingLeaderboardRow {
+  photographerId: string;
+  name: string;
+  avatar: string;
+  rating: number;
+  reviewCount: number;
+  completedSessions: number;
+}
+
 export interface ReportData {
   monthly: MonthlyPoint[];
   byStyle: Breakdown[];
   byCity: Breakdown[];
+  topRated?: RatingLeaderboardRow[];
 }
 
 // ── Finance & withdrawals (Feature: Ví + Lens Xu) ───────────────────────────

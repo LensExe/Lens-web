@@ -13,7 +13,7 @@ import { currentUser } from "@/lib/session";
 export function MessagesLayout() {
   return (
     <div className="flex h-dvh flex-col">
-      <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-background px-3 md:px-5">
+      <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-border/70 bg-background/90 px-3 shadow-xs backdrop-blur-xl md:px-5">
         <div className="flex min-w-0 items-center gap-2 md:gap-3">
           <Button asChild variant="ghost" size="sm" className="rounded-full text-muted-foreground">
             <Link to={homeFor(currentUser.role)} aria-label="Về khu làm việc">

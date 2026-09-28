@@ -1,6 +1,16 @@
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
-import { Clock3, Images, Info, Package, Plus, Send, Trash2 } from "lucide-react";
+import {
+  BadgeCheck,
+  Clock3,
+  Images,
+  Package,
+  Plus,
+  Send,
+  ShieldCheck,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import {
   Button,
   Input,
@@ -25,7 +35,7 @@ import {
 } from "@/lib/booking";
 import type { Photographer } from "@/types";
 
-const INPUT = "h-10 rounded-xl px-3";
+const INPUT = "h-10 rounded-xl border-border bg-background px-3 focus-visible:ring-ember";
 
 const blankPackage = (): PackagesFormValues["packages"][number] => ({
   id: `pkg-${Date.now()}`,
@@ -68,73 +78,84 @@ function PackagesEditor({ profile }: { profile: Photographer }) {
       }
     );
 
-  const validPackages = live.filter((p) => p?.name?.trim() || Number.isFinite(Number(p?.price)));
-  const cheapest = live.length ? Math.min(...live.map((p) => Number(p?.price) || Infinity)) : NaN;
-  const longest = live.length ? Math.max(...live.map((p) => Number(p?.durationHours) || 0)) : 0;
+  const validPackages = live.filter(
+    (p) => p?.name?.trim() && Number.isFinite(Number(p?.price)) && Number(p.price) > 0,
+  );
+  const prices = live.map((p) => Number(p?.price)).filter((price) => Number.isFinite(price) && price > 0);
+  const cheapest = prices.length ? Math.min(...prices) : NaN;
+  const longest = live.reduce((max, p) => Math.max(max, Number(p?.durationHours) || 0), 0);
+  const mostPhotos = live.reduce((max, p) => Math.max(max, Number(p?.photoCount) || 0), 0);
 
   return (
-    <PageContainer className="max-w-[1280px]">
+    <PageContainer className="max-w-[1480px] py-6 md:py-8 lg:py-10">
       <PageHeader
-        className="mx-auto mb-6 w-full max-w-6xl"
+        className="mb-5"
         title={
           <span className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-muted text-foreground">
-              <Package className="size-5" />
+            <span className="flex size-10 items-center justify-center rounded-xl bg-ember/10 text-ember">
+              <Package className="size-[18px]" />
             </span>
             <span>Gói dịch vụ</span>
           </span>
         }
-        description="Các gói khách hàng chọn khi đặt lịch chụp với bạn."
+        description="Thiết lập và quản lý các gói chụp khách hàng có thể chọn khi đặt lịch với bạn."
+        actions={
+          <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-xs">
+            <BadgeCheck className="size-3.5 text-lagoon" /> Điều khoản rõ ràng cho khách
+          </span>
+        }
       />
 
-      <div className="mx-auto w-full max-w-6xl">
-        <div className="mb-4 flex items-start gap-3 rounded-3xl border border-border bg-muted/35 p-4 shadow-xs sm:p-5">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-card text-muted-foreground shadow-xs">
-            <Info className="size-4" />
+      <div className="w-full">
+        <div className="mb-5 flex items-start gap-3 rounded-2xl border border-ember/20 bg-ember/[0.045] p-4 sm:p-5">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-ember/10 text-ember">
+            <ShieldCheck className="size-4" />
           </span>
           <div className="min-w-0 text-sm">
-            <p className="font-semibold">Điều khoản hiển thị rõ cho khách hàng</p>
-            <p className="mt-1 leading-relaxed text-muted-foreground">
-              Số ảnh bàn giao là cam kết hoàn thành buổi chụp. Gói đã đặt sẽ giữ nguyên điều khoản
-              dù bạn chỉnh sửa gói sau này.
+            <p className="font-semibold">Chính sách cam kết chất lượng bàn giao</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Số lượng ảnh bàn giao và thời hạn giao là điều khoản của buổi chụp. Gói đã đặt sẽ giữ nguyên nội dung kể cả khi bạn cập nhật gói sau này.
             </p>
           </div>
         </div>
 
-        <dl className="mb-6 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-xs">
-            <dt className="text-sm text-muted-foreground">Gói đang thiết lập</dt>
-            <dd className="mt-1 text-xl font-semibold tabular-nums">{validPackages.length}</dd>
-          </div>
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-xs">
-            <dt className="text-sm text-muted-foreground">Giá khởi điểm</dt>
-            <dd className="mt-1 text-xl font-semibold tabular-nums">
-              {Number.isFinite(cheapest) ? formatPrice(cheapest) : "—"}
-            </dd>
-          </div>
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-xs">
-            <dt className="text-sm text-muted-foreground">Thời lượng cao nhất</dt>
-            <dd className="mt-1 text-xl font-semibold tabular-nums">{longest || "—"}{longest ? " giờ" : ""}</dd>
-          </div>
+        <dl className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            { icon: Package, label: "Gói đang thiết lập", value: `${validPackages.length} gói`, hint: "Đang hiển thị cho khách", tone: "bg-muted text-foreground" },
+            { icon: Sparkles, label: "Giá khởi điểm", value: Number.isFinite(cheapest) ? formatPrice(cheapest) : "—", hint: "Mức giá thấp nhất hiện tại", tone: "bg-ember/10 text-ember" },
+            { icon: Images, label: "Bàn giao nhiều nhất", value: mostPhotos ? `${mostPhotos} ảnh` : "—", hint: "Theo gói hiện có", tone: "bg-lagoon/10 text-lagoon" },
+            { icon: Clock3, label: "Thời lượng tối đa", value: longest ? `${String(longest).replace(".", ",")} giờ` : "—", hint: "Cho một buổi chụp", tone: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300" },
+          ].map(({ icon: Icon, label, value, hint, tone }) => (
+            <div key={label} className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs">
+              <div className="flex items-start justify-between gap-3">
+                <span className={`flex size-9 items-center justify-center rounded-xl ${tone}`}><Icon className="size-4" /></span>
+                <dd className="text-right text-lg font-semibold tracking-tight tabular-nums">{value}</dd>
+              </div>
+              <dt className="mt-3 text-xs font-semibold">{label}</dt>
+              <p className="mt-1 text-[10px] text-muted-foreground">{hint}</p>
+            </div>
+          ))}
         </dl>
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
-          <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
           {fields.map((field, i) => {
             const err = errors.packages?.[i];
             const current = live[i];
+            const isCheapest = Number.isFinite(cheapest) && Number(current?.price) === cheapest;
             return (
-              <section key={field.key} className="group flex min-w-0 flex-col rounded-3xl border border-border bg-card p-4 shadow-xs transition-colors hover:border-foreground/15 sm:p-5">
-                <div className="mb-5 flex items-center justify-between gap-3">
+              <section key={field.key} className={`group flex min-w-0 flex-col rounded-2xl border bg-card p-4 shadow-xs transition-colors sm:p-5 ${isCheapest ? "border-ember/50 ring-1 ring-ember/10" : "border-border/80 hover:border-foreground/20"}`}>
+                <div className="-mx-4 -mt-4 mb-5 flex items-center justify-between gap-3 rounded-t-2xl border-b border-border/70 bg-muted/20 px-4 py-3 sm:-mx-5 sm:-mt-5 sm:px-5">
                   <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                      <Package className="size-4" />
+                    <span className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${isCheapest ? "bg-ember/10 text-ember" : "bg-muted text-muted-foreground"}`}>
+                      {isCheapest ? <Sparkles className="size-4" /> : <Package className="size-4" />}
                     </span>
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                         Gói {i + 1}
+                        {isCheapest && <span className="rounded-full bg-ember/10 px-2 py-0.5 text-[9px] tracking-normal text-ember">Giá thấp nhất</span>}
                       </p>
-                      <p className="truncate text-sm font-medium">{current?.name || "Chưa đặt tên"}</p>
+                      <p className="truncate text-sm font-semibold">{current?.name || "Chưa đặt tên"}</p>
                     </div>
                   </div>
                   <Button
@@ -164,7 +185,7 @@ function PackagesEditor({ profile }: { profile: Photographer }) {
                       id={`desc-${i}`}
                       rows={2}
                       placeholder="VD: 2 bộ trang phục, chụp ngoài trời, hỗ trợ tạo dáng"
-                      className="resize-none rounded-xl"
+                      className="resize-none rounded-xl border-border bg-background focus-visible:ring-ember"
                       {...register(`packages.${i}.description`)}
                     />
                   </FormField>
@@ -215,21 +236,21 @@ function PackagesEditor({ profile }: { profile: Photographer }) {
 
                 {/* What the client will see */}
                 {current && Number.isFinite(current.price) && (
-                  <div className="mt-5 border-t border-border pt-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                      Xem trước cho khách
+                  <div className="mt-5 rounded-xl border border-border/70 bg-muted/15 p-3.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                      Xem trước trên hồ sơ
                     </p>
-                    <p className="mt-1 text-sm font-semibold text-foreground">
+                    <p className="mt-1.5 text-lg font-semibold tracking-tight text-ember">
                       {formatPrice(current.price)}
                     </p>
-                    <div className="mt-3 flex flex-wrap gap-1.5 text-xs text-muted-foreground">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1">
+                    <div className="mt-2.5 flex flex-wrap gap-1.5 text-[10px] text-muted-foreground">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-background px-2 py-1">
                         <Images className="size-3.5" /> {current.photoCount} ảnh
                       </span>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-background px-2 py-1">
                         <Clock3 className="size-3.5" /> {String(current.durationHours).replace(".", ",")} giờ
                       </span>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-background px-2 py-1">
                         <Send className="size-3.5" /> Giao {current.deliveryDays} ngày
                       </span>
                     </div>
@@ -245,13 +266,13 @@ function PackagesEditor({ profile }: { profile: Photographer }) {
             <button
             type="button"
             onClick={() => append(blankPackage())}
-              className="focus-ring flex min-h-64 flex-col items-center justify-center gap-2 rounded-3xl border-2 border-dashed border-border bg-muted/10 text-sm text-muted-foreground transition-colors hover:border-foreground/30 hover:bg-muted/25 hover:text-foreground"
+              className="focus-ring flex min-h-72 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-muted/10 text-sm text-muted-foreground transition-colors hover:border-ember/40 hover:bg-ember/[0.03] hover:text-foreground"
             >
-              <span className="flex size-10 items-center justify-center rounded-full bg-card shadow-xs">
+              <span className="flex size-11 items-center justify-center rounded-full bg-ember/10 text-ember">
                 <Plus className="size-5" />
               </span>
-              <span className="font-medium">Thêm gói dịch vụ</span>
-              <span className="text-xs">Tạo thêm lựa chọn cho khách</span>
+              <span className="font-semibold">Thêm gói dịch vụ mới</span>
+              <span className="text-xs">Tạo thêm lựa chọn phù hợp với khách</span>
             </button>
           </div>
 
@@ -262,7 +283,7 @@ function PackagesEditor({ profile }: { profile: Photographer }) {
           ) : null}
 
           {Number.isFinite(cheapest) && (
-            <p className="mt-5 rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground shadow-xs">
+            <p className="mt-5 rounded-2xl border border-border/80 bg-card px-4 py-3 text-xs text-muted-foreground shadow-xs">
               Gói rẻ nhất hiện tại:{" "}
               <span className="font-semibold text-foreground">{formatPrice(cheapest)}</span>
               <span className="hidden sm:inline"> — đây là mức “Giá từ” khách thấy trên hồ sơ.</span>
@@ -288,11 +309,12 @@ export function DashboardPackages() {
     return (
       <PageContainer className="max-w-[1280px]">
         <Skeleton className="h-9 w-48" />
-        <div className="mx-auto mt-7 grid w-full max-w-6xl gap-4 lg:grid-cols-2">
-          {[0, 1].map((i) => (
+        <div className="mt-5 grid w-full gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-80 rounded-3xl" />
           ))}
         </div>
+        <Skeleton className="mt-5 h-[30rem] rounded-2xl" />
       </PageContainer>
     );
   }

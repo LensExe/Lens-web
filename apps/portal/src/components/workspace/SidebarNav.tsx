@@ -14,11 +14,11 @@ export function SidebarNav({
   onNavigate?: () => void;
 }) {
   return (
-    <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5" aria-label="Điều hướng">
+    <nav className="flex-1 space-y-7 overflow-y-auto px-3 py-5" aria-label="Điều hướng">
       {groups.map((group, i) => (
         <div key={group.label ?? i}>
           {group.label && (
-            <p className="mb-1.5 px-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/80">
+            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
               {group.label}
             </p>
           )}
@@ -33,7 +33,7 @@ export function SidebarNav({
                 onClick={onNavigate}
                 className={({ isActive }) =>
                   cn(
-                    "focus-ring flex h-10 items-center gap-3 rounded-xl px-3 text-[15px] transition-colors",
+                    "focus-ring flex h-10 items-center gap-3 rounded-xl px-3 text-sm transition-colors",
                     isActive
                       ? "bg-foreground font-medium text-background"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"

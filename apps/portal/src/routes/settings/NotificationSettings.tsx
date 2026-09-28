@@ -24,14 +24,22 @@ export function NotificationSettings() {
           {NOTIFICATION_OPTIONS.map((o) => (
             <label
               key={o.key}
-              className="flex cursor-pointer items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
+              className="flex cursor-pointer items-center justify-between gap-4 py-3.5 first:pt-0 last:pb-0"
             >
-              <span>
-                <span className="block text-sm font-medium">{o.label}</span>
-                <span className="block text-sm text-muted-foreground">{o.hint}</span>
+              <span className="min-w-0">
+                <span className="flex items-center gap-2 text-xs font-semibold">
+                  {o.label}
+                  {o.key === "bookingUpdates" && (
+                    <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[9px] font-medium text-ember dark:bg-orange-500/15">
+                      Quan trọng
+                    </span>
+                  )}
+                </span>
+                <span className="mt-1 block text-[10px] leading-4 text-muted-foreground">{o.hint}</span>
               </span>
               <Switch
                 checked={profile.notifications[o.key]}
+                className="data-[state=checked]:bg-ember"
                 disabled={update.isPending}
                 onCheckedChange={(checked) =>
                   update.mutate(

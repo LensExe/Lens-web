@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileImage, ScanSearch } from "lucide-react";
-import { Button, PageContainer, PageHeader, formatPrice } from "@lens/ui";
+import { CheckCircle2, Clock3, FileImage, ScanSearch, XCircle } from "lucide-react";
+import { Button, PageContainer, PageHeader, StatCard, formatPrice } from "@lens/ui";
 import {
   getCoreRowModel,
   getPaginationRowModel,
@@ -33,6 +33,9 @@ export function Photographers() {
   const [sorting, setSorting] = useState<SortingState>([]);
 
   const countOf = (status: ApprovalStatus) => applications.filter((a) => a.status === status).length;
+  const pendingCount = countOf("pending");
+  const approvedCount = countOf("approved");
+  const rejectedCount = countOf("rejected");
   const data = useMemo(
     () => (filter === "all" ? applications : applications.filter((a) => a.status === filter)),
     [applications, filter]
@@ -121,17 +124,74 @@ export function Photographers() {
   });
 
   return (
-    <PageContainer>
-      <PageHeader
-        title="Duyệt nhiếp ảnh gia"
-        description="Xem portfolio và quyết định hồ sơ mới — chỉ hồ sơ đã duyệt mới hiển thị công khai."
-      />
+    <PageContainer className="max-w-[1480px] py-6 md:py-8 lg:py-10">
+      <div className="mb-6 rounded-3xl border border-border/70 bg-gradient-to-br from-muted/55 via-card to-card p-5 shadow-sm sm:p-6">
+        <PageHeader
+          className="mb-0 gap-5"
+          title={
+            <span className="flex items-center gap-3">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-foreground text-background shadow-sm">
+                <FileImage className="size-5" />
+              </span>
+              <span>Duyệt nhiếp ảnh gia</span>
+            </span>
+          }
+          description={
+            <span className="block max-w-3xl text-sm leading-relaxed">
+              Xem portfolio và quyết định hồ sơ mới. Chỉ hồ sơ đã duyệt mới được hiển thị công khai.
+            </span>
+          }
+          actions={
+            <span className="inline-flex items-center gap-2 rounded-full border border-amber-200/80 bg-amber-50/70 px-3 py-1.5 text-xs font-medium text-amber-800 shadow-xs dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
+              <Clock3 className="size-3.5" />
+              {pendingCount} hồ sơ cần xem
+            </span>
+          }
+        />
+      </div>
+
+      <div className="mb-7 grid gap-3 sm:grid-cols-3">
+        <StatCard
+          icon={Clock3}
+          value={pendingCount}
+          label="Chờ duyệt"
+          hint="Hồ sơ cần được kiểm tra"
+          className="rounded-3xl border-amber-200/70 shadow-sm dark:border-amber-500/20"
+        />
+        <StatCard
+          icon={CheckCircle2}
+          value={approvedCount}
+          label="Đã duyệt"
+          hint="Đang hiển thị công khai"
+          className="rounded-3xl border-emerald-200/70 shadow-sm dark:border-emerald-500/20"
+        />
+        <StatCard
+          icon={XCircle}
+          value={rejectedCount}
+          label="Từ chối"
+          hint="Hồ sơ chưa đạt yêu cầu"
+          className="rounded-3xl border-border/70 shadow-sm"
+        />
+      </div>
+
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight">Danh sách hồ sơ</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Chọn một dòng để xem chi tiết portfolio và thông tin đăng ký.
+          </p>
+        </div>
+        <span className="rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-xs font-medium tabular-nums text-muted-foreground">
+          {data.length} hồ sơ
+        </span>
+      </div>
 
       <DataTable
         table={table}
         recordCount={data.length}
         isLoading={isLoading}
         onRowClick={open}
+        className="rounded-3xl border-border/70 shadow-sm"
         tabs={{
           value: filter,
           onChange: setFilter,

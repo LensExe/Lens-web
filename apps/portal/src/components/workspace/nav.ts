@@ -10,10 +10,8 @@ import {
   LayoutDashboard,
   MessageSquare,
   Package,
-  Settings,
   Star,
   Trophy,
-  Wallet,
 } from "lucide-react";
 import type { UserRole } from "@/types";
 
@@ -80,13 +78,6 @@ export const STUDIO_NAV: NavGroup[] = [
     items: [
       { to: "/dashboard/achievements", label: "Thành tựu", icon: Trophy },
       { to: "/dashboard/assistant", label: "Trợ lý AI", icon: Bot },
-    ],
-  },
-  {
-    label: "Tài khoản",
-    items: [
-      { to: "/wallet", label: "Ví của tôi", icon: Wallet },
-      { to: "/settings", label: "Cài đặt", icon: Settings },
     ],
   },
 ];

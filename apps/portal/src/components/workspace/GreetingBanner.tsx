@@ -21,12 +21,12 @@ export function GreetingBanner({
   action?: ReactNode;
 }) {
   return (
-    <section className="mb-8 rounded-3xl border border-border bg-card p-6 md:p-8">
-      <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+    <section className="mb-4 rounded-2xl border border-border bg-card p-4 sm:p-5">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0">
-          <p className="text-sm font-medium text-muted-foreground">{todayLabel()}</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight md:text-3xl">{title}</h1>
-          <p className="mt-1.5 max-w-2xl text-muted-foreground">{summary}</p>
+          <p className="text-xs font-medium text-muted-foreground">{todayLabel()}</p>
+          <h1 className="mt-1 text-xl font-semibold tracking-tight md:text-2xl">{title}</h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{summary}</p>
         </div>
         {action && <div className="shrink-0">{action}</div>}
       </div>

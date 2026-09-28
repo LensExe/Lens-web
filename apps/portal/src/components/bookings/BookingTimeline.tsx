@@ -41,30 +41,30 @@ export function BookingTimeline({ status }: { status: BookingStatus }) {
         const active = i === currentIndex && !done;
         const isLast = i === STEPS.length - 1;
         return (
-          <li key={step.status} className="relative flex gap-3 pb-6 last:pb-0">
+          <li key={step.status} className="relative flex gap-3 pb-5 last:pb-0">
             {!isLast && (
               <span
                 className={cn(
                   "absolute left-[11px] top-6 h-full w-px",
-                  done ? "bg-foreground" : "bg-border"
+                  done ? "bg-foreground/75" : "bg-border"
                 )}
               />
             )}
             <span
               className={cn(
-                "z-10 flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-medium",
+                "z-10 flex size-6 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold",
                 done
                   ? "border-foreground bg-foreground text-background"
                   : active
-                    ? "border-foreground bg-background text-foreground ring-4 ring-foreground/10"
+                    ? "border-ember bg-ember text-white ring-4 ring-ember/15"
                     : "border-border bg-background text-muted-foreground"
               )}
             >
-              {done ? <Check className="size-3.5" /> : i + 1}
+              {done || active ? <Check className="size-3.5" /> : i + 1}
             </span>
             <div className={cn("pt-0.5", !done && !active && "opacity-50")}>
-              <p className="text-sm font-medium">{step.title}</p>
-              <p className="text-xs text-muted-foreground">{step.desc}</p>
+              <p className="text-[11px] font-semibold">{step.title}</p>
+              <p className="text-[10px] leading-4 text-muted-foreground">{step.desc}</p>
             </div>
           </li>
         );

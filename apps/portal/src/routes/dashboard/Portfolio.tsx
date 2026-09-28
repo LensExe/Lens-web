@@ -1,13 +1,19 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Award,
+  ArrowUpRight,
+  Camera,
   Check,
+  ExternalLink,
   ImageOff,
+  Images,
   Lightbulb,
   Loader2,
   MapPin,
   Pencil,
   Plus,
+  ShieldCheck,
   Star,
   X,
 } from "lucide-react";
@@ -28,6 +34,7 @@ import {
   photo,
   toast,
   PageContainer,
+  PageHeader,
 } from "@lens/ui";
 import {
   useMyPhotographerProfile,
@@ -35,6 +42,7 @@ import {
 } from "@/queries/useDashboard";
 import { CITY_OPTIONS, STYLE_OPTIONS, experienceLabel } from "@/lib/photographer-filters";
 import { currentUser } from "@/lib/session";
+import { RankBadge } from "@/components/achievements/RankBadge";
 import type { Photographer, PhotoStyle } from "@/types";
 
 /** Longest "Giới thiệu" a photographer can write (no minimum). */
@@ -152,17 +160,20 @@ function ProfileEditor({
   };
 
   return (
-    <PageContainer>
-      <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-            Chỉnh sửa hồ sơ
-          </h1>
-          <p className="mt-1 text-muted-foreground">
-            Cập nhật thông tin và tác phẩm khách hàng nhìn thấy.
-          </p>
-        </div>
-        <div className="flex gap-2">
+    <PageContainer className="max-w-[1480px] py-6 md:py-8 lg:py-10">
+      <PageHeader
+        className="mb-5"
+        title={
+          <span className="flex items-center gap-3">
+            <span className="flex size-10 items-center justify-center rounded-xl bg-ember/10 text-ember">
+              <Pencil className="size-[18px]" />
+            </span>
+            <span>Chỉnh sửa hồ sơ</span>
+          </span>
+        }
+        description="Cập nhật thông tin và tác phẩm khách hàng nhìn thấy trên hồ sơ công khai."
+        actions={
+          <div className="flex gap-2">
           <Button
             variant="outline"
             className="rounded-full"
@@ -171,7 +182,7 @@ function ProfileEditor({
           >
             Huỷ
           </Button>
-          <Button className="rounded-full" disabled={!valid || update.isPending} onClick={save}>
+          <Button className="rounded-full bg-ember text-white hover:bg-ember/90" disabled={!valid || update.isPending} onClick={save}>
             {update.isPending ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (
@@ -179,8 +190,9 @@ function ProfileEditor({
             )}
             Lưu
           </Button>
-        </div>
-      </header>
+          </div>
+        }
+      />
 
       <section className="rounded-2xl border border-border bg-card p-5 md:p-6">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
@@ -239,7 +251,7 @@ function ProfileEditor({
                       className={cn(
                         "rounded-full border px-3 py-1 text-sm transition-colors",
                         active
-                          ? "border-foreground bg-foreground text-background"
+                          ? "border-ember bg-ember text-white"
                           : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
                       )}
                     >
@@ -256,7 +268,7 @@ function ProfileEditor({
                 maxLength={BIO_MAX}
                 value={draft.bio}
                 onChange={(e) => patch({ bio: e.target.value })}
-                className="w-full resize-none rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+                className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ember"
               />
               <p className="mt-1 text-right text-xs tabular-nums text-muted-foreground">
                 {draft.bio.length}/{BIO_MAX} ký tự
@@ -266,13 +278,13 @@ function ProfileEditor({
         </div>
       </section>
 
-      <section className="mt-8">
-        <h2 className="mb-4 text-lg font-semibold">
-          Tác phẩm
-          <span className="ml-2 text-sm font-normal text-muted-foreground">
-            {draft.portfolio.length} ảnh
-          </span>
-        </h2>
+      <section className="mt-5 rounded-2xl border border-border/80 bg-card p-4 shadow-xs sm:p-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-base font-semibold">
+            Tác phẩm <span className="ml-1 text-xs font-normal text-muted-foreground">{draft.portfolio.length} ảnh</span>
+          </h2>
+          <span className="text-[10px] text-muted-foreground">Ảnh sẽ hiển thị trên hồ sơ công khai</span>
+        </div>
         {/* Advice only — saving never depends on it. */}
         <p
           className={cn(
@@ -300,7 +312,7 @@ function ProfileEditor({
           <button
             type="button"
             onClick={addPhoto}
-            className="flex aspect-[3/4] w-full break-inside-avoid flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
+          className="flex aspect-[3/4] w-full break-inside-avoid flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border text-muted-foreground transition-colors hover:border-ember/40 hover:bg-ember/[0.035] hover:text-ember"
           >
             <Plus className="size-6" />
             <span className="text-sm font-medium">Thêm ảnh</span>
@@ -318,96 +330,154 @@ function ProfileView({
   profile: Photographer;
   onEdit: () => void;
 }) {
-  return (
-    <PageContainer>
-      <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-            Hồ sơ năng lực
-          </h1>
-          <p className="mt-1 text-muted-foreground">
-            Thông tin và tác phẩm khách hàng nhìn thấy.
-          </p>
-        </div>
-        <Button variant="outline" className="rounded-full" onClick={onEdit}>
-          <Pencil className="size-4" />
-          Chỉnh sửa
-        </Button>
-      </header>
+  const packageCount = profile.packages?.length ?? 0;
 
-      <section className="rounded-2xl border border-border bg-card p-5 md:p-6">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-          <Avatar className="size-20 shrink-0">
+  return (
+    <PageContainer className="max-w-[1480px] py-6 md:py-8 lg:py-10">
+      <PageHeader
+        className="mb-5"
+        title={
+          <span className="flex items-center gap-3">
+            <span className="flex size-10 items-center justify-center rounded-xl bg-ember/10 text-ember">
+              <Camera className="size-[18px]" />
+            </span>
+            <span>Hồ sơ năng lực</span>
+          </span>
+        }
+        description="Trang giới thiệu công khai và những tác phẩm tiêu biểu của bạn."
+        actions={
+          <>
+            <Button asChild variant="outline" className="rounded-full">
+              <Link to={`/photographers/${currentUser.id}`}>
+                <ExternalLink className="size-4" />
+                Xem hồ sơ công khai
+              </Link>
+            </Button>
+            <Button className="rounded-full bg-ember text-white hover:bg-ember/90" onClick={onEdit}>
+              <Pencil className="size-4" />
+              Chỉnh sửa hồ sơ
+            </Button>
+          </>
+        }
+      />
+
+      <section className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs sm:p-5 lg:p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center">
+          <Avatar className="size-[76px] shrink-0 ring-4 ring-muted/70">
             <AvatarImage src={profile.avatar} alt={profile.name} />
             <AvatarFallback>{currentUser.initials}</AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
-            <h2 className="text-xl font-semibold">{profile.name}</h2>
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <MapPin className="size-3.5" />
-                {profile.city}
-              </span>
-              <span className="flex items-center gap-1">
-                <Star className="size-3.5 fill-ember text-ember" />
-                <span className="font-medium text-foreground">{profile.rating.toFixed(1)}</span>
-                ({profile.reviewCount} đánh giá)
-              </span>
-              <span className="flex items-center gap-1">
-                <Award className="size-3.5" />
-                {experienceLabel(profile.experienceYears)}
-              </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">{profile.name}</h2>
+              {profile.rank && <RankBadge rank={profile.rank} />}
+              {profile.featured && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                  <Star className="size-3 fill-current" /> Nổi bật
+                </span>
+              )}
             </div>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <p className="mt-1.5 line-clamp-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+              {profile.bio}
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5">
+                <MapPin className="size-3.5" /> {profile.city}
+              </span>
+              <span aria-hidden="true" className="text-border">•</span>
+              <span>{experienceLabel(profile.experienceYears)}</span>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-1.5">
               {profile.styles.map((style) => (
-                <span
-                  key={style}
-                  className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground"
-                >
+                <span key={style} className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
                   {style}
                 </span>
               ))}
             </div>
           </div>
-          <div className="shrink-0 sm:text-right">
-            <p className="text-sm text-muted-foreground">Giá khởi điểm</p>
-            <p className="text-lg font-semibold">{formatPrice(profile.pricePerSession)}</p>
+          <div className="shrink-0 border-t border-border pt-4 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0 lg:text-right">
+            <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">Giá khởi điểm</p>
+            <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">
+              {formatPrice(profile.pricePerSession)}
+              <span className="ml-1 text-xs font-normal text-muted-foreground">/ buổi</span>
+            </p>
+            <p className="mt-1 text-[10px] text-muted-foreground">Theo concept yêu cầu</p>
           </div>
         </div>
-        <p className="mt-5 border-t border-border pt-5 text-sm leading-relaxed text-muted-foreground">
-          {profile.bio}
-        </p>
       </section>
 
-      <section className="mt-8">
-        <h2 className="mb-4 text-lg font-semibold">
-          Tác phẩm
-          <span className="ml-2 text-sm font-normal text-muted-foreground">
-            {profile.portfolio.length} ảnh
-          </span>
-        </h2>
+      <section className="mt-4 grid gap-3 min-[480px]:grid-cols-2 xl:grid-cols-4">
+        {[
+          { icon: Star, value: profile.rating.toFixed(1), suffix: "/ 5.0", label: "Đánh giá trung bình", hint: `${profile.reviewCount} lượt đánh giá`, tone: "text-amber-600 bg-amber-50 dark:text-amber-300 dark:bg-amber-500/10" },
+          { icon: Images, value: profile.portfolio.length, suffix: " ảnh", label: "Tác phẩm công khai", hint: "Đang hiển thị trên hồ sơ", tone: "text-ember bg-ember/10" },
+          { icon: Award, value: profile.experienceYears, suffix: " năm", label: "Kinh nghiệm", hint: "Đồng hành cùng khách hàng", tone: "text-lagoon bg-lagoon/10" },
+          { icon: Camera, value: profile.styles.length, suffix: " phong cách", label: "Thế mạnh chụp ảnh", hint: `${packageCount} gói dịch vụ đang có`, tone: "text-violet-700 bg-violet-50 dark:text-violet-300 dark:bg-violet-500/10" },
+        ].map(({ icon: Icon, value, suffix, label, hint, tone }) => (
+          <article key={label} className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs">
+            <div className="flex items-start justify-between gap-3">
+              <span className={cn("flex size-9 items-center justify-center rounded-xl", tone)}><Icon className="size-4" /></span>
+              <p className="text-xl font-semibold tracking-tight tabular-nums">{value}<span className="ml-1 text-xs font-medium text-muted-foreground">{suffix}</span></p>
+            </div>
+            <p className="mt-3 text-xs font-semibold">{label}</p>
+            <p className="mt-1 text-[10px] text-muted-foreground">{hint}</p>
+          </article>
+        ))}
+      </section>
+
+      <section className="mt-5 rounded-2xl border border-border/80 bg-card p-4 shadow-xs sm:p-5">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-semibold tracking-tight">Tác phẩm tiêu biểu</h2>
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                {profile.portfolio.length} ảnh
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">Những khoảnh khắc khách hàng có thể xem trên hồ sơ công khai.</p>
+          </div>
+          <Link to={`/photographers/${currentUser.id}`} className="inline-flex items-center gap-1.5 self-start text-xs font-medium text-muted-foreground transition-colors hover:text-ember sm:self-auto">
+            Xem tất cả trên hồ sơ <ArrowUpRight className="size-3.5" />
+          </Link>
+        </div>
         {profile.portfolio.length === 0 ? (
-          <div className="flex flex-col items-center rounded-2xl border border-dashed border-border p-10 text-center">
-            <span className="mb-3 flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-              <ImageOff className="size-6" />
+          <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/15 p-10 text-center">
+            <span className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+              <ImageOff className="size-5" />
             </span>
-            <p className="font-medium">Chưa có tác phẩm nào</p>
-            <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-              Thêm ảnh vào hồ sơ để khách hàng thấy được phong cách của bạn.
-            </p>
+            <p className="text-sm font-semibold">Chưa có tác phẩm nào</p>
+            <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">Thêm ảnh để khách hàng dễ hình dung phong cách chụp của bạn.</p>
+            <Button className="mt-4 rounded-full bg-ember text-white hover:bg-ember/90" onClick={onEdit}>
+              <Plus className="size-4" /> Thêm tác phẩm
+            </Button>
           </div>
         ) : (
-          <div className="columns-2 gap-4 md:columns-3 xl:columns-4 [&>*]:mb-4">
+          <div className="columns-2 gap-3 md:columns-3 xl:columns-4 [&>*]:mb-3">
             {profile.portfolio.map((src, i) => (
-              <PortfolioImage
-                key={`${src}-${i}`}
-                src={src}
-                alt={`Tác phẩm ${i + 1} của ${profile.name}`}
-                index={i}
-              />
+              <PortfolioImage key={`${src}-${i}`} src={src} alt={`Tác phẩm ${i + 1} của ${profile.name}`} index={i} />
             ))}
           </div>
         )}
+      </section>
+
+      <section className="mt-4 grid gap-3 lg:grid-cols-2">
+        <article className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs sm:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold">Phong cách &amp; khu vực</h2>
+            <span className="text-[10px] text-muted-foreground">{profile.city}</span>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {profile.styles.map((style) => <span key={style} className="rounded-lg bg-muted px-2.5 py-1.5 text-xs font-medium">{style}</span>)}
+          </div>
+        </article>
+        <article className="rounded-2xl border border-lagoon/20 bg-lagoon/[0.035] p-4 shadow-xs sm:p-5">
+          <div className="flex items-center gap-2">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-lagoon/10 text-lagoon"><ShieldCheck className="size-4" /></span>
+            <h2 className="text-sm font-semibold">Thanh toán an toàn qua Lens</h2>
+          </div>
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+            Khoản thanh toán được giữ an toàn và chỉ chuyển cho bạn sau khi khách xác nhận đã nhận ảnh.
+          </p>
+        </article>
       </section>
     </PageContainer>
   );

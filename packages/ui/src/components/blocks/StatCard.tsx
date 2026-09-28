@@ -37,7 +37,7 @@ export function StatCard({
   return (
     <div
       className={cn(
-        "flex h-full flex-col rounded-2xl border border-border bg-card p-5",
+        "portal-stat-card flex h-full flex-col rounded-2xl border border-border bg-card p-5",
         interactive && "transition-colors hover:bg-muted/40",
         className
       )}

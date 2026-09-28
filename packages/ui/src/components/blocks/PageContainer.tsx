@@ -14,7 +14,7 @@ export function PageContainer({
   children: ReactNode;
 }) {
   return (
-    <div className={cn("w-full max-w-[1440px] px-5 py-8 md:px-8 md:py-10", className)}>
+    <div className={cn("portal-page-container w-full max-w-[1440px] px-5 py-8 md:px-8 md:py-10", className)}>
       {children}
     </div>
   );

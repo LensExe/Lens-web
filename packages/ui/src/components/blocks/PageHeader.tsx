@@ -16,7 +16,7 @@ export function PageHeader({
   return (
     <header
       className={cn(
-        "mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between",
+        "portal-page-header mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between",
         className
       )}
     >

@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
+import type { ReactNode } from "react";
 import { Download, ImageOff, Loader2, Lock, Upload } from "lucide-react";
 import { Button, Skeleton, cn, toast } from "@lens/ui";
 import { ExpiryBanner } from "@/components/storage/ExpiryBanner";
@@ -51,10 +52,13 @@ export function GalleryPanel({
   bookingId,
   canUpload,
   required,
+  emptyActions,
 }: {
   bookingId: string;
   canUpload: boolean;
   required?: number;
+  /** Optional booking-specific actions rendered below the empty-state copy. */
+  emptyActions?: ReactNode;
 }) {
   const navigate = useNavigate();
   const { data: gallery, isLoading } = useGallery(bookingId);
@@ -109,6 +113,7 @@ export function GalleryPanel({
               Tải ảnh lên
             </Button>
           )}
+          {emptyActions}
         </div>
       </div>
     );

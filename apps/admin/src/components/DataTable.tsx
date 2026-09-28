@@ -23,6 +23,7 @@ interface DataTableProps<TData extends object, V extends string> {
   /** Opens a row's detail; buttons inside cells must stopPropagation. */
   onRowClick?: (row: TData) => void;
   pageSizes?: number[];
+  className?: string;
 }
 
 /**
@@ -41,15 +42,16 @@ export function DataTable<TData extends object, V extends string = string>({
   empty = "Không có dữ liệu",
   onRowClick,
   pageSizes = [10, 25, 50],
+  className,
 }: DataTableProps<TData, V>) {
   // This wrapper's props (the table instance + recordCount) are referentially
   // stable across sort/pagination, so the React Compiler would memoize it and
   // freeze the grid. Opt out — TanStack mutates the table in place.
   "use no memo";
   return (
-    <section className="overflow-hidden rounded-2xl border border-border bg-card">
+    <section className={cn("overflow-hidden rounded-3xl border border-border/70 bg-card shadow-sm", className)}>
       {(tabs || toolbar) && (
-        <div className="flex flex-col gap-3 border-b border-border px-5 pt-2 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col gap-3 border-b border-border/70 bg-muted/[0.08] px-5 pt-3 md:flex-row md:items-end md:justify-between">
           {tabs ? (
             <StatusTabs
               className="mx-0 border-b-0 px-0 md:px-0"
@@ -74,7 +76,7 @@ export function DataTable<TData extends object, V extends string = string>({
         tableLayout={{ headerBackground: false, rowBorder: true, width: "auto" }}
         tableClassNames={{
           headerRow:
-            "bg-muted/40 [&>th]:h-10 [&>th]:text-[13px] [&>th]:font-medium [&>th]:text-muted-foreground",
+            "bg-muted/35 [&>th]:h-11 [&>th]:text-[13px] [&>th]:font-medium [&>th]:text-muted-foreground",
           bodyRow: cn("transition-colors hover:bg-muted/40 [&>td]:py-3", onRowClick && "group"),
           edgeCell: "first:ps-5 last:pe-5",
         }}
@@ -83,7 +85,7 @@ export function DataTable<TData extends object, V extends string = string>({
           <DataGridTable />
         </DataGridContainer>
         {!isLoading && recordCount > 0 && (
-          <div className="border-t border-border px-5 py-3">
+          <div className="border-t border-border/70 bg-muted/[0.06] px-5 py-3">
             {recordCount > Math.min(...pageSizes) ? (
               <DataGridPagination
                 sizes={pageSizes}

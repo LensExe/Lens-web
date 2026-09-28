@@ -1,5 +1,11 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, HardDrive, HardDriveDownload } from "lucide-react";
+import {
+  AlertTriangle,
+  HardDrive,
+  HardDriveDownload,
+  Images,
+  ShieldAlert,
+} from "lucide-react";
 import {
   PageContainer,
   PageHeader,
@@ -44,6 +50,11 @@ export function Storage() {
   const { data, isLoading } = useStorageReport();
   const rows = useMemo(() => data?.rows ?? [], [data]);
   const overview = data?.overview;
+  const totalGalleries = rows.reduce((sum, row) => sum + row.galleryCount, 0);
+  const totalQuotaBytes = rows.reduce((sum, row) => sum + row.quotaBytes, 0);
+  const totalUsagePct = totalQuotaBytes
+    ? Math.round(((overview?.totalUsedBytes ?? 0) / totalQuotaBytes) * 100)
+    : 0;
   const [filter, setFilter] = useState<Filter>("all");
   const [sorting, setSorting] = useState<SortingState>([]);
 
@@ -126,95 +137,131 @@ export function Storage() {
 
   return (
     <PageContainer className="max-w-[1480px] py-6 md:py-8 lg:py-10">
-      <div className="mb-6 rounded-3xl border border-border/70 bg-gradient-to-br from-muted/55 via-card to-card p-5 shadow-sm sm:p-6">
+      <div className="mb-5 rounded-2xl border border-border/80 bg-card p-4 shadow-xs sm:p-5">
         <PageHeader
           className="mb-0 gap-5"
           title={
             <span className="flex items-center gap-3">
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-foreground text-background shadow-sm">
-                <HardDrive className="size-5" />
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-ember/10 text-ember">
+                <HardDrive className="size-[18px]" />
               </span>
-              <span>Lưu trữ ảnh</span>
+              <span>Lưu trữ &amp; tài nguyên</span>
             </span>
           }
           description={
             <span className="block max-w-3xl text-sm leading-relaxed">
-              Theo dõi dung lượng, gói lưu trữ và cảnh báo quota của từng nhiếp ảnh gia trên nền tảng.
+              Theo dõi dung lượng ảnh, gói lưu trữ và tài khoản cần hỗ trợ trên toàn nền tảng.
             </span>
           }
           actions={
             <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/80 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-xs">
               <span className="size-2 rounded-full bg-emerald-500" />
-              Hệ thống đang theo dõi
+              Giám sát tài nguyên
             </span>
           }
         />
       </div>
 
-      <div className="mb-7 grid gap-3 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,0.85fr)_minmax(0,1.3fr)]">
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           icon={HardDrive}
           value={overview ? formatBytes(overview.totalUsedBytes) : "…"}
-          label="Tổng dung lượng nền tảng"
-          hint={<span className="text-xs text-muted-foreground">Tổng dung lượng đang được sử dụng</span>}
-          className="rounded-3xl border-border/70 shadow-sm"
+          label="Dung lượng đang dùng"
+          hint={<span className="text-xs text-muted-foreground">{isLoading ? "Đang tải tài khoản" : `${formatCount(rows.length)} tài khoản nhiếp ảnh`}</span>}
+          className="rounded-2xl border-border/80 shadow-xs"
+        />
+        <StatCard
+          icon={Images}
+          value={formatCount(totalGalleries)}
+          label="Bộ sưu tập"
+          hint={<span className="text-xs text-muted-foreground">Tổng thư viện của nhiếp ảnh gia</span>}
+          className="rounded-2xl border-border/80 shadow-xs"
+        />
+        <StatCard
+          icon={HardDriveDownload}
+          value={`${totalUsagePct}%`}
+          label="Tỉ lệ dung lượng"
+          hint={<span className="text-xs text-muted-foreground">Trên quota cộng dồn hiện tại</span>}
+          className="rounded-2xl border-border/80 shadow-xs"
         />
         <StatCard
           icon={AlertTriangle}
           value={overview ? formatCount(overview.overQuotaCount) : "…"}
           label="Tài khoản vượt quota"
           hint={
-            overview && overview.overQuotaCount > 0 ? (
-              <span className="text-xs font-medium text-rose-600 dark:text-rose-400">
-                Bộ sưu tập của họ đang bị khoá
-              </span>
-            ) : undefined
+            overview?.overQuotaCount ? (
+              <span className="text-xs font-medium text-rose-600 dark:text-rose-400">Thư viện đang bị khoá</span>
+            ) : (
+              <span className="text-xs text-muted-foreground">Không có tài khoản vượt giới hạn</span>
+            )
           }
           className={cn(
-            "rounded-3xl border-border/70 shadow-sm",
-            overview && overview.overQuotaCount > 0 && "border-rose-200/80 bg-rose-50/50 dark:border-rose-500/20 dark:bg-rose-500/5"
+            "rounded-2xl border-border/80 shadow-xs",
+            overview?.overQuotaCount && "border-rose-200/80 bg-rose-50/40 dark:border-rose-500/20 dark:bg-rose-500/5"
           )}
         />
-        <div className="rounded-3xl border border-border/70 bg-card p-5 shadow-sm sm:p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="flex items-center gap-2 text-sm font-semibold">
-                <span className="flex size-9 items-center justify-center rounded-xl bg-muted text-foreground">
-                  <HardDriveDownload className="size-4" />
-                </span>
-                Tỉ lệ gói lưu trữ
-              </p>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                Phân bổ số nhiếp ảnh gia theo từng gói dịch vụ.
-              </p>
-            </div>
-            {overview && (
-              <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-medium tabular-nums text-muted-foreground">
-                {formatCount(PLANS.reduce((sum, plan) => sum + overview.planBreakdown[plan], 0))} thợ
-              </span>
-            )}
+      </div>
+
+      {overview?.overQuotaCount ? (
+        <section className="mb-5 flex items-start gap-3 rounded-2xl border border-rose-200/80 bg-rose-50/70 p-4 dark:border-rose-500/20 dark:bg-rose-500/[0.06]">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
+            <ShieldAlert className="size-4" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-rose-900 dark:text-rose-200">
+              {formatCount(overview.overQuotaCount)} tài khoản đang vượt dung lượng cho phép
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-rose-800/80 dark:text-rose-200/70">
+              Bộ sưu tập bị khóa theo giới hạn gói. Kiểm tra danh sách bên dưới để xem mức dùng và gói hiện tại.
+            </p>
           </div>
-          {overview ? (
-            <SegmentedBar
-              className="mt-5"
-              segments={PLANS.map((p) => ({
-                label: STORAGE_PLAN_META[p].label,
-                value: overview.planBreakdown[p],
-                color: STORAGE_PLAN_META[p].color,
-              }))}
-              format={(v) => `${v} thợ`}
-            />
-          ) : (
-            <Skeleton className="mt-4 h-16" />
+        </section>
+      ) : null}
+
+      <section className="mb-6 rounded-2xl border border-border/80 bg-card p-4 shadow-xs sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="flex items-center gap-2 text-sm font-semibold sm:text-base">
+              <HardDriveDownload className="size-4 text-ember" /> Phân bổ gói lưu trữ
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground">Tỉ lệ nhiếp ảnh gia đang sử dụng từng gói.</p>
+          </div>
+          {overview && (
+            <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium tabular-nums text-muted-foreground">
+              {formatCount(PLANS.reduce((sum, plan) => sum + overview.planBreakdown[plan], 0))} tài khoản
+            </span>
           )}
         </div>
-      </div>
+        {overview ? (
+          <>
+            <SegmentedBar
+              className="mt-4"
+              segments={PLANS.map((plan) => ({
+                label: STORAGE_PLAN_META[plan].label,
+                value: overview.planBreakdown[plan],
+                color: STORAGE_PLAN_META[plan].color,
+              }))}
+              format={(value) => `${value} tài khoản`}
+            />
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+              {PLANS.map((plan) => (
+                <div key={plan} className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-muted/[0.12] px-3 py-2.5">
+                  <StatusPill meta={STORAGE_PLAN_META[plan]} dot={false} />
+                  <span className="text-sm font-semibold tabular-nums">{formatCount(overview.planBreakdown[plan])}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <Skeleton className="mt-4 h-24 rounded-xl" />
+        )}
+      </section>
 
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight">Theo dõi theo nhiếp ảnh gia</h2>
+          <h2 className="text-base font-semibold tracking-tight sm:text-lg">Bộ sưu tập theo nhiếp ảnh gia</h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Kiểm tra mức sử dụng và các tài khoản cần được xử lý.
+            Kiểm tra mức sử dụng, quota và trạng thái từng tài khoản.
           </p>
         </div>
         <span className="rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-xs font-medium text-muted-foreground">

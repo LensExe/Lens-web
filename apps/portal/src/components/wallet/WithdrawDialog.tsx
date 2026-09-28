@@ -15,7 +15,15 @@ import {
 import { useWithdraw } from "@/queries/useWallet";
 
 /** "Rút tiền" button + dialog: cash the wallet balance out to the bank. */
-export function WithdrawDialog({ balance }: { balance: number }) {
+export function WithdrawDialog({
+  balance,
+  label = "Rút tiền",
+  className,
+}: {
+  balance: number;
+  label?: string;
+  className?: string;
+}) {
   const withdraw = useWithdraw();
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("");
@@ -37,9 +45,9 @@ export function WithdrawDialog({ balance }: { balance: number }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <Button className="rounded-full" disabled={balance <= 0} onClick={() => setOpen(true)}>
+      <Button className={className ?? "rounded-full"} variant="outline" size="sm" disabled={balance <= 0} onClick={() => setOpen(true)}>
         <BanknoteArrowDown className="size-4" />
-        Rút tiền
+        {label}
       </Button>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>

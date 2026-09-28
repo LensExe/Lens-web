@@ -25,6 +25,7 @@ export function StatusTabs<V extends string>({
   return (
     <div
       role="tablist"
+      data-slot="status-tabs"
       className={cn(
         "-mx-5 flex gap-1 overflow-x-auto border-b border-border px-5 [scrollbar-width:none] md:mx-0 md:px-0",
         className
@@ -38,6 +39,7 @@ export function StatusTabs<V extends string>({
             type="button"
             role="tab"
             aria-selected={selected}
+            data-selected={selected ? "true" : "false"}
             onClick={() => onChange(tab.value)}
             className={cn(
               "focus-ring relative flex shrink-0 items-center gap-2 rounded-t-lg px-3 pb-3 pt-2 text-sm transition-colors",
@@ -58,7 +60,7 @@ export function StatusTabs<V extends string>({
               </span>
             )}
             {selected && (
-              <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-foreground" />
+              <span data-slot="status-tab-indicator" className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-foreground" />
             )}
           </button>
         );

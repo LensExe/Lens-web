@@ -17,8 +17,8 @@ export function SiteHeader() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-[1280px] items-stretch gap-6 px-5 md:px-8">
+      <header className="sticky top-0 z-50 w-full border-b border-border/70 bg-background/90 shadow-xs backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-[1480px] items-stretch gap-6 px-4 sm:px-5 md:px-8">
           <Link to={logoHref(sessionUser?.role)} className="flex shrink-0 items-center" aria-label="Lens — trang chủ">
             <Logo className="h-7" />
           </Link>

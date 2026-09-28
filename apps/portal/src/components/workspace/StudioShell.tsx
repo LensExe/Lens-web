@@ -35,14 +35,14 @@ export function StudioShell() {
   return (
     <div className="flex min-h-dvh">
       {/* Desktop sidebar — full height, stays put while the page scrolls */}
-      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-border bg-muted/20 md:flex">
+      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-border/70 bg-card md:flex">
         <Brand />
         <SidebarNav groups={STUDIO_NAV} badges={badges} />
         <SidebarUserCard />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-2 border-b border-border bg-background/80 px-4 backdrop-blur-xl md:px-8">
+        <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-2 border-b border-border/70 bg-background/85 px-4 shadow-xs backdrop-blur-xl md:px-8">
           <div className="flex min-w-0 items-center gap-2">
             <Sheet open={navOpen} onOpenChange={setNavOpen}>
               <SheetTrigger asChild>

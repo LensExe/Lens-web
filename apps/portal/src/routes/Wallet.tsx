@@ -1,14 +1,16 @@
 import {
   ArrowDownLeft,
+  ArrowRight,
   Clock3,
   Gift,
   Landmark,
   RotateCcw,
+  ShieldCheck,
   Ticket,
   TrendingUp,
   WalletMinimal,
 } from "lucide-react";
-import { PageContainer, PageHeader, Skeleton, formatPrice } from "@lens/ui";
+import { Button, PageContainer, PageHeader, Skeleton, formatPrice, toast } from "@lens/ui";
 import { TransactionHistory } from "@/components/wallet/TransactionHistory";
 import { WalletSummaryCard } from "@/components/wallet/WalletSummaryCard";
 import {
@@ -56,13 +58,19 @@ export function Wallet() {
         className="mx-auto mb-6 w-full max-w-6xl"
         title={
           <span className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-muted text-foreground">
+            <span className="flex size-9 items-center justify-center rounded-xl border border-ember/15 bg-ember/10 text-ember">
               <WalletMinimal className="size-5" />
             </span>
             <span>Ví của tôi</span>
           </span>
         }
         description={`Số dư tiền, ${COIN_LABEL} và lịch sử giao dịch của bạn.`}
+        actions={
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-medium text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-300">
+            <span className="size-1.5 rounded-full bg-emerald-500" />
+            Hệ thống ví được bảo vệ 24/7
+          </span>
+        }
       />
 
       {walletSummary.isError || coinSummary.isError ? (
@@ -70,7 +78,10 @@ export function Wallet() {
           Không tải được số dư. Vui lòng tải lại trang.
         </p>
       ) : !wallet || !coins ? (
-        <Skeleton className="mx-auto h-[250px] w-full max-w-6xl rounded-3xl" />
+        <div className="mx-auto grid w-full max-w-6xl gap-3 lg:grid-cols-2">
+          <Skeleton className="h-[230px] rounded-2xl" />
+          <Skeleton className="h-[230px] rounded-2xl" />
+        </div>
       ) : (
         <div className="mx-auto w-full max-w-6xl">
           <WalletSummaryCard wallet={wallet} coins={coins} canWithdraw={isPhotographer} />
@@ -83,15 +94,15 @@ export function Wallet() {
             const Icon = s.icon;
 
             return (
-              <div key={s.label} className="rounded-2xl border border-border bg-card p-4 shadow-xs sm:p-5">
+              <div key={s.label} className="rounded-2xl border border-border bg-card p-3.5 shadow-xs sm:p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <dt className="text-sm text-muted-foreground">{s.label}</dt>
+                  <dt className="text-xs text-muted-foreground">{s.label}</dt>
                   <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
                     <Icon className="size-4" />
                   </span>
                 </div>
-                <dd className="mt-3 text-lg font-semibold tabular-nums">{s.value}</dd>
-                {s.hint && <dd className="mt-1 text-xs leading-relaxed text-muted-foreground">{s.hint}</dd>}
+                <dd className="mt-2 text-base font-bold tabular-nums sm:text-lg">{s.value}</dd>
+                {s.hint && <dd className="mt-1 text-[10px] leading-relaxed text-muted-foreground">{s.hint}</dd>}
               </div>
             );
           })}
@@ -100,7 +111,7 @@ export function Wallet() {
         <Skeleton className="mx-auto mt-3 h-24 w-full max-w-6xl rounded-2xl" />
       )}
 
-      <div className="mx-auto mt-10 w-full max-w-6xl">
+      <div className="mx-auto mt-9 w-full max-w-6xl">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="flex size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground">
@@ -118,6 +129,29 @@ export function Wallet() {
           loading={walletTx.isLoading || coinTx.isLoading}
         />
       </div>
+
+      <section className="mx-auto mt-4 flex w-full max-w-6xl flex-col gap-3 rounded-2xl border border-emerald-200/80 bg-card p-3.5 shadow-xs dark:border-emerald-900/60 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+        <div className="flex items-start gap-2.5">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300">
+            <ShieldCheck className="size-4" />
+          </span>
+          <div>
+            <p className="text-xs font-semibold">Lens Safe 100% Protection</p>
+            <p className="mt-0.5 text-[10px] leading-4 text-muted-foreground">
+              Tài khoản và số dư của bạn được bảo hộ độc lập bởi chính sách cam kết chất lượng dịch vụ.
+            </p>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 w-full rounded-lg px-3 text-[10px] sm:w-auto"
+          onClick={() => toast("Thông tin cơ chế Lens Safe sẽ sớm được cập nhật")}
+        >
+          Tìm hiểu cơ chế Lens Safe
+          <ArrowRight className="size-3" />
+        </Button>
+      </section>
     </PageContainer>
   );
 }

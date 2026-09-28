@@ -11,7 +11,7 @@ import {
   SlidersHorizontal,
   Ticket,
 } from "lucide-react";
-import { Skeleton, StatusTabs, cn, formatPrice } from "@lens/ui";
+import { Skeleton, StatusTabs, cn, formatPrice, toast } from "@lens/ui";
 import { COIN_TX_LABEL, WALLET_TX_LABEL, formatXu } from "@/lib/wallet";
 import type { CoinTransaction, WalletTransaction } from "@/types";
 
@@ -99,7 +99,7 @@ export function TransactionHistory({
   const format = (n: number) => (ledger === "money" ? formatPrice(Math.abs(n)) : formatXu(Math.abs(n)));
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-border bg-card shadow-xs">
+    <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-xs">
       <div className="flex flex-col gap-3 border-b border-border bg-muted/15 px-4 pt-3 sm:px-5 md:flex-row md:items-end md:justify-between">
         <StatusTabs
           className="mx-0 border-b-0 px-0 md:px-0"
@@ -166,7 +166,16 @@ export function TransactionHistory({
                   const plus = r.amount > 0;
                   return (
                     <li key={r.id} className="group flex gap-3 px-4 py-4 transition-colors hover:bg-muted/20 sm:items-center sm:gap-4 sm:px-5">
-                      <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground sm:mt-0">
+                      <span
+                        className={cn(
+                          "mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl sm:mt-0",
+                          plus
+                            ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/35 dark:text-emerald-300"
+                            : r.type === "redeem" || r.type === "withdraw"
+                              ? "bg-orange-50 text-orange-600 dark:bg-orange-950/35 dark:text-orange-300"
+                              : "bg-muted text-muted-foreground"
+                        )}
+                      >
                         <Icon className="size-4" />
                       </span>
                       <div className="min-w-0 flex-1">
@@ -195,6 +204,12 @@ export function TransactionHistory({
               </ul>
             </div>
           ))}
+          <p className="border-t border-border bg-muted/10 px-4 py-3 text-center text-[10px] text-muted-foreground sm:px-5">
+            Hiển thị tối đa các giao dịch trong vòng 180 ngày gần nhất. Cần tra cứu cũ hơn?{" "}
+            <button type="button" className="font-medium text-ember hover:underline" onClick={() => toast("Lens Care sẽ hỗ trợ bạn sớm nhất")}>
+              Liên hệ hỗ trợ
+            </button>
+          </p>
         </div>
       )}
     </section>

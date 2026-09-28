@@ -58,10 +58,10 @@ const visibleTimes = TIME_SLOTS.filter((time) => {
 });
 
 const bookingPalette = [
-  { border: "#18181b", background: "#fafafa" },
+  { border: "#f97316", background: "#fff7ed" },
   { border: "#0f766e", background: "#f0fdfa" },
-  { border: "#7c3aed", background: "#f5f3ff" },
   { border: "#ea580c", background: "#fff7ed" },
+  { border: "#7c3aed", background: "#f5f3ff" },
 ];
 
 function BookingCard({ booking, index }: { booking: Booking; index: number }) {
@@ -149,7 +149,7 @@ function DayTimeline({
       className={cn(
         "relative border-r last:border-r-0",
         isPast ? "border-border/35 bg-muted/35" : "border-border/80 bg-muted/[0.04]",
-        selected && !isPast && "bg-lagoon/[0.045] ring-1 ring-inset ring-lagoon/25"
+        selected && !isPast && "bg-ember/[0.045] ring-1 ring-inset ring-ember/25"
       )}
       style={{ height: CALENDAR_HEIGHT }}
       onClick={isPast ? undefined : onSelect}
@@ -179,9 +179,9 @@ function DayTimeline({
               className={cn(
                 "absolute left-0 right-0 h-4 border-b border-border/60 transition-colors",
                 expired && "pointer-events-none border-border/25 bg-muted/35",
-                !expired && status === "free" && "bg-background hover:bg-lagoon/10",
+                !expired && status === "free" && "bg-background hover:bg-ember/10",
                 !expired && status === "busy" && "bg-amber-100/75 dark:bg-amber-500/10",
-                !expired && status === "booked" && "bg-sky-50/80 dark:bg-sky-500/10",
+                !expired && status === "booked" && "bg-ember/10 dark:bg-ember/15",
                 !expired && !status && "bg-muted/20"
               )}
               style={{ top: minutesFromStart(time) * (SLOT_HEIGHT / 30) }}
@@ -274,10 +274,10 @@ export function WeekScheduleEditor({
   };
 
   return (
-    <section className="rounded-3xl border border-border/70 bg-card p-3 shadow-sm sm:p-5">
+    <section className="rounded-2xl border border-border/80 bg-card p-3 shadow-xs sm:p-5">
       <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/20 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-foreground text-background shadow-sm">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-ember/10 text-ember shadow-sm">
             <CalendarDays className="size-4" />
           </span>
           <div className="min-w-0">
@@ -365,7 +365,7 @@ export function WeekScheduleEditor({
                     isPast
                       ? "cursor-default border-border/35 bg-muted/35 text-muted-foreground/70"
                       : "border-border/70 hover:bg-background/90",
-                    isSelected && !isPast && "bg-lagoon/10 ring-1 ring-inset ring-lagoon/30"
+                    isSelected && !isPast && "bg-ember/10 ring-1 ring-inset ring-ember/30"
                   )}
                 >
                   <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">

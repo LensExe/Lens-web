@@ -51,7 +51,8 @@ const DeliveryGallery = lazy(() =>
 
 function App() {
   return (
-    <Routes>
+    <div className="portal-theme min-h-dvh bg-background text-foreground">
+      <Routes>
       {/* Authentication lives in the portal; landing redirects here. */}
       <Route element={<AuthLayout />}>
         <Route path="login" element={<Login />} />
@@ -129,7 +130,8 @@ function App() {
       <Route element={<PublicLayout />}>
         <Route path="*" element={<Placeholder title="Không tìm thấy trang" description="Trang bạn tìm không tồn tại." />} />
       </Route>
-    </Routes>
+      </Routes>
+    </div>
   );
 }
 

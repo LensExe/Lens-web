@@ -148,7 +148,7 @@ export function BookingFlow() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-[1280px] px-5 py-8 md:px-8">
+      <div className="portal-frame-container py-8">
         <Skeleton className="h-9 w-72 rounded-xl" />
         <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
           <Skeleton className="h-[28rem] rounded-3xl" />
@@ -160,7 +160,7 @@ export function BookingFlow() {
 
   if (!photographer) {
     return (
-      <div className="mx-auto flex min-h-[60vh] max-w-[1280px] flex-col items-center justify-center px-5 text-center md:px-8">
+      <div className="portal-frame-container flex min-h-[60vh] flex-col items-center justify-center text-center">
         <h1 className="text-2xl font-semibold">Không tìm thấy nhiếp ảnh gia</h1>
         <Button asChild variant="outline" className="mt-5 rounded-full">
           <Link to="/">
@@ -259,7 +259,7 @@ export function BookingFlow() {
     );
 
   return (
-    <div className="mx-auto max-w-[1280px] px-5 pb-32 pt-6 md:px-8 lg:pb-14">
+    <div className="portal-frame-container pb-32 pt-6 lg:pb-14">
       <button
         type="button"
         onClick={back}

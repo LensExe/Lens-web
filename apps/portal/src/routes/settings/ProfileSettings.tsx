@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
 import { Controller, useForm } from "react-hook-form";
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
-import { BadgeCheck, ImageIcon, Info } from "lucide-react";
+import { BadgeCheck, Camera, ImageIcon, Info } from "lucide-react";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
+  Button,
   Input,
   RadioGroup,
   RadioGroupItem,
@@ -89,21 +90,32 @@ export function ProfileSettings() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
       {/* Identity */}
-      <div className="flex items-center gap-4 rounded-3xl border border-border bg-card p-6">
-        <Avatar className="size-16">
+      <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-xs sm:gap-4 sm:p-5">
+        <Avatar className="size-14 shrink-0 rounded-xl border border-border">
           <AvatarImage src={profile.avatar} alt={profile.name} />
-          <AvatarFallback>{currentUser.initials}</AvatarFallback>
+          <AvatarFallback className="rounded-xl bg-muted">{currentUser.initials}</AvatarFallback>
         </Avatar>
-        <div className="min-w-0">
-          <p className="truncate text-lg font-semibold">{profile.name}</p>
-          <p className="flex items-center gap-1.5 truncate text-sm text-muted-foreground">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold sm:text-base">{profile.name}</p>
+          <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
             {profile.email}
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
               <BadgeCheck className="size-3" />
               Đã xác minh
             </span>
           </p>
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 shrink-0 rounded-lg px-2.5 text-[10px]"
+          onClick={() => toast("Tính năng đổi ảnh đại diện sẽ sớm khả dụng")}
+        >
+          <Camera className="size-3.5" />
+          <span className="hidden sm:inline">Đổi ảnh đại diện</span>
+          <span className="sm:hidden">Đổi ảnh</span>
+        </Button>
       </div>
 
       {currentUser.role === "photographer" && (
