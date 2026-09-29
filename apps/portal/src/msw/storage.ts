@@ -14,7 +14,16 @@ const MB = 1024 * 1024;
 function loadGalleries(): ShootGallery[] {
   try {
     const raw = localStorage.getItem(GALLERY_DB_KEY);
-    if (raw) return JSON.parse(raw) as ShootGallery[];
+    if (raw) {
+      const stored = JSON.parse(raw) as ShootGallery[];
+      const storedIds = new Set(stored.map((gallery) => gallery.bookingId));
+      return [
+        ...stored,
+        ...seedGalleries
+          .filter((gallery) => !storedIds.has(gallery.bookingId))
+          .map((gallery) => ({ ...gallery, photos: gallery.photos.map((photo) => ({ ...photo })) })),
+      ];
+    }
   } catch {
     /* storage blocked */
   }

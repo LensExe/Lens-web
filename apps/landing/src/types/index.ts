@@ -42,9 +42,11 @@ export interface User {
 }
 
 export type BookingStatus =
+  | "awaiting_deposit"
   | "pending"
   | "confirmed"
-  | "completed"
+  | "held"
+  | "released"
   | "cancelled";
 
 export interface Booking {

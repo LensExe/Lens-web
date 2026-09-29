@@ -11,7 +11,8 @@ gsap.registerPlugin(useGSAP, ScrollTrigger);
 
 // Bento grid: 2 tall tiles + 8 small ones fill 2×6 (mobile) / 4×3 (desktop)
 // exactly — no empty cell. Tile order + which are tall come from the data.
-const GRID = "grid auto-rows-[150px] grid-cols-2 gap-4 grid-flow-row-dense lg:auto-rows-[180px] lg:grid-cols-4";
+const GRID =
+  "grid auto-rows-[132px] grid-cols-2 gap-3 grid-flow-row-dense sm:auto-rows-[160px] sm:gap-4 lg:auto-rows-[178px] lg:grid-cols-4";
 
 export function StyleCategories() {
   const scope = useRef<HTMLElement>(null);
@@ -51,7 +52,7 @@ export function StyleCategories() {
   );
 
   return (
-    <section id="phong-cach" ref={scope} className="scroll-mt-20 px-5 py-20">
+    <section id="phong-cach" ref={scope} className="scroll-mt-20 px-5 py-16 md:py-20 lg:py-24">
       <div className="mx-auto max-w-[1200px]">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -62,7 +63,7 @@ export function StyleCategories() {
           </div>
         </div>
 
-        <div className={cn("mt-10", GRID)}>
+        <div className={cn("mt-8 sm:mt-10", GRID)}>
           {isLoading &&
             Array.from({ length: 10 }, (_, i) => (
               <Skeleton

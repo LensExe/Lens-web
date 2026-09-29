@@ -2,11 +2,9 @@ import { lazy, Suspense, useRef, useState } from "react";
 import { useGSAP } from "@gsap/react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { Camera, Search, Sparkles } from "lucide-react";
+import { ArrowRight, Camera, Search, Sparkles } from "lucide-react";
 import { Button } from "@lens/ui";
-import { Magnet } from "@lens/ui";
-import { usePrefersReducedMotion } from "@lens/ui";
-import { portalBrowse, portalBrowseStyle, portalSignup } from "@/lib/links";
+import { portalBrowse, portalSignup } from "@/lib/links";
 import { AnimatedHeadline } from "./AnimatedHeadline";
 import { HeroVisual } from "./HeroVisual";
 
@@ -15,13 +13,10 @@ const RotatingText = lazy(() => import("@lens/ui/components/effects/RotatingText
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
-const popularStyles = ["Chân dung", "Cưới", "Thời trang", "Du lịch", "Ẩm thực"];
-
 export function Hero() {
   const [query, setQuery] = useState("");
   const scope = useRef<HTMLElement>(null);
   const visualRef = useRef<HTMLDivElement>(null);
-  const reduceMotion = usePrefersReducedMotion();
 
   // Hero motion (all transform-only, gated by prefers-reduced-motion):
   //  - scroll parallax on the floating cards
@@ -80,7 +75,7 @@ export function Hero() {
   return (
     <section
       ref={scope}
-      className="relative overflow-hidden px-5 pt-12 pb-20 md:pt-20 lg:pb-28"
+      className="relative overflow-hidden px-5 pt-8 pb-16 md:pt-20 md:pb-24"
     >
       {/* Soft canvas wash behind everything */}
       <div
@@ -96,17 +91,18 @@ export function Hero() {
         }}
       />
 
-      <div className="mx-auto grid max-w-[1200px] items-center gap-12 lg:grid-cols-2 lg:gap-8">
+      <div className="mx-auto grid max-w-[1200px] items-center gap-8 lg:grid-cols-2 lg:gap-14">
         {/* Left: copy */}
-        <div className="max-w-xl">
+        <div className="max-w-lg">
           <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background/70 px-4 py-1.5 text-sm text-muted-foreground backdrop-blur-sm">
             <Sparkles className="size-4 text-ember" />
-            Hơn 1.200 nhiếp ảnh gia trên khắp Việt Nam
+            Nền tảng nhiếp ảnh gia Việt Nam
           </span>
 
           <AnimatedHeadline
             className="mt-6 text-4xl leading-[1.08] sm:text-5xl lg:text-5xl xl:text-[3.5rem]"
             segments={[[{ text: "Tìm nhiếp ảnh gia" }], [{ text: "cho mọi" }]]}
+            ariaLabel="Tìm nhiếp ảnh gia cho mọi khoảnh khắc"
             trailing={
               <Suspense
                 fallback={<span className="text-ash dark:text-steel">khoảnh khắc</span>}
@@ -128,13 +124,14 @@ export function Hero() {
               animation: "rise-in 0.7s cubic-bezier(0.22,1,0.36,1) 0.45s both",
             }}
           >
-            Xem portfolio, so sánh đánh giá và đặt lịch với nhiếp ảnh gia phù hợp,
-            tất cả trên một nền tảng.
+            Xem portfolio, biết giá và đặt lịch với nhiếp ảnh gia phù hợp — tất cả
+            trên một nền tảng.
           </p>
 
           {/* Search */}
           <form
             onSubmit={handleSearch}
+            aria-label="Tìm kiếm nhiếp ảnh gia"
             className="mt-7 flex w-full max-w-md items-center gap-2 rounded-full border border-border bg-card p-2 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.2)]"
             style={{
               animation: "rise-in 0.7s cubic-bezier(0.22,1,0.36,1) 0.6s both",
@@ -150,66 +147,32 @@ export function Hero() {
               aria-label="Tìm kiếm nhiếp ảnh gia"
             />
             <Button type="submit" className="rounded-full px-5">
-              Tìm kiếm
+              Khám phá
             </Button>
           </form>
 
-          {/* CTAs */}
+          {/* Secondary role-based CTA. Search remains the single primary action. */}
           <div
-            className="mt-6 flex flex-col gap-3 sm:flex-row"
+            className="mt-5"
             style={{
               animation: "rise-in 0.7s cubic-bezier(0.22,1,0.36,1) 0.72s both",
             }}
           >
-            <Magnet padding={70} magnetStrength={4} disabled={reduceMotion}>
-              <Button
-                size="lg"
-                className="rounded-full px-6"
-                onClick={() => {
-                  window.location.href = portalBrowse();
-                }}
-              >
-                <Search className="size-4" />
-                Tìm nhiếp ảnh gia
-              </Button>
-            </Magnet>
-            <Magnet padding={70} magnetStrength={4} disabled={reduceMotion}>
-              <Button
-                variant="outline"
-                size="lg"
-                className="rounded-full px-6"
-                onClick={() => {
-                  window.location.href = portalSignup("photographer");
-                }}
-              >
-                <Camera className="size-4" />
-                Trở thành nhiếp ảnh gia
-              </Button>
-            </Magnet>
-          </div>
-
-          {/* Quick style chips */}
-          <div className="mt-7 flex flex-wrap items-center gap-2">
-            <span className="text-sm text-muted-foreground">Phổ biến:</span>
-            {popularStyles.map((style) => (
-              <button
-                key={style}
-                type="button"
-                onClick={() => {
-                  window.location.href = portalBrowseStyle(style);
-                }}
-                className="rounded-full border border-border bg-background/60 px-3 py-1 text-sm text-muted-foreground transition-colors hover:bg-foreground hover:text-background"
-              >
-                {style}
-              </button>
-            ))}
+            <a
+              href={portalSignup("photographer")}
+              className="group inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <Camera className="size-4 text-ember" />
+              Bạn là nhiếp ảnh gia? Tham gia Lens
+              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+            </a>
           </div>
         </div>
 
         {/* Right: visual. Entrance (CSS) on the outer wrapper; pointer
             parallax (GSAP transform) on the inner ref to avoid clashing. */}
         <div
-          className="order-first lg:order-last"
+          className="order-last mx-auto w-full max-w-[430px] lg:max-w-none"
           style={{
             animation: "rise-in 0.9s cubic-bezier(0.22,1,0.36,1) 0.2s both",
           }}

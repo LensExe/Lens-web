@@ -118,6 +118,14 @@ export interface AdminWithdrawal {
   /** ISO datetime the withdrawal was requested. */
   requestedAt: string;
   status: WithdrawalStatus;
+  /** Tên ngân hàng thụ hưởng */
+  bankName?: string;
+  /** Số tài khoản ngân hàng */
+  bankAccount?: string;
+  /** Tên chủ tài khoản ngân hàng */
+  accountHolder?: string;
+  /** Mã tham chiếu / mã giao dịch */
+  referenceCode?: string;
 }
 
 export interface FinanceSummary {
@@ -182,6 +190,7 @@ export type StoragePlanTier = "free" | "pro" | "studio";
 export interface AdminStorageRow {
   photographerId: string;
   name: string;
+  email?: string;
   avatar: string;
   plan: StoragePlanTier;
   usedBytes: number;

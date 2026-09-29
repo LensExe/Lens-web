@@ -33,7 +33,6 @@ import {
 } from "@lens/ui";
 import { BookingTimeline } from "@/components/bookings/BookingTimeline";
 import { GalleryPanel } from "@/components/storage/GalleryPanel";
-import { CollaboratorDialog } from "@/components/dashboard/CollaboratorDialog";
 import { CancelBookingDialog } from "@/components/bookings/CancelBookingDialog";
 import { MessageButton } from "@/components/profile/MessageButton";
 import {
@@ -337,7 +336,11 @@ export function BookingDetail({ mode }: { mode: "client" | "photographer" }) {
   const status = BOOKING_STATUS_META[booking.status];
   const otherName = isClient ? booking.photographerName : booking.clientName;
   const showGallery = booking.status === "held" || booking.status === "released";
-  const showActionCard = !isClient || booking.status !== "held" || Boolean(galleryQuery.data?.photos.length);
+  const showActionCard =
+    !isClient ||
+    booking.status !== "held" ||
+    Boolean(galleryQuery.data?.photos.length) ||
+    canCancel(booking);
   const bookingCode = booking.id.toUpperCase().replace(/^BK-/, "LS-");
 
   const shareBooking = async () => {
@@ -548,8 +551,8 @@ function BookingActions({
   releasing: boolean;
   deciding: boolean;
 }) {
-  // Client cards end with "Huỷ lịch" while the booking can still be cancelled —
-  // the dialog explains the refund / forfeit before anything happens.
+  // Keep cancellation inside the booking detail so the overview stays focused
+  // on the next required action. The dialog explains refund / forfeit first.
   const wrap = (children: React.ReactNode) => (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgb(24_24_27_/_.035),0_12px_28px_-24px_rgb(24_24_27_/_0.24)] sm:p-5">
       {children}
@@ -559,10 +562,11 @@ function BookingActions({
             booking={booking}
             trigger={
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                className="rounded-full text-muted-foreground hover:text-destructive"
+                className="h-9 rounded-xl border-destructive/25 px-3 text-xs text-destructive hover:border-destructive/40 hover:bg-destructive/5"
               >
+                <X className="size-3.5" />
                 Huỷ lịch
               </Button>
             }
@@ -572,11 +576,7 @@ function BookingActions({
     </div>
   );
 
-  // Delivery gates: the client completes only once the package's photo count is
-  // delivered; collaboration closes once any photo is delivered (both also
-  // enforced in the backend).
   const { data: gallery } = useGallery(booking.id);
-  const hasPhotos = !!gallery?.photos.length;
   const progress = deliveryProgress(booking, gallery?.photos.length ?? 0);
 
   // ── Client actions ─────────────────────────────────────────────────────────
@@ -672,29 +672,20 @@ function BookingActions({
     );
   if (booking.status === "confirmed" || booking.status === "held")
     return wrap(
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="flex items-start gap-2 text-sm text-muted-foreground">
-          {booking.status === "confirmed" ? (
-            <>
-              <Clock className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-              Đang chờ khách thanh toán phần còn lại.
-            </>
-          ) : (
-            <>
-              <ShieldCheck className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-              Tiền đang được sàn giữ. Bạn nhận {formatPrice(photographerPayout(booking.price))}{" "}
-              sau khi khách xác nhận đã nhận ảnh.
-            </>
-          )}
-        </p>
-        {hasPhotos ? (
-          <span className="shrink-0 text-xs text-muted-foreground">
-            Đã giao ảnh — không thể ghép thợ nữa
-          </span>
+      <p className="flex items-start gap-2 text-sm text-muted-foreground">
+        {booking.status === "confirmed" ? (
+          <>
+            <Clock className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+            Đang chờ khách thanh toán phần còn lại.
+          </>
         ) : (
-          <CollaboratorDialog booking={booking} />
+          <>
+            <ShieldCheck className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+            Tiền đang được sàn giữ. Bạn nhận {formatPrice(photographerPayout(booking.price))}{" "}
+            sau khi khách xác nhận đã nhận ảnh.
+          </>
         )}
-      </div>
+      </p>
     );
   if (booking.status === "released")
     return wrap(

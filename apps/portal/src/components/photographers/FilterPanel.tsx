@@ -51,7 +51,7 @@ function Chip({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "focus-ring rounded-full border px-3 py-1.5 text-sm transition-colors",
+        "focus-ring rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
         active
           ? "border-foreground bg-foreground text-background"
           : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -65,7 +65,7 @@ function Chip({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h3 className="mb-3 text-sm font-semibold">{title}</h3>
+      <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{title}</h3>
       <div className="flex flex-wrap gap-2">{children}</div>
     </div>
   );
@@ -79,7 +79,7 @@ function PriceSection({ filters, onChange }: Pick<FilterPanelProps, "filters" | 
 
   return (
     <div>
-      <h3 className="mb-3 text-sm font-semibold">Mức giá / buổi</h3>
+      <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Mức giá / buổi</h3>
       <Slider
         min={PRICE_MIN}
         max={PRICE_MAX}
@@ -108,7 +108,7 @@ function DateSection({ filters, onChange }: Pick<FilterPanelProps, "filters" | "
 
   return (
     <div>
-      <h3 className="mb-3 text-sm font-semibold">Ngày rảnh</h3>
+      <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Ngày rảnh</h3>
       <div className="flex items-center gap-2">
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
@@ -156,9 +156,12 @@ export function FilterPanel({ filters, onChange, onClear }: FilterPanelProps) {
 
   return (
     // Hairlines between the groups keep a long panel easy to scan.
-    <div className="space-y-5 [&>*+*]:border-t [&>*+*]:border-border [&>*+*]:pt-5">
+    <div className="space-y-6 [&>*+*]:border-t [&>*+*]:border-border/80 [&>*+*]:pt-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold">Bộ lọc</h2>
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Khám phá</p>
+          <h2 className="mt-1 text-lg font-semibold tracking-tight">Bộ lọc</h2>
+        </div>
         {activeCount > 0 && (
           <button
             type="button"

@@ -71,20 +71,20 @@ export function ActiveFilterChips({
   if (chips.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className="flex min-w-0 flex-wrap items-center gap-1">
       {chips.map((c) => (
         <span
           key={c.key}
-          className="inline-flex items-center gap-1 rounded-full border border-border bg-card py-1 pl-3 pr-1 text-sm"
+          className="inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-card py-0.5 pl-2.5 pr-0.5 text-xs"
         >
-          {c.label}
+          <span className="truncate">{c.label}</span>
           <button
             type="button"
             onClick={c.remove}
             aria-label={`Bỏ lọc ${c.label}`}
-            className="focus-ring flex size-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="focus-ring flex size-4 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
-            <X className="size-3.5" />
+            <X className="size-3" />
           </button>
         </span>
       ))}
@@ -92,7 +92,7 @@ export function ActiveFilterChips({
         <button
           type="button"
           onClick={onClearAll}
-          className="focus-ring rounded-full px-2 py-1 text-sm font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+          className="focus-ring rounded-full px-1.5 py-0.5 text-xs font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
         >
           Xoá tất cả
         </button>

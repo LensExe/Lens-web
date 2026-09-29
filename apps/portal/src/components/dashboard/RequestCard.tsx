@@ -9,7 +9,6 @@ import {
 } from "@/lib/booking";
 import { useUpdateBookingStatus } from "@/queries/useDashboard";
 import { useGallery } from "@/queries/useStorage";
-import { CollaboratorDialog } from "@/components/dashboard/CollaboratorDialog";
 import { MessageButton } from "@/components/profile/MessageButton";
 import { addMinutesToTime } from "@/lib/schedule";
 import type { Booking } from "@/types";
@@ -44,8 +43,6 @@ export function RequestCard({
   const { mutate, isPending } = useUpdateBookingStatus();
   const { data: gallery } = useGallery(booking.id);
   const isActionable = booking.status === "pending";
-  // Collaboration closes once photos are delivered (matches the backend guard).
-  const canCollaborate = !gallery?.photos.length;
   const progress = deliveryProgress(booking, gallery?.photos.length ?? 0);
 
   const decide = (next: "confirmed" | "cancelled") =>
@@ -185,7 +182,6 @@ export function RequestCard({
               size="sm"
               className="h-7 rounded-lg px-2 text-xs text-muted-foreground"
             />
-            <CollaboratorDialog booking={booking} />
           </div>
         )}
 
@@ -202,7 +198,6 @@ export function RequestCard({
               </span>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              {canCollaborate && <CollaboratorDialog booking={booking} />}
               <Button asChild variant="outline" size="sm" className="rounded-lg">
                 <Link to={`/dashboard/bookings/${booking.id}/gallery`}>
                   <Images className="size-3.5" /> Giao ảnh
@@ -298,7 +293,6 @@ export function RequestCard({
             <Clock className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
             Bạn đã xác nhận. Đang chờ khách thanh toán phần còn lại.
           </p>
-          <CollaboratorDialog booking={booking} />
         </div>
       )}
 
@@ -328,7 +322,6 @@ export function RequestCard({
             </span>
           </div>
           <div className="flex shrink-0 gap-2">
-            {canCollaborate && <CollaboratorDialog booking={booking} />}
             <Button asChild variant="outline" size="sm" className="rounded-full">
               <Link to={`/dashboard/bookings/${booking.id}/gallery`}>
                 <Images className="size-4" />

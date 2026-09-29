@@ -5,6 +5,8 @@ interface AnimatedHeadlineProps {
   /** Lines of text; each line wraps. Use `accent: true` to tint a word group. */
   segments: { text: string; accent?: boolean }[][];
   className?: string;
+  /** Accessible text for the visually split / animated heading. */
+  ariaLabel?: string;
   /** Inline node appended to the last line (e.g. a rotating word). */
   trailing?: ReactNode;
 }
@@ -19,6 +21,7 @@ const STAGGER_MS = 25;
 export function AnimatedHeadline({
   segments,
   className,
+  ariaLabel,
   trailing,
 }: AnimatedHeadlineProps) {
   // Pure derivation pass: assign each character a global stagger delay.
@@ -37,40 +40,45 @@ export function AnimatedHeadline({
   );
 
   return (
-    <h1 className={cn("font-semibold tracking-tight text-balance", className)}>
-      {lines.map((line, lineIdx) => (
-        <span key={lineIdx} className="block">
-          {line.map((segment, segIdx) => (
-            <span
-              key={segIdx}
-              className={segment.accent ? "text-ash dark:text-steel" : undefined}
-            >
-              {segment.words.map((chars, wIdx) => (
-                <Fragment key={wIdx}>
-                  <span className="inline-block whitespace-nowrap">
-                    {chars.map((c, cIdx) => (
-                      <span
-                        key={cIdx}
-                        className="inline-block will-change-transform motion-reduce:animate-none"
-                        style={{
-                          animation: `soft-blur-in 900ms ${EASING} ${c.delay}ms both`,
-                        }}
-                      >
-                        {c.char}
-                      </span>
-                    ))}
-                  </span>
-                  {wIdx < segment.words.length - 1 ? " " : null}
-                </Fragment>
-              ))}
-            </span>
-          ))}
-          {/* trailing inline node (e.g. rotating word) on the last line */}
-          {lineIdx === lines.length - 1 && trailing ? (
-            <> {trailing}</>
-          ) : null}
-        </span>
-      ))}
+    <h1
+      aria-label={ariaLabel}
+      className={cn("font-semibold tracking-tight text-balance", className)}
+    >
+      <span aria-hidden={ariaLabel ? true : undefined}>
+        {lines.map((line, lineIdx) => (
+          <span key={lineIdx} className="block">
+            {line.map((segment, segIdx) => (
+              <span
+                key={segIdx}
+                className={segment.accent ? "text-ash dark:text-steel" : undefined}
+              >
+                {segment.words.map((chars, wIdx) => (
+                  <Fragment key={wIdx}>
+                    <span className="inline-block whitespace-nowrap">
+                      {chars.map((c, cIdx) => (
+                        <span
+                          key={cIdx}
+                          className="inline-block will-change-transform motion-reduce:animate-none"
+                          style={{
+                            animation: `soft-blur-in 900ms ${EASING} ${c.delay}ms both`,
+                          }}
+                        >
+                          {c.char}
+                        </span>
+                      ))}
+                    </span>
+                    {wIdx < segment.words.length - 1 ? " " : null}
+                  </Fragment>
+                ))}
+              </span>
+            ))}
+            {/* trailing inline node (e.g. a rotating word) on the last line */}
+            {lineIdx === lines.length - 1 && trailing ? (
+              <> {trailing}</>
+            ) : null}
+          </span>
+        ))}
+      </span>
     </h1>
   );
 }

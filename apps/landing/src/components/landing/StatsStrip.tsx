@@ -17,8 +17,8 @@ const stats: Stat[] = [
 
 export function StatsStrip() {
   return (
-    <section className="px-5 py-12">
-      <div className="mx-auto grid max-w-[1200px] grid-cols-2 gap-6 rounded-[36px] border border-border bg-card px-6 py-10 md:grid-cols-4 md:px-10">
+    <section aria-label="Số liệu nổi bật của Lens" className="px-5 py-8 md:py-12">
+      <div className="mx-auto grid max-w-[1200px] grid-cols-2 gap-y-8 rounded-[32px] border border-border/70 bg-muted/30 px-6 py-8 md:grid-cols-4 md:gap-6 md:px-10 md:py-10">
         {stats.map((stat) => (
           <div key={stat.label} className="text-center">
             <p className="text-3xl font-bold tracking-tight md:text-4xl">

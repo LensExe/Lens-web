@@ -23,7 +23,6 @@ import {
   cn,
 } from "@lens/ui";
 import { RequestCard } from "@/components/dashboard/RequestCard";
-import { CollaborationInvites } from "@/components/dashboard/CollaborationInvites";
 import { useIncomingBookings } from "@/queries/useDashboard";
 import type { BookingStatus } from "@/types";
 
@@ -230,8 +229,6 @@ export function DashboardBookings() {
           </div>
         </section>
       )}
-
-      <CollaborationInvites />
 
       <section>
         <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

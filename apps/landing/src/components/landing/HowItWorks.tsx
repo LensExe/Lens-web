@@ -33,7 +33,7 @@ export function HowItWorks() {
     <section
       id="cach-hoat-dong"
       ref={scope}
-      className="scroll-mt-20 bg-muted/30 px-5 py-20 lg:py-28"
+      className="scroll-mt-20 bg-muted/30 px-5 py-16 md:py-20 lg:py-24"
     >
       <div className="mx-auto grid max-w-[1200px] gap-12 lg:grid-cols-[0.8fr_1fr] lg:gap-16">
         {/* Sticky heading */}

@@ -39,7 +39,7 @@ import {
   HANDOFF_MESSAGE,
   needsHandoff,
 } from "@/lib/assistant";
-import { seedAssistantConfig } from "@/mock/assistant";
+import { seedAssistantConfigs } from "@/mock/assistant";
 import { seedProfiles } from "@/mock/profiles";
 import {
   cashbackCoins,
@@ -65,6 +65,8 @@ import {
 } from "@/msw/payments";
 import type {
   Booking,
+  BookingReview,
+  BookingReviewInput,
   BookingInput,
   BookingStatus,
   AuthUser,
@@ -241,7 +243,22 @@ const BOOKINGS_DB_KEY = "lens.bookings.v2";
 const loadBookings = (): Booking[] => {
   try {
     const raw = localStorage.getItem(BOOKINGS_DB_KEY);
-    if (raw) return (JSON.parse(raw) as Booking[]).map(withTerms);
+    if (raw) {
+      const stored = (JSON.parse(raw) as Booking[]).map(withTerms);
+      const storedIds = new Set(stored.map((booking) => booking.id));
+      const additions = seedBookings
+        .filter((booking) => !storedIds.has(booking.id))
+        .map((b) =>
+          withTerms({
+            ...b,
+            depositAmount: depositAmount(b.price),
+            ...(b.status === "awaiting_deposit"
+              ? { depositDeadline: minutesFromNow(DEPOSIT_HOLD_MINUTES) }
+              : { depositPaidAt: new Date().toISOString() }),
+          })
+        );
+      return [...stored, ...additions];
+    }
   } catch {
     /* storage blocked — fall back to a fresh seed */
   }
@@ -266,12 +283,37 @@ const saveBookings = () => {
   }
 };
 
+// ── Client reviews — one review per completed booking + photographer ─────────
+const CLIENT_REVIEWS_DB_KEY = "lens.clientReviews.v1";
+const loadClientReviews = (): BookingReview[] => {
+  try {
+    const raw = localStorage.getItem(CLIENT_REVIEWS_DB_KEY);
+    if (raw) return JSON.parse(raw) as BookingReview[];
+  } catch {
+    /* storage blocked — state still lives in memory for this session */
+  }
+  return [];
+};
+let clientReviews: BookingReview[] = loadClientReviews();
+const saveClientReviews = () => {
+  try {
+    localStorage.setItem(CLIENT_REVIEWS_DB_KEY, JSON.stringify(clientReviews));
+  } catch {
+    /* storage blocked — state still lives in memory for this session */
+  }
+};
+
 // ── Account profiles (personal info + settings), keyed by user id — persisted.
 const USER_PROFILES_DB_KEY = "lens.userProfile.v1";
 const loadUserProfiles = (): Record<string, UserProfile> => {
   try {
     const raw = localStorage.getItem(USER_PROFILES_DB_KEY);
-    if (raw) return JSON.parse(raw) as Record<string, UserProfile>;
+    if (raw) {
+      return {
+        ...structuredClone(seedProfiles),
+        ...(JSON.parse(raw) as Record<string, UserProfile>),
+      };
+    }
   } catch {
     /* storage blocked — fall back to the seed */
   }
@@ -350,7 +392,19 @@ const THREADS_DB_KEY = "lens.threads.v1";
 const loadConversations = (): ConversationSeed[] => {
   try {
     const raw = localStorage.getItem(CONVERSATIONS_DB_KEY);
-    if (raw) return JSON.parse(raw) as ConversationSeed[];
+    if (raw) {
+      const stored = JSON.parse(raw) as ConversationSeed[];
+      const storedIds = new Set(stored.map((conversation) => conversation.id));
+      return [
+        ...stored,
+        ...seedConversations
+          .filter((conversation) => !storedIds.has(conversation.id))
+          .map((conversation) => ({
+            ...conversation,
+            unread: { ...conversation.unread },
+          })),
+      ];
+    }
   } catch {
     /* storage blocked */
   }
@@ -359,7 +413,16 @@ const loadConversations = (): ConversationSeed[] => {
 const loadThreads = (): Record<string, Message[]> => {
   try {
     const raw = localStorage.getItem(THREADS_DB_KEY);
-    if (raw) return JSON.parse(raw) as Record<string, Message[]>;
+    if (raw) {
+      const stored = JSON.parse(raw) as Record<string, Message[]>;
+      const merged = Object.fromEntries(
+        Object.entries(seedThreads).map(([id, messages]) => [
+          id,
+          [...(stored[id] ?? []), ...(stored[id] ? [] : messages.map((m) => ({ ...m })))],
+        ])
+      );
+      return { ...merged, ...stored };
+    }
   } catch {
     /* storage blocked */
   }
@@ -367,7 +430,7 @@ const loadThreads = (): Record<string, Message[]> => {
     Object.entries(seedThreads).map(([id, msgs]) => [id, msgs.map((m) => ({ ...m }))])
   );
 };
-let conversations: ConversationSeed[] = loadConversations();
+const conversations: ConversationSeed[] = loadConversations();
 const threads: Record<string, Message[]> = loadThreads();
 const saveConversations = () => {
   try {
@@ -392,13 +455,25 @@ const ASSISTANT_DB_KEY = "lens.assistant.v2";
 const loadAssistants = (): Record<string, AssistantConfig> => {
   try {
     const raw = localStorage.getItem(ASSISTANT_DB_KEY);
-    if (raw) return JSON.parse(raw) as Record<string, AssistantConfig>;
+    if (raw) {
+      return {
+        ...Object.fromEntries(
+          Object.entries(seedAssistantConfigs).map(([id, config]) => [id, { ...config }])
+        ),
+        ...(JSON.parse(raw) as Record<string, AssistantConfig>),
+      };
+    }
   } catch {
     /* storage blocked */
   }
-  return { [seedAssistantConfig.photographerId]: { ...seedAssistantConfig } };
+  return Object.fromEntries(
+    Object.entries(seedAssistantConfigs).map(([id, config]) => [id, {
+      ...config,
+      faqs: config.faqs.map((faq) => ({ ...faq })),
+    }])
+  );
 };
-let assistantConfigs: Record<string, AssistantConfig> = loadAssistants();
+const assistantConfigs: Record<string, AssistantConfig> = loadAssistants();
 const saveAssistants = () => {
   try {
     localStorage.setItem(ASSISTANT_DB_KEY, JSON.stringify(assistantConfigs));
@@ -561,6 +636,76 @@ export const handlers = [
   http.get("/api/photographers/:id/achievements", async ({ params }) => {
     await delay();
     return HttpResponse.json(achievementFor(params.id as string));
+  }),
+
+  http.get("/api/me/reviews", async ({ request }) => {
+    await delay();
+    const clientId = userIdOf(request);
+    return HttpResponse.json(
+      clientReviews
+        .filter((review) => review.clientId === clientId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    );
+  }),
+
+  http.post("/api/me/reviews", async ({ request }) => {
+    await delay();
+    const clientId = userIdOf(request);
+    const input = (await request.json()) as BookingReviewInput;
+    const rating = Math.round(Number(input.rating));
+    const comment = input.comment?.trim() ?? "";
+
+    if (!input.bookingId || !input.photographerId || rating < 1 || rating > 5 || comment.length < 10) {
+      return HttpResponse.json(
+        { message: "Vui lòng chọn số sao và viết nhận xét tối thiểu 10 ký tự" },
+        { status: 400 },
+      );
+    }
+
+    const booking = bookings.find(
+      (item) => item.id === input.bookingId && item.clientId === clientId,
+    );
+    const canReviewPerson =
+      booking &&
+      (booking.photographerId === input.photographerId ||
+        (booking.collaborators ?? []).some(
+          (collaborator) =>
+            collaborator.photographerId === input.photographerId &&
+            collaborator.status === "accepted",
+        ));
+
+    if (!booking || booking.status !== "released" || !canReviewPerson) {
+      return HttpResponse.json(
+        { message: "Chỉ có thể đánh giá người chụp trong buổi đã hoàn thành" },
+        { status: 400 },
+      );
+    }
+
+    const duplicate = clientReviews.some(
+      (review) =>
+        review.clientId === clientId &&
+        review.bookingId === input.bookingId &&
+        review.photographerId === input.photographerId,
+    );
+    if (duplicate) {
+      return HttpResponse.json(
+        { message: "Bạn đã đánh giá người chụp này cho booking" },
+        { status: 409 },
+      );
+    }
+
+    const review: BookingReview = {
+      id: "br-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8),
+      bookingId: input.bookingId,
+      clientId,
+      photographerId: input.photographerId,
+      rating,
+      comment,
+      createdAt: new Date().toISOString(),
+    };
+    clientReviews = [review, ...clientReviews];
+    saveClientReviews();
+    return HttpResponse.json(review, { status: 201 });
   }),
 
   http.get("/api/me/achievements", async ({ request }) => {

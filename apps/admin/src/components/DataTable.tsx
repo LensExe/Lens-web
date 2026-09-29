@@ -14,10 +14,17 @@ interface DataTableProps<TData extends object, V extends string> {
   table: Table<TData>;
   recordCount: number;
   isLoading?: boolean;
+  /** Optional heading content rendered above the tabs and toolbar. */
+  header?: ReactNode;
   /** Status tabs shown in the card header (left). */
   tabs?: { items: StatusTab<V>[]; value: V; onChange: (value: V) => void };
   /** Search / filters in the card header (right). */
   toolbar?: ReactNode;
+  toolbarClassName?: string;
+  /** Place the toolbar on its own row below the tabs (useful for many tabs). */
+  toolbarBelow?: boolean;
+  /** Optional custom footer content in place of the default count/pagination. */
+  footer?: ReactNode;
   /** Shown inside the card when there are no rows. */
   empty?: ReactNode;
   /** Opens a row's detail; buttons inside cells must stopPropagation. */
@@ -37,8 +44,12 @@ export function DataTable<TData extends object, V extends string = string>({
   table,
   recordCount,
   isLoading,
+  header,
   tabs,
   toolbar,
+  toolbarClassName,
+  toolbarBelow = false,
+  footer,
   empty = "Không có dữ liệu",
   onRowClick,
   pageSizes = [10, 25, 50],
@@ -50,8 +61,14 @@ export function DataTable<TData extends object, V extends string = string>({
   "use no memo";
   return (
     <section className={cn("overflow-hidden rounded-3xl border border-border/70 bg-card shadow-sm", className)}>
+      {header && <div className="px-5 pt-5 sm:px-6 sm:pt-6">{header}</div>}
       {(tabs || toolbar) && (
-        <div className="flex flex-col gap-3 border-b border-border/70 bg-muted/[0.08] px-5 pt-3 md:flex-row md:items-end md:justify-between">
+        <div
+          className={cn(
+            "flex flex-col gap-3 border-b border-border/70 bg-muted/[0.08] px-5 pt-3",
+            toolbarBelow ? "md:items-stretch" : "md:flex-row md:items-end md:justify-between"
+          )}
+        >
           {tabs ? (
             <StatusTabs
               className="mx-0 border-b-0 px-0 md:px-0"
@@ -62,7 +79,11 @@ export function DataTable<TData extends object, V extends string = string>({
           ) : (
             <span />
           )}
-          {toolbar && <div className="pb-3 md:w-72">{toolbar}</div>}
+          {toolbar && (
+            <div className={cn(toolbarBelow ? "w-full pb-3" : "pb-3 md:w-72", toolbarClassName)}>
+              {toolbar}
+            </div>
+          )}
         </div>
       )}
 
@@ -86,7 +107,7 @@ export function DataTable<TData extends object, V extends string = string>({
         </DataGridContainer>
         {!isLoading && recordCount > 0 && (
           <div className="border-t border-border/70 bg-muted/[0.06] px-5 py-3">
-            {recordCount > Math.min(...pageSizes) ? (
+            {footer ?? (recordCount > Math.min(...pageSizes) ? (
               <DataGridPagination
                 sizes={pageSizes}
                 info="Hiển thị {from}–{to} trên {count}"
@@ -96,7 +117,7 @@ export function DataTable<TData extends object, V extends string = string>({
               />
             ) : (
               <p className="text-sm text-muted-foreground">Hiển thị {recordCount} kết quả</p>
-            )}
+            ))}
           </div>
         )}
       </DataGrid>

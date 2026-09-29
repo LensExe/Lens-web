@@ -28,7 +28,7 @@ export function PhotographerCard({ photographer }: PhotographerCardProps) {
   return (
     <a
       href={portalProfile(photographer.id)}
-      className="focus-ring group block overflow-hidden rounded-[28px] border border-border bg-card transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_-18px_rgba(0,0,0,0.25)]"
+      className="focus-ring group block overflow-hidden rounded-[28px] border border-border bg-card transition-transform duration-300 hover:-translate-y-1"
     >
       {/* Cover */}
       <div className="relative overflow-hidden">

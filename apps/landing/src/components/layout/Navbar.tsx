@@ -73,7 +73,7 @@ export function Navbar() {
             </SheetTrigger>
             <SheetContent side="right" className="w-72">
               <div className="p-5">
-                <span className="text-lg font-semibold">Menu</span>
+                <span className="text-lg font-semibold">Điều hướng</span>
               </div>
               <SheetTitle className="sr-only">Điều hướng</SheetTitle>
               <nav className="flex flex-col gap-1 px-3">

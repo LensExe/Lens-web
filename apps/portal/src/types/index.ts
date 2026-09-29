@@ -299,6 +299,25 @@ export interface Review {
   date: string;
 }
 
+/** A review submitted by the signed-in client for one completed booking. */
+export interface BookingReview {
+  id: string;
+  bookingId: string;
+  clientId: string;
+  photographerId: string;
+  rating: number;
+  comment: string;
+  /** ISO datetime string. */
+  createdAt: string;
+}
+
+export interface BookingReviewInput {
+  bookingId: string;
+  photographerId: string;
+  rating: number;
+  comment: string;
+}
+
 // ── Money & rewards ──────────────────────────────────────────────────────────
 // TWO fully separate ledgers, both append-only (never mutate a balance directly;
 // balance = sum of entries). Real money (VND) lives in the wallet ledger; "Lens

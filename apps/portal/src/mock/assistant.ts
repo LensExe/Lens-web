@@ -25,3 +25,18 @@ export const seedAssistantConfig: AssistantConfig = {
   tone: "Thân thiện, ngắn gọn",
   enabled: true,
 };
+
+// Keep one explicitly disabled assistant in the seed as well. This lets the
+// assistant settings and admin quality screens demonstrate both toggle states.
+export const seedAssistantConfigs: Record<string, AssistantConfig> = {
+  me: seedAssistantConfig,
+  p2: {
+    photographerId: "p2",
+    services: "Gói ảnh cưới từ 3.2tr, nhận chụp tại TP. Hồ Chí Minh và các tỉnh lân cận.",
+    style: "Ảnh cưới phóng sự, cảm xúc tự nhiên.",
+    area: "TP. Hồ Chí Minh và khu vực lân cận",
+    faqs: [],
+    tone: "Thân thiện, ngắn gọn",
+    enabled: false,
+  },
+};

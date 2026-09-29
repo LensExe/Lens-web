@@ -39,6 +39,7 @@ export const mockQualityRows: AdminQualityRow[] = [
   row("u3", "Trần Quốc Bảo", "quocbao-av", "diamond", 132, 98, 1, true),
   row("u2", "Nguyễn Minh Anh", "minhanh-av", "gold", 68, 95, 3, true),
   row("u1", "Lý Gia Hân", "giahan-av", "bronze", 27, 92, 4, true),
+  row("u9", "Lê Thị Hương", "lehuong-av", "silver", 42, 93, 4, true),
   row("u13", "Vũ Hoàng Lan", "hoanglan-av", "bronze", 14, 88, 6, false),
   row("u14", "Đỗ Khánh Vy", "khanhvy-av", "bronze", 11, 90, 5, true),
   row("u15", "Bùi Thanh Tùng", "thanhtung-av", "newbie", 4, 85, 8, false),

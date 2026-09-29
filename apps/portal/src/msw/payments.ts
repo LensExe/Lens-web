@@ -15,7 +15,19 @@ const COIN_DB_KEY = "lens.coins.v1";
 function load<T>(key: string, seed: T[]): T[] {
   try {
     const raw = localStorage.getItem(key);
-    if (raw) return JSON.parse(raw) as T[];
+    if (raw) {
+      const stored = JSON.parse(raw) as T[];
+      const storedIds = new Set(
+        stored
+          .map((item) => (item as { id?: string }).id)
+          .filter((id): id is string => Boolean(id))
+      );
+      const additions = seed.filter((item) => {
+        const id = (item as { id?: string }).id;
+        return !id || !storedIds.has(id);
+      });
+      return [...stored, ...additions.map((item) => ({ ...item }))];
+    }
   } catch {
     /* storage blocked — fall back to a fresh seed */
   }

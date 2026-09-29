@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Clock3,
   CreditCard,
+  Images,
   MapPin,
   MessageSquare,
   Search,
@@ -18,7 +19,6 @@ import {
   Star,
   SunMedium,
   Wallet,
-  XCircle,
 } from "lucide-react";
 import {
   Avatar,
@@ -29,12 +29,11 @@ import {
   cn,
   formatPrice,
 } from "@lens/ui";
-import { CancelBookingDialog } from "@/components/bookings/CancelBookingDialog";
 import { useConversations } from "@/queries/useMessages";
 import { useMyBookings } from "@/queries/useBookings";
 import { useMyProfile } from "@/queries/useProfile";
 import { addMinutesToTime, todayISO } from "@/lib/schedule";
-import { BOOKING_STATUS_META, canCancel, remainingAmount } from "@/lib/booking";
+import { BOOKING_STATUS_META, remainingAmount } from "@/lib/booking";
 import { currentUser } from "@/lib/session";
 import type { Booking, BookingStatus } from "@/types";
 
@@ -69,6 +68,11 @@ const statusProgress: Record<BookingStatus, number> = {
 };
 
 const progressSteps = ["Đã đặt cọc", "Xác nhận lịch", "Thanh toán", "Hoàn thành"];
+
+const depositPaidStatuses: BookingStatus[] = ["pending", "confirmed", "held", "released"];
+
+const hasPaidDeposit = (booking: Pick<Booking, "status" | "depositPaidAt">) =>
+  Boolean(booking.depositPaidAt) || depositPaidStatuses.includes(booking.status);
 
 function SummaryMetric({
   icon: Icon,
@@ -163,8 +167,13 @@ function BookingProgress({ status }: { status: BookingStatus }) {
 function BookingAction({ booking }: { booking: Booking }) {
   if (booking.status === "awaiting_deposit") {
     return (
-      <Button asChild size="sm" className="rounded-full bg-ember px-3 text-white hover:bg-ember/90">
+      <Button
+        asChild
+        size="lg"
+        className="h-10 w-full rounded-xl bg-ember px-4 text-xs font-semibold text-white shadow-sm shadow-ember/20 hover:bg-ember/90 sm:w-auto"
+      >
         <Link to={"/client/bookings/" + booking.id + "/deposit"}>
+          <Wallet className="size-4" />
           Đặt cọc {formatPrice(booking.depositAmount)}
         </Link>
       </Button>
@@ -173,8 +182,13 @@ function BookingAction({ booking }: { booking: Booking }) {
 
   if (booking.status === "confirmed") {
     return (
-      <Button asChild size="sm" className="rounded-full bg-ember px-3 text-white hover:bg-ember/90">
+      <Button
+        asChild
+        size="lg"
+        className="h-10 w-full rounded-xl bg-ember px-4 text-xs font-semibold text-white shadow-sm shadow-ember/20 hover:bg-ember/90 sm:w-auto"
+      >
         <Link to={"/client/bookings/" + booking.id + "/pay"}>
+          <CreditCard className="size-4" />
           Thanh toán {formatPrice(remainingAmount(booking))}
         </Link>
       </Button>
@@ -183,17 +197,81 @@ function BookingAction({ booking }: { booking: Booking }) {
 
   if (booking.status === "held" || booking.status === "released") {
     return (
-      <Button asChild size="sm" variant="outline" className="rounded-full px-3">
-        <Link to={"/client/bookings/" + booking.id + "/gallery"}>Xem ảnh</Link>
+      <Button
+        asChild
+        size="lg"
+        variant="outline"
+        className="h-10 w-full rounded-xl px-4 text-xs font-semibold sm:w-auto"
+      >
+        <Link to={"/client/bookings/" + booking.id + "/gallery"}>
+          <Images className="size-4" />
+          Xem bộ sưu tập
+        </Link>
       </Button>
     );
   }
 
-  if (booking.status === "pending") {
-    return <span className="text-xs text-muted-foreground">Đã đặt cọc {formatPrice(booking.depositAmount)}</span>;
-  }
-
   return null;
+}
+
+function BookingPaymentStatus({ booking }: { booking: Booking }) {
+  if (!hasPaidDeposit(booking)) return null;
+
+  const waitingForConfirmation = booking.status === "pending";
+  const paidInFull = booking.status === "held" || booking.status === "released";
+  const title = paidInFull
+    ? "Đã thanh toán đủ"
+    : "Đã đặt cọc " + formatPrice(booking.depositAmount);
+  const detail = waitingForConfirmation
+    ? "Yêu cầu đang chờ nhiếp ảnh gia xác nhận."
+    : booking.status === "confirmed"
+      ? "Thanh toán phần còn lại để khóa lịch chụp."
+      : booking.status === "held"
+        ? "Lens đang giữ tiền an toàn cho đến khi bạn nhận ảnh."
+        : "Buổi chụp đã hoàn tất và giao dịch đã được xử lý.";
+  const badge = waitingForConfirmation
+    ? "Chờ xác nhận"
+    : booking.status === "confirmed"
+      ? "Còn lại " + formatPrice(remainingAmount(booking))
+      : booking.status === "held"
+        ? "Đang bảo vệ"
+        : "Hoàn tất";
+
+  return (
+    <div
+      className={cn(
+        "mt-3 flex items-center gap-3 rounded-xl border px-3 py-2.5",
+        waitingForConfirmation
+          ? "border-lagoon/30 bg-lagoon/[0.07]"
+          : "border-emerald-500/25 bg-emerald-500/[0.06] dark:border-emerald-400/25 dark:bg-emerald-400/[0.07]",
+      )}
+    >
+      <span
+        className={cn(
+          "flex size-8 shrink-0 items-center justify-center rounded-lg",
+          waitingForConfirmation
+            ? "bg-lagoon/15 text-lagoon"
+            : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+        )}
+      >
+        <ShieldCheck className="size-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-semibold text-foreground">{title}</p>
+        <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">{detail}</p>
+      </div>
+      <span
+        className={cn(
+          "hidden shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold sm:inline-flex",
+          waitingForConfirmation
+            ? "bg-lagoon/15 text-lagoon"
+            : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+        )}
+      >
+        {badge}
+      </span>
+    </div>
+  );
 }
 
 function OverviewBookingCard({
@@ -206,12 +284,15 @@ function OverviewBookingCard({
   const status = BOOKING_STATUS_META[booking.status];
   const duration = booking.packageSnapshot?.durationHours ?? 2;
   const endTime = booking.timeSlot ? addMinutesToTime(booking.timeSlot, duration * 60) : null;
+  const depositPaid = hasPaidDeposit(booking);
 
   return (
     <article
       className={cn(
         "rounded-2xl border bg-card p-4 shadow-sm transition-shadow hover:shadow-md",
-        featured ? "border-ember/70 ring-1 ring-ember/15" : "border-border",
+        featured && !depositPaid && "border-ember/70 ring-1 ring-ember/15",
+        depositPaid && "border-lagoon/40 bg-lagoon/[0.02] ring-1 ring-lagoon/10",
+        !featured && !depositPaid && "border-border",
       )}
     >
       <div className="flex items-start gap-3">
@@ -254,41 +335,59 @@ function OverviewBookingCard({
         </span>
       </div>
 
-      {featured && booking.status !== "cancelled" && <BookingProgress status={booking.status} />}
+      <BookingPaymentStatus booking={booking} />
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border/70 pt-3">
-        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+      {booking.status !== "cancelled" && <BookingProgress status={booking.status} />}
+
+      <div className="mt-4 grid gap-3 border-t border-border/70 pt-4 sm:flex sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2 text-[11px] leading-4 text-muted-foreground">
           {booking.status === "awaiting_deposit" && (
-            <span className="text-ember">Giữ lịch sau khi thanh toán cọc</span>
+            <>
+              <Wallet className="size-3.5 shrink-0 text-ember" />
+              <span className="text-ember">Thanh toán cọc để giữ lịch</span>
+            </>
           )}
           {booking.status === "confirmed" && (
-            <span className="text-ember">Còn lại {formatPrice(remainingAmount(booking))}</span>
+            <>
+              <CreditCard className="size-3.5 shrink-0 text-ember" />
+              <span className="text-ember">Còn lại {formatPrice(remainingAmount(booking))}</span>
+            </>
           )}
-          {booking.status === "pending" && <span>Đang chờ nhiếp ảnh gia xác nhận</span>}
-          {booking.status === "held" && <span>Lens đang giữ tiền an toàn</span>}
-          {booking.status === "released" && <span>Buổi chụp đã hoàn tất</span>}
+          {booking.status === "pending" && (
+            <>
+              <CalendarClock className="size-3.5 shrink-0 text-lagoon" />
+              <span>Đang chờ nhiếp ảnh gia phản hồi</span>
+            </>
+          )}
+          {booking.status === "held" && (
+            <>
+              <ShieldCheck className="size-3.5 shrink-0 text-lagoon" />
+              <span>Tiền đang được Lens bảo vệ</span>
+            </>
+          )}
+          {booking.status === "released" && (
+            <>
+              <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600" />
+              <span>Buổi chụp đã hoàn tất</span>
+            </>
+          )}
         </div>
-        <div className="flex items-center gap-3">
-          <Link
-            to={"/client/bookings/" + booking.id}
-            className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+        <div className="grid w-full gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
+          <Button
+            asChild
+            size="lg"
+            variant="outline"
+            className="h-10 w-full rounded-xl px-4 text-xs font-semibold sm:w-auto"
           >
-            Chi tiết
-          </Link>
+            <Link
+              to={"/client/bookings/" + booking.id}
+              aria-label={"Xem chi tiết lịch chụp với " + booking.photographerName}
+            >
+              Chi tiết
+              <ChevronRight className="size-3.5" />
+            </Link>
+          </Button>
           <BookingAction booking={booking} />
-          {canCancel(booking) && (
-            <CancelBookingDialog
-              booking={booking}
-              trigger={
-                <button
-                  type="button"
-                  className="text-xs text-muted-foreground transition-colors hover:text-destructive"
-                >
-                  Huỷ lịch
-                </button>
-              }
-            />
-          )}
         </div>
       </div>
     </article>
@@ -311,11 +410,11 @@ function TodoItem({
   return (
     <Link
       to={to}
-      className="flex items-start gap-3 rounded-xl border border-border bg-card p-3 transition-colors hover:bg-muted/40"
+      className="flex min-h-16 items-start gap-3 rounded-2xl border border-border bg-card p-3.5 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
     >
       <span
         className={cn(
-          "flex size-8 shrink-0 items-center justify-center rounded-lg",
+          "flex size-9 shrink-0 items-center justify-center rounded-xl",
           tone === "ember" ? "bg-ember/10 text-ember" : "bg-lagoon/10 text-lagoon",
         )}
       >
@@ -325,7 +424,7 @@ function TodoItem({
         <span className="block text-xs font-semibold">{title}</span>
         <span className="mt-0.5 block text-[11px] leading-4 text-muted-foreground">{hint}</span>
       </span>
-      <ChevronRight className="mt-1 size-3.5 shrink-0 text-muted-foreground" />
+      <ChevronRight className="mt-1 size-4 shrink-0 text-muted-foreground" />
     </Link>
   );
 }
@@ -663,7 +762,7 @@ export function ClientOverview() {
               to={"/client/bookings/" + nearest.id + "/gallery"}
               className="flex items-center gap-2 rounded-2xl border border-lagoon/30 bg-lagoon/5 p-4 text-xs text-lagoon"
             >
-              <XCircle className="size-4 shrink-0" />
+              <Images className="size-4 shrink-0" />
               <span className="flex-1">Ảnh đã sẵn sàng? Mở bộ sưu tập của bạn.</span>
               <ChevronRight className="size-4" />
             </Link>

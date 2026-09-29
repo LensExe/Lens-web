@@ -5,12 +5,12 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@lens/ui";
 import { PhotographerCard } from "@/components/shared/PhotographerCard";
 import { PhotographerCardSkeleton } from "@/components/shared/PhotographerCardSkeleton";
-import { ScrollFloat } from "@lens/ui";
 import { useFeaturedPhotographers } from "@/queries/usePhotographers";
 import { useReveal } from "@lens/ui";
 
 // Varied cover heights for the loading skeletons to mimic the masonry rhythm.
 const SKELETON_HEIGHTS = [260, 200, 300, 240, 220, 280];
+const MAX_FEATURED = 6;
 
 export function FeaturedPhotographers() {
   const { data, isLoading, isError } = useFeaturedPhotographers();
@@ -20,18 +20,15 @@ export function FeaturedPhotographers() {
   useReveal(scope, [data]);
 
   return (
-    <section ref={scope} id="nhiep-anh-gia" className="scroll-mt-20 px-5 py-20">
+    <section ref={scope} id="nhiep-anh-gia" className="scroll-mt-20 px-5 py-16 md:py-20 lg:py-24">
       <div className="mx-auto max-w-[1200px]">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <ScrollFloat
-              containerClassName="!my-0"
-              textClassName="font-semibold tracking-tight"
-            >
+            <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
               Nhiếp ảnh gia nổi bật
-            </ScrollFloat>
+            </h2>
             <p className="mt-2 max-w-md text-muted-foreground">
-              Những gương mặt được yêu thích nhất trên Lens, tuyển chọn theo đánh giá và chất lượng.
+              Những gương mặt nổi bật, được chọn theo phong cách, đánh giá và chất lượng portfolio.
             </p>
           </div>
           <Button asChild variant="outline" className="rounded-full">
@@ -47,7 +44,7 @@ export function FeaturedPhotographers() {
             Không thể tải danh sách nhiếp ảnh gia. Vui lòng thử lại sau.
           </p>
         ) : (
-          <div className="mt-10 [column-gap:1.25rem] columns-1 sm:columns-2 lg:columns-3">
+          <div className="mt-8 [column-gap:1rem] columns-1 sm:columns-2 lg:columns-3 lg:[column-gap:1.25rem]">
             {isLoading
               ? SKELETON_HEIGHTS.map((h, i) => (
                   <div key={i} className="mb-5 break-inside-avoid">
@@ -60,7 +57,7 @@ export function FeaturedPhotographers() {
                     </BoneSkeleton>
                   </div>
                 ))
-              : data?.map((photographer) => (
+              : data?.slice(0, MAX_FEATURED).map((photographer) => (
                   <div
                     key={photographer.id}
                     data-reveal

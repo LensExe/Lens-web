@@ -9,8 +9,9 @@ const isoAt = (daysFromNow: number) => {
   return d.toISOString();
 };
 
-// Client earned Lens Xu from past completed shoots. One batch expires soon so the
-// "sắp hết hạn" warning is demonstrable. Balance = 24k + 36k − 10k = 50.000 xu.
+// Client earned Lens Xu from past completed shoots. The ledger intentionally
+// includes earn, redeem, expire and manual-adjustment rows so every transaction
+// state is visible in the wallet UI. Balance = 24k + 36k − 10k − 4k + 2k.
 export const seedCoinLedger: CoinTransaction[] = [
   {
     id: "ct-1",
@@ -38,6 +39,22 @@ export const seedCoinLedger: CoinTransaction[] = [
     amount: -10_000,
     createdAt: isoAt(-40),
     note: "Dùng xu cho buổi chụp",
+  },
+  {
+    id: "ct-4",
+    userId: "u-khachhang",
+    type: "expire",
+    amount: -4_000,
+    createdAt: isoAt(-8),
+    note: "Xu hết hạn theo chính sách 12 tháng",
+  },
+  {
+    id: "ct-5",
+    userId: "u-khachhang",
+    type: "adjust",
+    amount: 2_000,
+    createdAt: isoAt(-3),
+    note: "Cộng bù xu do hỗ trợ khách hàng",
   },
 ];
 
@@ -81,5 +98,23 @@ export const seedWalletLedger: WalletTransaction[] = [
     bookingId: "bk-tkh-5",
     createdAt: isoAt(-32),
     note: "Hoàn tiền huỷ buổi chụp Ẩm thực",
+  },
+  {
+    id: "wt-5",
+    userId: "u-khachhang",
+    type: "topup",
+    amount: 500_000,
+    status: "completed",
+    createdAt: isoAt(-12),
+    note: "Nạp tiền vào ví qua chuyển khoản",
+  },
+  {
+    id: "wt-6",
+    userId: "u-khachhang",
+    type: "topup",
+    amount: 200_000,
+    status: "pending",
+    createdAt: isoAt(-1),
+    note: "Đang đối soát giao dịch nạp tiền",
   },
 ];

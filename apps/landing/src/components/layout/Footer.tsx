@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { AtSign, Globe, MessageCircle } from "lucide-react";
+import { AtSign, Globe } from "lucide-react";
 import { Logo } from "@lens/ui";
 import { portalBrowse, portalLogin, portalSignup } from "@/lib/links";
 
@@ -24,8 +24,8 @@ const columns: { title: string; links: FooterLink[] }[] = [
   {
     title: "Hỗ trợ",
     links: [
-      { label: "Điều khoản dịch vụ", to: "/" },
-      { label: "Chính sách bảo mật", to: "/" },
+      { label: "Liên hệ Lens", href: "mailto:hello@lens.vn" },
+      { label: "Góp ý cho Lens", href: "mailto:hello@lens.vn?subject=Góp ý cho Lens" },
     ],
   },
 ];
@@ -44,13 +44,12 @@ export function Footer() {
             </p>
             <div className="mt-5 flex gap-2">
               {[
-                { Icon: AtSign, label: "Liên hệ qua email" },
-                { Icon: MessageCircle, label: "Nhắn tin cho Lens" },
-                { Icon: Globe, label: "Trang web của Lens" },
-              ].map(({ Icon, label }) => (
+                { Icon: AtSign, label: "Liên hệ Lens", href: "mailto:hello@lens.vn" },
+                { Icon: Globe, label: "Khám phá nhiếp ảnh gia", href: portalBrowse() },
+              ].map(({ Icon, label, href }) => (
                 <a
                   key={label}
-                  href="#"
+                  href={href}
                   aria-label={label}
                   className="flex size-9 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-foreground hover:text-background"
                 >

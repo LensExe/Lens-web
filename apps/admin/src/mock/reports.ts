@@ -28,6 +28,8 @@ export const mockReports: ReportData = {
     { label: "Du lịch", count: 26 },
     { label: "Ẩm thực", count: 21 },
     { label: "Sản phẩm", count: 15 },
+    { label: "Kiến trúc", count: 13 },
+    { label: "Đường phố", count: 9 },
   ],
   byCity: [
     { label: "TP. Hồ Chí Minh", count: 109 },
