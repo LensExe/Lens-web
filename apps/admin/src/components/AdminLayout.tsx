@@ -13,7 +13,6 @@ import {
 import { AdminNav } from "@/components/layout/AdminNav";
 import { AdminUserCard } from "@/components/layout/AdminUserCard";
 import { titleFor } from "@/components/layout/nav";
-import { useAdminQueue } from "@/queries/useStats";
 
 const PORTAL_URL = import.meta.env.VITE_PORTAL_URL ?? "http://localhost:5174";
 
@@ -37,13 +36,12 @@ function Brand() {
 export function AdminLayout() {
   const [navOpen, setNavOpen] = useState(false);
   const { pathname } = useLocation();
-  const { data: queue } = useAdminQueue();
 
   return (
     <div className="flex min-h-dvh">
       <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-border bg-muted/20 md:flex">
         <Brand />
-        <AdminNav queue={queue} />
+        <AdminNav />
         <AdminUserCard />
       </aside>
 
@@ -59,7 +57,7 @@ export function AdminLayout() {
               <SheetContent side="left" className="flex w-72 flex-col gap-0 p-0">
                 <SheetTitle className="sr-only">Điều hướng</SheetTitle>
                 <Brand />
-                <AdminNav queue={queue} onNavigate={() => setNavOpen(false)} />
+                <AdminNav onNavigate={() => setNavOpen(false)} />
                 <AdminUserCard />
               </SheetContent>
             </Sheet>

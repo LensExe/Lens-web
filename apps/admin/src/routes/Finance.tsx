@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   BanknoteArrowDown,
   Check,
@@ -30,7 +30,6 @@ import { UserCell } from "@/components/UserCell";
 import { useFinance, useSetWithdrawalStatus, useWithdrawals } from "@/queries/useFinance";
 import { WITHDRAWAL_STATUS_META } from "@/lib/status";
 import { formatCount, formatDate, formatRelative } from "@/lib/format";
-import { mockFinance as initialFinance, mockWithdrawals as initialWithdrawals } from "@/mock/finance";
 import type { AdminWithdrawal, WithdrawalStatus } from "@/types";
 
 type Filter = "all" | WithdrawalStatus;
@@ -99,27 +98,16 @@ export function Finance() {
   const { data: serverWithdrawals, isLoading } = useWithdrawals();
   const { data: serverFinance } = useFinance();
   const setStatus = useSetWithdrawalStatus();
-  const [localWithdrawals, setLocalWithdrawals] = useState<AdminWithdrawal[]>(initialWithdrawals);
   const [filter, setFilter] = useState<Filter>("pending");
   const [search, setSearch] = useState("");
   const [bank, setBank] = useState("all");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [decision, setDecision] = useState<Decision | null>(null);
 
-  useEffect(() => {
-    if (serverWithdrawals && serverWithdrawals.length > 0) setLocalWithdrawals(serverWithdrawals);
-  }, [serverWithdrawals]);
-
-  const withdrawals = useMemo(
-    () => (serverWithdrawals && serverWithdrawals.length > 0 ? serverWithdrawals : localWithdrawals),
-    [serverWithdrawals, localWithdrawals]
-  );
+  const withdrawals = useMemo(() => serverWithdrawals ?? [], [serverWithdrawals]);
   const pendingList = useMemo(() => withdrawals.filter((withdrawal) => withdrawal.status === "pending"), [withdrawals]);
   const pendingTotal = useMemo(() => pendingList.reduce((sum, withdrawal) => sum + withdrawal.amount, 0), [pendingList]);
-  const finance = useMemo(() => {
-    if (serverFinance) return serverFinance;
-    return { ...initialFinance, pendingWithdrawalTotal: pendingTotal, pendingCount: pendingList.length };
-  }, [serverFinance, pendingTotal, pendingList.length]);
+  const finance = serverFinance;
   const banks = useMemo(
     () => [...new Set(withdrawals.map((withdrawal) => withdrawal.bankName).filter(Boolean) as string[])].sort(),
     [withdrawals]
@@ -256,7 +244,6 @@ export function Finance() {
   const confirm = () => {
     if (!decision) return;
     const { withdrawal, status } = decision;
-    setLocalWithdrawals((previous) => previous.map((item) => (item.id === withdrawal.id ? { ...item, status } : item)));
     setStatus.mutate(
       { id: withdrawal.id, status },
       {
@@ -264,10 +251,7 @@ export function Finance() {
           toast.success(status === "approved" ? `Đã duyệt rút ${formatPrice(withdrawal.amount)} cho ${withdrawal.photographerName}` : `Đã từ chối yêu cầu của ${withdrawal.photographerName}`);
           setDecision(null);
         },
-        onError: () => {
-          toast.success(status === "approved" ? `Đã duyệt rút ${formatPrice(withdrawal.amount)} cho ${withdrawal.photographerName}` : `Đã từ chối yêu cầu của ${withdrawal.photographerName}`);
-          setDecision(null);
-        },
+        onError: () => toast.error("Không thể xử lý yêu cầu trên backend."),
       }
     );
   };
@@ -316,23 +300,23 @@ export function Finance() {
           icon={Wallet}
           tone="green"
           badge="Ví hoạt động"
-          value={finance ? formatPrice(finance.walletReserve) : "…"}
+          value={finance?.walletReserve === undefined ? "Chưa có API" : formatPrice(finance.walletReserve)}
           label="Quỹ ví nhiếp ảnh gia"
-          hint="Tiền thật đang nằm trong ví thợ"
+          hint="Backend chưa có báo cáo tổng số dư ví của toàn hệ thống"
         />
         <FinanceMetricCard
           icon={Coins}
           tone="orange"
           badge="Tỉ lệ 1:1 VNĐ"
-          value={finance ? `${formatCount(finance.coinsOutstanding)} xu` : "…"}
+          value={finance?.coinsOutstanding === undefined ? "Chưa có API" : `${formatCount(finance.coinsOutstanding)} xu`}
           label="Lens Xu đang lưu hành"
-          hint={finance ? `Tương đương ${formatPrice(finance.coinsOutstanding)} giá trị quy đổi` : "Đang tải dữ liệu quy đổi"}
+          hint="Backend chưa có ledger Lens Xu"
         />
         <FinanceMetricCard
           icon={Clock}
           tone="amber"
           badge={`${finance?.pendingCount ?? pendingList.length} yêu cầu cần xử lý`}
-          value={finance ? formatPrice(finance.pendingWithdrawalTotal) : "…"}
+          value={finance?.pendingWithdrawalTotal === undefined ? formatPrice(pendingTotal) : formatPrice(finance.pendingWithdrawalTotal)}
           label="Đang chờ duyệt rút"
           hint={pendingList.length ? `Yêu cầu cũ nhất: ${formatRelative(pendingList[pendingList.length - 1].requestedAt)} trước` : "Không có yêu cầu đang chờ"}
         />

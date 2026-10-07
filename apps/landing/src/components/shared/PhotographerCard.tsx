@@ -76,7 +76,11 @@ export function PhotographerCard({ photographer }: PhotographerCardProps) {
         <div className="mt-4 flex items-end justify-between border-t border-border/60 pt-3">
           <div>
             <p className="text-[11px] text-muted-foreground">Từ</p>
-            <p className="font-semibold">{formatPrice(photographer.pricePerSession)}</p>
+            <p className="font-semibold">
+              {photographer.pricePerSession != null
+                ? formatPrice(photographer.pricePerSession)
+                : "Liên hệ"}
+            </p>
           </div>
           <span className="text-xs text-muted-foreground">/ buổi</span>
         </div>

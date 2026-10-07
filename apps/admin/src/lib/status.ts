@@ -36,6 +36,7 @@ export const WITHDRAWAL_STATUS_META: Record<WithdrawalStatus, StatusMeta> = {
   pending: { label: "Chờ duyệt", className: TONE_CHIP.amber },
   approved: { label: "Đã duyệt", className: TONE_CHIP.emerald },
   rejected: { label: "Từ chối", className: TONE_CHIP.rose },
+  completed: { label: "Đã chuyển tiền", className: TONE_CHIP.emerald },
 };
 
 // Same hues as the portal's booking statuses.

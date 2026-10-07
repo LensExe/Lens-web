@@ -2,15 +2,28 @@
 
 export type PhotoStyle =
   | "Chân dung"
+  | "Vintage"
+  | "Hàn Quốc"
   | "Cưới"
+  | "Concept"
+  | "Pre-wedding"
+  | "Biển"
+  | "Lifestyle"
   | "Sự kiện"
+  | "Công ty"
   | "Thời trang"
   | "Sản phẩm"
   | "Gia đình"
   | "Du lịch"
   | "Ẩm thực"
   | "Kiến trúc"
-  | "Đường phố";
+  | "Đường phố"
+  | "Ngoài trời"
+  | "Trẻ em"
+  | "Streetwear"
+  | "Film"
+  | "Bầu bí"
+  | "Thương mại";
 
 export interface Photographer {
   id: string;
@@ -20,7 +33,7 @@ export interface Photographer {
   city: string;
   styles: PhotoStyle[];
   /** Giá khởi điểm cho một buổi chụp (VND). */
-  pricePerSession: number;
+  pricePerSession?: number;
   rating: number;
   reviewCount: number;
   bio: string;

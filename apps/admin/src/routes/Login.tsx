@@ -4,7 +4,7 @@ import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { z } from "zod";
 import { AlertCircle, ArrowRight, ShieldCheck } from "lucide-react";
 import { Button, Input, Logo, Spinner, ThemeToggle } from "@lens/ui";
-import { useAdminLogin, useDemoAccounts } from "@/queries/useAuth";
+import { useAdminLogin } from "@/queries/useAuth";
 import { getAdminSession, saveAdminSession } from "@/lib/session";
 
 const loginSchema = z.object({
@@ -25,12 +25,10 @@ export function Login() {
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from ?? "/";
   const login = useAdminLogin();
-  const { data: demoAccounts } = useDemoAccounts();
 
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors },
   } = useForm<LoginValues>({
     resolver: standardSchemaResolver(loginSchema),
@@ -48,12 +46,6 @@ export function Login() {
         navigate(from, { replace: true });
       },
     });
-  };
-
-  const fillDemo = (email: string, password: string) => {
-    setValue("email", email, { shouldValidate: true });
-    setValue("password", password, { shouldValidate: true });
-    login.reset();
   };
 
   return (
@@ -143,22 +135,6 @@ export function Login() {
             </Button>
           </form>
 
-          {!!demoAccounts?.length && (
-            <div className="mt-6 rounded-2xl border border-dashed border-border px-4 py-3 text-xs text-muted-foreground">
-              Tài khoản demo:{" "}
-              {demoAccounts.map((a) => (
-                <button
-                  key={a.email}
-                  type="button"
-                  onClick={() => fillDemo(a.email, a.password)}
-                  className="font-medium text-foreground underline-offset-4 hover:underline"
-                >
-                  {a.email}
-                </button>
-              ))}{" "}
-              — bấm để điền nhanh.
-            </div>
-          )}
         </div>
       </main>
     </div>

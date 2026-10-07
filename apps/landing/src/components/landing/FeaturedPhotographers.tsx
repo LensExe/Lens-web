@@ -21,7 +21,7 @@ export function FeaturedPhotographers() {
 
   return (
     <section ref={scope} id="nhiep-anh-gia" className="scroll-mt-20 px-5 py-16 md:py-20 lg:py-24">
-      <div className="mx-auto max-w-[1200px]">
+      <div className="mx-auto max-w-300">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
@@ -44,7 +44,7 @@ export function FeaturedPhotographers() {
             Không thể tải danh sách nhiếp ảnh gia. Vui lòng thử lại sau.
           </p>
         ) : (
-          <div className="mt-8 [column-gap:1rem] columns-1 sm:columns-2 lg:columns-3 lg:[column-gap:1.25rem]">
+          <div className="mt-8 gap-x-4 columns-1 sm:columns-2 lg:columns-3 lg:gap-x-5">
             {isLoading
               ? SKELETON_HEIGHTS.map((h, i) => (
                   <div key={i} className="mb-5 break-inside-avoid">
@@ -58,11 +58,7 @@ export function FeaturedPhotographers() {
                   </div>
                 ))
               : data?.slice(0, MAX_FEATURED).map((photographer) => (
-                  <div
-                    key={photographer.id}
-                    data-reveal
-                    className="mb-5 break-inside-avoid"
-                  >
+                  <div key={photographer.id} data-reveal className="mb-5 break-inside-avoid">
                     <PhotographerCard photographer={photographer} />
                   </div>
                 ))}

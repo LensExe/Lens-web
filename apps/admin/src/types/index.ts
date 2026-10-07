@@ -44,7 +44,7 @@ export interface AdminUser {
   city: string;
   /** ISO date string the user joined. */
   joinedAt: string;
-  bookingsCount: number;
+  bookingsCount?: number;
 }
 
 /** Headline numbers + activity feed for the overview screen. */
@@ -106,7 +106,7 @@ export interface ReportData {
 }
 
 // ── Finance & withdrawals (Feature: Ví + Lens Xu) ───────────────────────────
-export type WithdrawalStatus = "pending" | "approved" | "rejected";
+export type WithdrawalStatus = "pending" | "approved" | "rejected" | "completed";
 
 export interface AdminWithdrawal {
   id: string;
@@ -130,12 +130,12 @@ export interface AdminWithdrawal {
 
 export interface FinanceSummary {
   /** Tổng tiền thật đang giữ trong ví thợ (VND). */
-  walletReserve: number;
+  walletReserve?: number;
   /** Tổng Lens Xu đang lưu hành (xu). */
-  coinsOutstanding: number;
+  coinsOutstanding?: number;
   /** Tổng tiền các yêu cầu rút đang chờ duyệt (VND). */
-  pendingWithdrawalTotal: number;
-  pendingCount: number;
+  pendingWithdrawalTotal?: number;
+  pendingCount?: number;
 }
 
 // ── Bookings & collaboration (Feature: liên kết thợ) ────────────────────────
@@ -176,7 +176,7 @@ export interface BookingSummary {
   /** Bookings not yet finished or cancelled. */
   activeCount: number;
   /** Bookings with at least one collaborating photographer. */
-  collabCount: number;
+  collabCount?: number;
 }
 
 export interface AdminBookingsReport {
@@ -247,6 +247,8 @@ export interface AdminSession {
   name: string;
   email: string;
   avatar: string;
+  accessToken?: string;
+  refreshToken?: string;
 }
 
 export interface AdminLoginInput {

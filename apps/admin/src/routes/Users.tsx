@@ -135,7 +135,7 @@ export function Users() {
         ROLE_META[user.role].label,
         user.city,
         formatDate(user.joinedAt),
-        user.bookingsCount,
+        user.bookingsCount ?? "—",
         USER_STATUS_META[user.status].label,
       ]),
     ];
@@ -188,7 +188,7 @@ export function Users() {
       {
         accessorKey: "bookingsCount",
         header: ({ column }) => <ColumnHeader column={column} title="Lượt đặt" align="right" />,
-        cell: ({ row }) => <span className="text-sm font-semibold tabular-nums">{formatCount(row.original.bookingsCount)}</span>,
+        cell: ({ row }) => <span className="text-sm font-semibold tabular-nums">{row.original.bookingsCount === undefined ? "—" : formatCount(row.original.bookingsCount)}</span>,
         meta: NUM,
       },
       {

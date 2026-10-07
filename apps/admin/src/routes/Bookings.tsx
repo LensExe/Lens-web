@@ -215,7 +215,7 @@ export function Bookings() {
         />
         <StatCard
           icon={UsersRound}
-          value={summary ? formatCount(summary.collabCount) : "…"}
+          value={summary?.collabCount === undefined ? "—" : formatCount(summary.collabCount)}
           label="Buổi có ghép thợ"
           hint={<span className="text-sm text-muted-foreground">Đã ghép thêm thợ phụ/hỗ trợ</span>}
           className="rounded-2xl border-border/70 shadow-sm"
