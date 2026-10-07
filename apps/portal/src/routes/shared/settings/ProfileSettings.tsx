@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Controller, useForm } from "react-hook-form";
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
-import { BadgeCheck, Camera, ImageIcon, Info } from "lucide-react";
+import { Camera, ImageIcon, Info } from "lucide-react";
 import {
   Avatar,
   AvatarFallback,
@@ -37,7 +37,6 @@ const EMPTY: ProfileFormValues = {
   birthday: "",
   gender: "",
   city: "",
-  addressDetail: "",
 };
 
 const INPUT = "h-10 rounded-xl px-3";
@@ -99,10 +98,6 @@ export function ProfileSettings() {
           <p className="truncate text-sm font-semibold sm:text-base">{profile.name}</p>
           <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
             {profile.email}
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
-              <BadgeCheck className="size-3" />
-              Đã xác minh
-            </span>
           </p>
         </div>
         <Button
@@ -110,6 +105,8 @@ export function ProfileSettings() {
           variant="outline"
           size="sm"
           className="h-8 shrink-0 rounded-lg px-2.5 text-[10px]"
+          disabled
+          title="Backend chưa hỗ trợ cập nhật ảnh đại diện."
           onClick={() => toast("Tính năng đổi ảnh đại diện sẽ sớm khả dụng")}
         >
           <Camera className="size-3.5" />
@@ -141,7 +138,13 @@ export function ProfileSettings() {
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField label="Họ và tên" htmlFor="name" error={errors.name?.message}>
-            <Input id="name" autoComplete="name" className={INPUT} aria-invalid={!!errors.name} {...register("name")} />
+            <Input
+              id="name"
+              autoComplete="name"
+              className={INPUT}
+              aria-invalid={!!errors.name}
+              {...register("name")}
+            />
           </FormField>
           <FormField
             label="Số điện thoại"
@@ -160,7 +163,13 @@ export function ProfileSettings() {
             />
           </FormField>
           <FormField label="Ngày sinh" htmlFor="birthday">
-            <Input id="birthday" type="date" max={todayISO()} className={INPUT} {...register("birthday")} />
+            <Input
+              id="birthday"
+              type="date"
+              max={todayISO()}
+              className={INPUT}
+              {...register("birthday")}
+            />
           </FormField>
           <FormField label="Giới tính">
             <Controller
@@ -188,9 +197,9 @@ export function ProfileSettings() {
 
       <SettingsSection
         title="Địa chỉ mặc định"
-        description="Được điền sẵn khi bạn đặt lịch chụp — bạn vẫn có thể sửa mỗi lần đặt."
+        description="Backend hiện chỉ lưu tỉnh/thành phố cho hồ sơ mặc định. Địa điểm chi tiết có thể nhập riêng trong từng yêu cầu đặt lịch."
       >
-        <div className="grid gap-4 sm:grid-cols-[220px_minmax(0,1fr)]">
+        <div className="max-w-sm">
           <FormField label="Tỉnh / Thành phố">
             <Controller
               control={control}
@@ -214,16 +223,6 @@ export function ProfileSettings() {
                   </SelectContent>
                 </Select>
               )}
-            />
-          </FormField>
-          <FormField label="Địa chỉ cụ thể" htmlFor="addressDetail" error={errors.addressDetail?.message}>
-            <Input
-              id="addressDetail"
-              autoComplete="street-address"
-              placeholder="Số nhà, đường, phường/xã..."
-              className={INPUT}
-              aria-invalid={!!errors.addressDetail}
-              {...register("addressDetail")}
             />
           </FormField>
         </div>

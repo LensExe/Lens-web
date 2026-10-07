@@ -1,45 +1,44 @@
-import { api } from "@/lib/api";
-import type {
-  Booking,
-  BookingStatus,
-  EarningsSummary,
-  Photographer,
-  WorkSchedule,
-} from "@/types";
+import { bookingApi } from "@/services/backend";
+import { getMyBookings } from "@/services/bookings";
+import {
+  getMyPhotographerProfile,
+  updateMyPhotographerProfile,
+} from "@/services/photographers";
+import type { Booking, BookingStatus, EarningsSummary } from "@/types";
 
-// Layer 3 — Service / API for the signed-in photographer's dashboard. Thin HTTP
-// calls; the mock backend (src/msw) owns the request/availability stores.
+export { getMyPhotographerProfile, updateMyPhotographerProfile };
 
-export async function getMyPhotographerProfile(): Promise<Photographer> {
-  return (await api.get<Photographer>("/me/photographer")).data;
+export const getIncomingBookings = getMyBookings;
+
+export async function updateBookingStatus(bookingId: string, status: BookingStatus): Promise<Booking> {
+  switch (status) {
+    case "confirmed":
+      await bookingApi.acceptBooking(bookingId);
+      break;
+    case "cancelled":
+      await bookingApi.rejectBooking(bookingId, { reason: "Nhiếp ảnh gia từ chối yêu cầu đặt lịch." });
+      break;
+    case "held":
+      await bookingApi.startBooking(bookingId);
+      break;
+    default:
+      throw new Error(`Không có thao tác backend tương ứng với trạng thái booking “${status}”.`);
+  }
+  const bookings = await getMyBookings();
+  const updated = bookings.find((booking) => booking.id === bookingId);
+  if (!updated) throw new Error("Không tải lại được booking sau khi cập nhật.");
+  return updated;
 }
 
-export async function updateMyPhotographerProfile(
-  patch: Partial<Photographer>
-): Promise<Photographer> {
-  return (await api.patch<Photographer>("/me/photographer", patch)).data;
+export async function completeShoot(bookingId: string): Promise<Booking> {
+  await bookingApi.completeBookingShoot(bookingId);
+  const bookings = await getMyBookings();
+  const updated = bookings.find((booking) => booking.id === bookingId);
+  if (!updated) throw new Error("Không tải lại được booking sau khi cập nhật.");
+  return updated;
 }
 
-export async function getIncomingBookings(): Promise<Booking[]> {
-  return (await api.get<Booking[]>("/me/bookings")).data;
-}
-
-export async function updateBookingStatus(
-  id: string,
-  status: BookingStatus
-): Promise<Booking> {
-  return (await api.patch<Booking>(`/me/bookings/${id}`, { status })).data;
-}
-
-export async function getMyEarnings(): Promise<EarningsSummary> {
-  return (await api.get<EarningsSummary>("/me/earnings")).data;
-}
-
-export async function getMySchedule(): Promise<WorkSchedule> {
-  return (await api.get<WorkSchedule>("/me/schedule")).data;
-}
-
-/** Replace the whole work schedule (weekly hours + busy dates). */
-export async function saveMySchedule(schedule: WorkSchedule): Promise<WorkSchedule> {
-  return (await api.put<WorkSchedule>("/me/schedule", schedule)).data;
+/** The backend has no monthly earnings/report endpoint yet. */
+export async function getMyEarnings(): Promise<EarningsSummary | null> {
+  return null;
 }

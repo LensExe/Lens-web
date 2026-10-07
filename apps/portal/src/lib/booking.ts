@@ -3,16 +3,12 @@ import type {
   Booking,
   BookingStatus,
   PackageTerms,
-  PaymentMethod,
   Photographer,
   PhotographerPackage,
 } from "@/types";
 
 /** VN label + subtle tinted pill style per booking status. */
-export const BOOKING_STATUS_META: Record<
-  BookingStatus,
-  { label: string; className: string }
-> = {
+export const BOOKING_STATUS_META: Record<BookingStatus, { label: string; className: string }> = {
   awaiting_deposit: {
     label: "Chờ đặt cọc",
     className: "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-400",
@@ -22,11 +18,11 @@ export const BOOKING_STATUS_META: Record<
     className: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
   },
   confirmed: {
-    label: "Chờ thanh toán",
+    label: "Đã đặt cọc",
     className: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
   },
   held: {
-    label: "Sàn đang giữ tiền",
+    label: "Đang thực hiện",
     className: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400",
   },
   released: {
@@ -39,50 +35,13 @@ export const BOOKING_STATUS_META: Record<
   },
 };
 
-export interface SessionPackage
-  extends Omit<PhotographerPackage, "price"> {
-  /** Multiplier applied to the photographer's base price per session. */
-  multiplier: number;
-}
-
-// Default tiers for photographers who haven't set up their own packages.
-export const SESSION_PACKAGES: SessionPackage[] = [
-  {
-    id: "basic",
-    name: "Gói cơ bản",
-    description: "Buổi chụp gọn nhẹ, phù hợp chân dung cá nhân.",
-    multiplier: 1,
-    photoCount: 15,
-    durationHours: 1,
-    deliveryDays: 5,
-  },
-  {
-    id: "standard",
-    name: "Gói tiêu chuẩn",
-    description: "Đủ thời gian đổi 2 bộ trang phục và bối cảnh.",
-    multiplier: 1.8,
-    photoCount: 35,
-    durationHours: 2,
-    deliveryDays: 7,
-  },
-  {
-    id: "premium",
-    name: "Gói cao cấp",
-    description: "Nửa ngày chụp, nhiều bối cảnh, kèm album in.",
-    multiplier: 3,
-    photoCount: 70,
-    durationHours: 4,
-    deliveryDays: 10,
-  },
-];
-
 const formatHours = (h: number) => `${String(h).replace(".", ",")} giờ`;
 
-/** "15 ảnh · 2 giờ · giao trong 7 ngày" */
+/** Summary based on fields the backend booking-plan API stores. */
 export function packageSummary(
-  p: Pick<PhotographerPackage, "photoCount" | "durationHours" | "deliveryDays">
+  p: Pick<PhotographerPackage, "photoCount" | "durationHours" | "deliveryDays">,
 ): string {
-  return `${p.photoCount} ảnh · ${formatHours(p.durationHours)} · giao trong ${p.deliveryDays} ngày`;
+  return `${p.photoCount} ảnh · ${formatHours(p.durationHours)}${p.deliveryDays ? ` · giao trong ${p.deliveryDays} ngày` : ""}`;
 }
 
 export const packageTerms = (p: PhotographerPackage): PackageTerms => ({
@@ -92,13 +51,14 @@ export const packageTerms = (p: PhotographerPackage): PackageTerms => ({
   deliveryDays: p.deliveryDays,
 });
 
-/**
- * Upgrade a package saved before the structured fields existed (it only had a
- * free-text `duration` like "2 giờ chụp · 35 ảnh"): keep the text as the
- * description and read the numbers out of it where possible.
- */
+/** Upgrade a legacy package with structured values when available. */
 export function normalizePackage(
-  raw: Partial<PhotographerPackage> & { duration?: string; id: string; name: string; price: number }
+  raw: Partial<PhotographerPackage> & {
+    duration?: string;
+    id: string;
+    name: string;
+    price: number;
+  },
 ): PhotographerPackage {
   const legacy = raw.duration ?? "";
   const photos = legacy.match(/(\d+)\s*ảnh/);
@@ -112,7 +72,7 @@ export function normalizePackage(
     durationHours:
       raw.durationHours ??
       (hours ? Number(hours[1].replace(",", ".")) : /nửa ngày/i.test(legacy) ? 4 : 2),
-    deliveryDays: raw.deliveryDays ?? 7,
+    deliveryDays: raw.deliveryDays,
   };
 }
 
@@ -144,9 +104,11 @@ export const packageSchema = z.object({
   name: z.string().trim().min(2, "Nhập tên gói"),
   description: z.string().trim().max(160, "Mô tả tối đa 160 ký tự"),
   price: num("Nhập giá").int("Giá phải là số nguyên").min(10_000, "Giá tối thiểu 10.000 ₫"),
-  photoCount: num("Nhập số ảnh").int("Số ảnh phải là số nguyên").min(1, "Ít nhất 1 ảnh").max(500, "Tối đa 500 ảnh"),
+  photoCount: num("Nhập số ảnh")
+    .int("Số ảnh phải là số nguyên")
+    .min(1, "Ít nhất 1 ảnh")
+    .max(500, "Tối đa 500 ảnh"),
   durationHours: num("Nhập thời lượng").min(0.5, "Tối thiểu 0,5 giờ").max(12, "Tối đa 12 giờ"),
-  deliveryDays: num("Nhập số ngày").int("Số ngày phải là số nguyên").min(1, "Ít nhất 1 ngày").max(60, "Tối đa 60 ngày"),
 });
 export const packagesFormSchema = z.object({
   packages: z.array(packageSchema).min(1, "Cần ít nhất một gói dịch vụ"),
@@ -179,36 +141,11 @@ export const TIME_PERIODS: TimePeriod[] = [
   { id: "evening", label: "Buổi tối", slots: halfHourSlots(18 * 60, BOOKING_END_MINUTES) },
 ];
 
-// Price for a package. Rounded to a clean 10k VND — fine enough that the basic
-// package (×1) always equals the photographer's listed price (which is a
-// multiple of 10k), instead of jumping to the nearest 100k.
-export function packagePrice(base: number, packageId: string): number {
-  const pkg = SESSION_PACKAGES.find((p) => p.id === packageId);
-  if (!pkg) return base;
-  return Math.round((base * pkg.multiplier) / 10_000) * 10_000;
-}
-
-/** Default packages derived from a base price, for photographers who haven't
- *  set up their own yet. */
-export function defaultPackages(base: number): PhotographerPackage[] {
-  return SESSION_PACKAGES.map((t) => ({
-    id: t.id,
-    name: t.name,
-    description: t.description,
-    price: packagePrice(base, t.id),
-    photoCount: t.photoCount,
-    durationHours: t.durationHours,
-    deliveryDays: t.deliveryDays,
-  }));
-}
-
-/** The packages a photographer offers — their own if configured, else defaults. */
+/** Only show booking plans returned by the backend. */
 export function resolvePackages(
-  p: Pick<Photographer, "packages" | "pricePerSession">
+  p: Pick<Photographer, "packages" | "pricePerSession">,
 ): PhotographerPackage[] {
-  return p.packages && p.packages.length > 0
-    ? p.packages
-    : defaultPackages(p.pricePerSession);
+  return p.packages ?? [];
 }
 
 // ── Deposit (đặt cọc) ────────────────────────────────────────────────────────
@@ -220,12 +157,42 @@ export const DEPOSIT_HOLD_MINUTES = 30;
 
 /** Deposit for a given price, rounded to a clean 1k VND. */
 export function depositAmount(price: number): number {
-  return Math.round((price * DEPOSIT_RATE) / 1_000) * 1_000;
+  return Math.ceil(price * DEPOSIT_RATE);
 }
 
 /** What's left to pay after the deposit. */
 export function remainingAmount(b: Pick<Booking, "price" | "depositAmount">): number {
   return b.price - b.depositAmount;
+}
+
+/** The photographer marks a shoot as `shot` before the customer pays the balance. */
+export function isPaymentDue(
+  booking: Pick<Booking, "status" | "backendStatus" | "paidAmount" | "price">,
+): boolean {
+  return (
+    booking.status === "held" &&
+    booking.backendStatus === "shot" &&
+    (booking.paidAmount ?? 0) < booking.price
+  );
+}
+
+/** Remaining balance can be paid after the deposit and photographer confirmation, or once the shoot is marked `shot`. */
+export function needsRemainingPayment(
+  booking: Pick<Booking, "status" | "backendStatus" | "paidAmount" | "price">,
+): boolean {
+  return (
+    (booking.status === "confirmed" || isPaymentDue(booking)) &&
+    (booking.paidAmount ?? 0) < booking.price
+  );
+}
+
+/** Status label shown to customers after the photographer marks the shoot as shot. */
+export function bookingStatusMeta(
+  booking: Pick<Booking, "status" | "backendStatus" | "paidAmount" | "price">,
+): { label: string; className: string } {
+  return isPaymentDue(booking)
+    ? { label: "Chờ thanh toán", className: "bg-ember/10 text-ember" }
+    : BOOKING_STATUS_META[booking.status];
 }
 
 // ── Cancellation policy ─────────────────────────────────────────────────────
@@ -237,7 +204,7 @@ export function remainingAmount(b: Pick<Booking, "price" | "depositAmount">): nu
 // • A photographer declining always refunds in full (handled separately).
 export const FREE_CANCEL_DAYS = 7;
 
-const CANCELLABLE: BookingStatus[] = ["awaiting_deposit", "pending", "confirmed", "held"];
+const CANCELLABLE: BookingStatus[] = ["awaiting_deposit", "pending", "confirmed"];
 export const canCancel = (b: Pick<Booking, "status">) => CANCELLABLE.includes(b.status);
 
 /** Whole days from today until an ISO `yyyy-MM-dd` date (negative = past). */
@@ -268,7 +235,7 @@ export interface CancelTerms {
 
 /** What cancelling right now costs / returns (the mock backend applies the same). */
 export function cancelTerms(
-  b: Pick<Booking, "status" | "price" | "depositAmount" | "coinsRedeemed" | "date">
+  b: Pick<Booking, "status" | "price" | "depositAmount" | "coinsRedeemed" | "date">,
 ): CancelTerms {
   const coins = b.coinsRedeemed ?? 0;
   const early = daysUntil(b.date) >= FREE_CANCEL_DAYS;
@@ -283,7 +250,12 @@ export function cancelTerms(
       const cashPaid = b.price - coins;
       return early
         ? { refund: cashPaid, forfeit: 0, coinsBack: coins, free: true }
-        : { refund: cashPaid - b.depositAmount, forfeit: b.depositAmount, coinsBack: coins, free: false };
+        : {
+            refund: cashPaid - b.depositAmount,
+            forfeit: b.depositAmount,
+            coinsBack: coins,
+            free: false,
+          };
     }
     default:
       // awaiting_deposit: nothing paid yet.
@@ -293,7 +265,7 @@ export function cancelTerms(
 
 /** Cash returned to the client if they cancel now. */
 export const refundAmount = (
-  b: Pick<Booking, "status" | "price" | "depositAmount" | "coinsRedeemed" | "date">
+  b: Pick<Booking, "status" | "price" | "depositAmount" | "coinsRedeemed" | "date">,
 ) => cancelTerms(b).refund;
 
 /** Platform commission taken from the photographer's payout on release. */
@@ -309,24 +281,6 @@ export function photographerPayout(price: number): number {
   return price - commissionAmount(price);
 }
 
-/** The platform's receiving account shown for bank transfers (UI phase: sample). */
-export const PLATFORM_BANK_ACCOUNT = {
-  bank: "Vietcombank",
-  number: "1023 4567 89",
-  holder: "CONG TY TNHH LENS VIET NAM",
-};
-
-/** Transfer memo that ties a payment to its booking. */
-export const transferMemo = (bookingId: string) =>
-  `LENS ${bookingId.replace(/^bk-/, "").toUpperCase()}`;
-
-/** VN label per mock payment method. */
-export const PAYMENT_METHODS: { id: PaymentMethod; label: string; hint: string }[] = [
-  { id: "bank", label: "Chuyển khoản ngân hàng", hint: "Quét mã QR hoặc chuyển khoản thủ công" },
-  { id: "card", label: "Thẻ tín dụng / ghi nợ", hint: "Visa, Mastercard, JCB" },
-  { id: "momo", label: "Ví MoMo", hint: "Thanh toán qua ứng dụng MoMo" },
-];
-
 /** Vietnamese mobile number: 0xxxxxxxxx or +84xxxxxxxxx. */
 export const phoneSchema = z
   .string()
@@ -341,9 +295,6 @@ export const bookingSchema = z.object({
     .regex(/^(0[7-9]|1\d|2[0-3]):[03]0$/, "Chọn giờ bắt đầu từ 07:00 theo mỗi 30 phút"),
   city: z.string().min(1, "Vui lòng chọn tỉnh/thành phố"),
   addressDetail: z.string().trim().max(120, "Địa chỉ tối đa 120 ký tự").optional(),
-  contactName: z.string().trim().min(2, "Vui lòng nhập họ tên"),
-  contactPhone: phoneSchema,
-  note: z.string().max(500, "Ghi chú tối đa 500 ký tự").optional(),
 });
 
 export type BookingFormValues = z.infer<typeof bookingSchema>;

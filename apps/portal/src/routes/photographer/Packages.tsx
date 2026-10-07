@@ -25,7 +25,7 @@ import {
 import { FormField } from "@/components/FormField";
 import {
   useMyPhotographerProfile,
-  useUpdateMyPhotographerProfile,
+  useSaveMyBookingPlans,
 } from "@/queries/useDashboard";
 import {
   packageSummary,
@@ -44,12 +44,11 @@ const blankPackage = (): PackagesFormValues["packages"][number] => ({
   price: 200_000,
   photoCount: 20,
   durationHours: 1,
-  deliveryDays: 7,
 });
 
 // Mounts only once the profile is loaded, so the form starts from real data.
 function PackagesEditor({ profile }: { profile: Photographer }) {
-  const update = useUpdateMyPhotographerProfile();
+  const update = useSaveMyBookingPlans();
   const initial: PackagesFormValues = { packages: resolvePackages(profile) };
 
   const {
@@ -68,10 +67,10 @@ function PackagesEditor({ profile }: { profile: Photographer }) {
 
   const onSubmit = (values: PackagesFormValues) =>
     update.mutate(
-      { packages: values.packages },
+      values.packages,
       {
-        onSuccess: () => {
-          reset(values);
+        onSuccess: (packages) => {
+          reset({ packages });
           toast.success("Đã lưu gói dịch vụ");
         },
         onError: () => toast.error("Lưu thất bại, vui lòng thử lại"),
@@ -112,9 +111,9 @@ function PackagesEditor({ profile }: { profile: Photographer }) {
             <ShieldCheck className="size-4" />
           </span>
           <div className="min-w-0 text-sm">
-            <p className="font-semibold">Chính sách cam kết chất lượng bàn giao</p>
+            <p className="font-semibold">Điều khoản gói dịch vụ</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Số lượng ảnh bàn giao và thời hạn giao là điều khoản của buổi chụp. Gói đã đặt sẽ giữ nguyên nội dung kể cả khi bạn cập nhật gói sau này.
+              Backend lưu giá, thời lượng và số ảnh đã chỉnh sửa. Hạn giao ảnh chưa có trường dữ liệu trong API.
             </p>
           </div>
         </div>
@@ -223,15 +222,6 @@ function PackagesEditor({ profile }: { profile: Photographer }) {
                       {...register(`packages.${i}.durationHours`, { valueAsNumber: true })}
                     />
                   </FormField>
-                  <FormField label="Hạn giao ảnh (ngày)" htmlFor={`days-${i}`} error={err?.deliveryDays?.message}>
-                    <Input
-                      id={`days-${i}`}
-                      type="number"
-                      inputMode="numeric"
-                      className={INPUT}
-                      {...register(`packages.${i}.deliveryDays`, { valueAsNumber: true })}
-                    />
-                  </FormField>
                 </div>
 
                 {/* What the client will see */}
@@ -251,7 +241,7 @@ function PackagesEditor({ profile }: { profile: Photographer }) {
                         <Clock3 className="size-3.5" /> {String(current.durationHours).replace(".", ",")} giờ
                       </span>
                       <span className="inline-flex items-center gap-1 rounded-md bg-background px-2 py-1">
-                        <Send className="size-3.5" /> Giao {current.deliveryDays} ngày
+                        <Send className="size-3.5" /> Backend chưa lưu hạn giao
                       </span>
                     </div>
                     <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
@@ -302,7 +292,7 @@ function PackagesEditor({ profile }: { profile: Photographer }) {
   );
 }
 
-export function DashboardPackages() {
+export function PhotographerPackages() {
   const { data: profile, isLoading } = useMyPhotographerProfile();
 
   if (isLoading || !profile) {

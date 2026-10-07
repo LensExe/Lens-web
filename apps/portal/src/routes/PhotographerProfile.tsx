@@ -61,10 +61,10 @@ function ProfileSkeleton() {
 // stay one click away however long the gallery is. No fixed side card — a
 // compact "Đặt lịch" appears in the tab bar once the header CTA scrolls away.
 export function PhotographerProfile() {
-  const { id = "" } = useParams();
+  const { photographer_id = "" } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { data: photographer, isLoading, isError } = usePhotographer(id);
-  const { data: achievements } = useAchievements(id);
+  const { data: photographer, isLoading, isError } = usePhotographer(photographer_id);
+  const { data: achievements } = useAchievements(photographer_id);
   const scopeRef = useRef<HTMLDivElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
   const tabsAnchorRef = useRef<HTMLDivElement>(null);
@@ -177,7 +177,7 @@ export function PhotographerProfile() {
             ))}
           </div>
 
-          {achievements && (
+          {achievements?.stats && (
             <div className="mt-7 border-t border-border pt-6">
               <ProfileStats
                 rating={photographer.rating}

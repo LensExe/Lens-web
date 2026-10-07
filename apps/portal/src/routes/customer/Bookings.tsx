@@ -14,6 +14,7 @@ import {
 import { Button, Input, PageContainer, Skeleton, cn } from "@lens/ui";
 import { BookingCard } from "@/components/bookings/BookingCard";
 import { useMyBookings } from "@/queries/useBookings";
+import { needsRemainingPayment } from "@/lib/booking";
 import type { BookingStatus } from "@/types";
 
 type FilterValue = "all" | BookingStatus;
@@ -61,10 +62,14 @@ function SummaryCard({
   return (
     <article className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs transition-shadow hover:shadow-sm sm:p-5">
       <div className="flex items-start justify-between gap-3">
-        <span className={cn("flex size-10 items-center justify-center rounded-xl", SUMMARY_TONE[tone])}>
+        <span
+          className={cn("flex size-10 items-center justify-center rounded-xl", SUMMARY_TONE[tone])}
+        >
           <Icon className="size-[18px]" />
         </span>
-        <span className="text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl">{value}</span>
+        <span className="text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl">
+          {value}
+        </span>
       </div>
       <p className="mt-4 text-sm font-semibold">{label}</p>
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{hint}</p>
@@ -115,21 +120,24 @@ function FilterChip({
   );
 }
 
-export function ClientBookings() {
+export function CustomerBookings() {
   const { data: bookings = [], isLoading } = useMyBookings();
   const [filter, setFilter] = useState<FilterValue>("all");
   const [query, setQuery] = useState("");
 
   const countOf = (value: FilterValue) =>
-    value === "all" ? bookings.length : bookings.filter((booking) => booking.status === value).length;
+    value === "all"
+      ? bookings.length
+      : bookings.filter((booking) => booking.status === value).length;
   const actionRequired = bookings.filter(
-    (booking) => booking.status === "awaiting_deposit" || booking.status === "confirmed",
+    (booking) => booking.status === "awaiting_deposit" || needsRemainingPayment(booking),
   ).length;
   const completed = countOf("released");
   const pending = countOf("pending");
   const queryValue = query.trim().toLowerCase();
   const filtered = useMemo(() => {
-    const byStatus = filter === "all" ? bookings : bookings.filter((booking) => booking.status === filter);
+    const byStatus =
+      filter === "all" ? bookings : bookings.filter((booking) => booking.status === filter);
     if (!queryValue) return byStatus;
     return byStatus.filter((booking) =>
       [booking.photographerName, booking.style, booking.location, booking.note ?? ""]
@@ -153,7 +161,10 @@ export function ClientBookings() {
             Theo dõi tiến độ, thanh toán và những buổi chụp sắp tới của bạn.
           </p>
         </div>
-        <Button asChild className="w-fit rounded-full bg-ember text-white shadow-sm hover:bg-ember/90">
+        <Button
+          asChild
+          className="w-fit rounded-full bg-ember text-white shadow-sm hover:bg-ember/90"
+        >
           <Link to="/">
             <Search className="size-3.5" />
             Đặt lịch mới
@@ -183,7 +194,9 @@ export function ClientBookings() {
               icon={WalletCards}
               value={actionRequired}
               label="Cần bạn xử lý"
-              hint={actionRequired ? "Đặt cọc hoặc thanh toán còn lại" : "Bạn không có khoản cần xử lý"}
+              hint={
+                actionRequired ? "Đặt cọc hoặc thanh toán còn lại" : "Bạn không có khoản cần xử lý"
+              }
               tone="ember"
             />
             <SummaryCard
@@ -270,7 +283,11 @@ export function ClientBookings() {
               <CalendarX className="size-5" />
             </span>
             <p className="text-sm font-semibold">
-              {queryValue ? "Không tìm thấy lịch phù hợp" : filter === "all" ? "Bạn chưa có lịch đặt nào" : "Không có buổi chụp phù hợp"}
+              {queryValue
+                ? "Không tìm thấy lịch phù hợp"
+                : filter === "all"
+                  ? "Bạn chưa có lịch đặt nào"
+                  : "Không có buổi chụp phù hợp"}
             </p>
             <p className="mt-1 max-w-sm text-xs leading-5 text-muted-foreground">
               {queryValue
@@ -280,7 +297,11 @@ export function ClientBookings() {
                   : "Chưa có buổi chụp nào ở trạng thái này."}
             </p>
             {filter === "all" && !queryValue && (
-              <Button asChild size="sm" className="mt-4 rounded-full bg-ember text-white hover:bg-ember/90">
+              <Button
+                asChild
+                size="sm"
+                className="mt-4 rounded-full bg-ember text-white hover:bg-ember/90"
+              >
                 <Link to="/">
                   <Search className="size-3.5" />
                   Tìm nhiếp ảnh gia

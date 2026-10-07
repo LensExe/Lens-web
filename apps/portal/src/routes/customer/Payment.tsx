@@ -5,9 +5,7 @@ import {
   Button,
   Separator,
   Skeleton,
-  Slider,
   Spinner,
-  Switch,
   formatPrice,
   PageContainer,
   PageHeader,
@@ -15,10 +13,14 @@ import {
 import { CheckoutResult } from "@/components/checkout/CheckoutResult";
 import { CheckoutSummary } from "@/components/checkout/CheckoutSummary";
 import { PaymentMethodPicker } from "@/components/checkout/PaymentMethodPicker";
-import { useMyBookings, usePayBooking } from "@/queries/useBookings";
-import { useCoinSummary } from "@/queries/useWallet";
-import { FREE_CANCEL_DAYS, remainingAmount } from "@/lib/booking";
-import { COIN_LABEL, formatCoins, maxRedeemableCoins } from "@/lib/wallet";
+import { PaymentQrPanel } from "@/components/checkout/PaymentQrPanel";
+import {
+  useMyBookings,
+  usePayBooking,
+  usePaymentQr,
+  usePaymentStatus,
+} from "@/queries/useBookings";
+import { needsRemainingPayment, remainingAmount } from "@/lib/booking";
 import type { PaymentMethod } from "@/types";
 
 const formatDate = (iso: string) => {
@@ -26,38 +28,38 @@ const formatDate = (iso: string) => {
   return `${d}/${m}/${y}`;
 };
 
-// Pay the remainder (after the deposit) once the photographer has confirmed.
-// The platform then holds the full amount until the client confirms delivery.
-export function ClientPayment() {
-  const { id = "" } = useParams();
+// Pay the remainder after the deposit. The platform holds the full amount
+// until the client confirms delivery.
+export function CustomerPayment() {
+  const { booking_id = "" } = useParams();
   const { data: bookings = [], isLoading } = useMyBookings();
-  const { data: coinSummary } = useCoinSummary();
-  const payBooking = usePayBooking(id);
-  const [method, setMethod] = useState<PaymentMethod>("bank");
-  const [useCoins, setUseCoins] = useState(false);
-  const [coinAmount, setCoinAmount] = useState(0);
+  const payBooking = usePayBooking(booking_id);
+  const paymentAttempt = payBooking.data;
+  const paymentStatus = usePaymentStatus(paymentAttempt?.payment.id ?? "");
+  const paymentQr = usePaymentQr(paymentAttempt?.payment.id ?? "");
+  const payment = paymentStatus.data ?? paymentAttempt?.payment;
+  const qrCode =
+    typeof paymentQr.data?.qr_code === "string"
+      ? paymentQr.data.qr_code
+      : typeof paymentAttempt?.payment.qr_code === "string"
+        ? paymentAttempt.payment.qr_code
+        : undefined;
+  const checkoutUrl =
+    typeof paymentQr.data?.checkout_url === "string"
+      ? paymentQr.data.checkout_url
+      : typeof paymentAttempt?.payment.checkout_url === "string"
+        ? paymentAttempt.payment.checkout_url
+        : undefined;
+  const [method, setMethod] = useState<PaymentMethod | null>(null);
 
-  const booking = bookings.find((b) => b.id === id);
+  const booking = bookings.find((b) => b.id === booking_id);
   const remaining = booking ? remainingAmount(booking) : 0;
-
-  // Lens Xu apply to the remainder (cap % of the order + their balance).
-  const coinBalance = coinSummary?.balance ?? 0;
-  const redeemMax = booking
-    ? Math.min(maxRedeemableCoins(booking.price, coinBalance), remaining)
-    : 0;
-  const coinsApplied = useCoins ? Math.min(coinAmount, redeemMax) : 0;
-  const cashDue = remaining - coinsApplied;
-
-  const toggleCoins = (on: boolean) => {
-    setUseCoins(on);
-    setCoinAmount(on ? redeemMax : 0);
-  };
 
   if (isLoading) {
     return (
       <PageContainer>
         <Skeleton className="h-9 w-64 rounded-xl" />
-        <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="mt-8 grid gap-6 md:grid-cols-[minmax(0,1fr)_380px]">
           <Skeleton className="h-96 rounded-3xl" />
           <Skeleton className="h-96 rounded-3xl" />
         </div>
@@ -79,16 +81,19 @@ export function ClientPayment() {
     );
   }
 
-  // Paid — money is now held in escrow. Show confirmation + next step.
-  if (booking.status === "held" || payBooking.isSuccess) {
+  const isPaid =
+    booking.status === "released" ||
+    (booking.paidAmount ?? 0) >= booking.price ||
+    payment?.status === "paid";
+  if (isPaid) {
     return (
       <PageContainer>
         <CheckoutResult
           title="Thanh toán thành công!"
           description={
             <>
-              Sàn Lens đang giữ toàn bộ tiền buổi chụp với {booking.photographerName}. Sau
-              khi nhận đủ ảnh, hãy xác nhận để sàn giải ngân cho nhiếp ảnh gia.
+              Sàn Lens đang giữ toàn bộ tiền buổi chụp với {booking.photographerName}. Sau khi nhận
+              đủ ảnh, hãy xác nhận để sàn giải ngân cho nhiếp ảnh gia.
             </>
           }
         >
@@ -104,7 +109,7 @@ export function ClientPayment() {
             <Separator className="my-3" />
             <div className="flex justify-between font-semibold">
               <span>Sàn đang giữ</span>
-              <span>{formatPrice(booking.price - (booking.coinsRedeemed ?? 0))}</span>
+              <span>{formatPrice(booking.price)}</span>
             </div>
           </div>
           <div className="mt-6 flex justify-center">
@@ -117,13 +122,15 @@ export function ClientPayment() {
     );
   }
 
-  // Payment only applies once the photographer has confirmed.
-  if (booking.status !== "confirmed") {
+  // Payment is available after the deposit, and again after the photographer
+  // marks the shoot as `shot` when the remaining balance is due.
+  if (!needsRemainingPayment(booking)) {
     return (
       <PageContainer className="flex min-h-[60vh] flex-col items-center justify-center text-center">
         <h1 className="text-2xl font-semibold">Chưa thể thanh toán</h1>
         <p className="mt-2 max-w-md text-muted-foreground">
-          Bạn chỉ có thể thanh toán phần còn lại sau khi nhiếp ảnh gia xác nhận lịch chụp.
+          Bạn chỉ có thể thanh toán phần còn lại sau khi đã đặt cọc và nhiếp ảnh gia xác nhận yêu
+          cầu, hoặc khi họ đánh dấu đã chụp.
         </p>
         <Button asChild variant="outline" className="mt-5 rounded-full">
           <Link to={`/client/bookings/${booking.id}`}>
@@ -147,84 +154,65 @@ export function ClientPayment() {
 
       <PageHeader
         title="Thanh toán phần còn lại"
-        description={`${booking.photographerName} đã xác nhận lịch chụp. Hoàn tất thanh toán trước buổi chụp.`}
+        description={`${booking.photographerName} đã cập nhật trạng thái buổi chụp. Hoàn tất thanh toán phần còn lại để tiếp tục.`}
       />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
+      <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_380px] md:items-start">
         <div className="min-w-0 space-y-4">
           <PaymentMethodPicker
             value={method}
-            onChange={setMethod}
-            amount={cashDue}
-            bookingId={booking.id}
+            onChange={paymentAttempt ? () => undefined : setMethod}
+            amount={remaining}
           />
-
-          {/* Lens Xu redemption — reduces the cash charged (capped per order). */}
-          {redeemMax > 0 && (
-            <section className="rounded-3xl border border-border bg-card p-6">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-semibold">Dùng {COIN_LABEL} để trừ tiền</p>
-                  <p className="text-sm text-muted-foreground">
-                    Bạn có {formatCoins(coinBalance)} · tối đa {formatCoins(redeemMax)} cho
-                    đơn này
-                  </p>
-                </div>
-                <Switch
-                  checked={useCoins}
-                  onCheckedChange={toggleCoins}
-                  aria-label={`Dùng ${COIN_LABEL}`}
-                />
-              </div>
-              {useCoins && (
-                <div className="mt-4">
-                  <Slider
-                    min={0}
-                    max={redeemMax}
-                    step={1000}
-                    value={[coinAmount]}
-                    onValueChange={([v]) => setCoinAmount(v)}
-                  />
-                  <div className="mt-2 flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Áp dụng</span>
-                    <span className="font-medium">{formatCoins(coinsApplied)}</span>
-                  </div>
-                </div>
-              )}
-            </section>
+          {paymentAttempt && method === "gateway" && (
+            <div className="mx-auto w-full max-w-xl">
+              <p className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-3 text-xs text-muted-foreground">
+                Đã tạo yêu cầu thanh toán. Quét mã QR bên dưới; trạng thái sẽ tự cập nhật sau khi
+                gateway xác nhận.
+              </p>
+              <PaymentQrPanel
+                loading={paymentQr.isLoading || paymentQr.isFetching}
+                qrCode={qrCode}
+                checkoutUrl={checkoutUrl}
+              />
+            </div>
           )}
-
           <p className="flex items-start gap-2 rounded-2xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
             <ShieldCheck className="mt-0.5 size-4 shrink-0 text-foreground" />
-            Sàn Lens giữ tiền cho đến khi bạn xác nhận đã nhận đủ ảnh. Huỷ trước buổi chụp
-            từ {FREE_CANCEL_DAYS} ngày trở lên được hoàn 100%; huỷ muộn hơn sẽ mất tiền cọc.
+            Sàn Lens giữ tiền cho đến khi bạn xác nhận đã nhận đủ ảnh. Chính sách hoàn tiền khi huỷ
+            được xử lý theo trạng thái lịch đặt trên backend.
           </p>
         </div>
 
-        <aside className="lg:sticky lg:top-24">
+        <aside className="md:sticky md:top-24">
           <CheckoutSummary
             booking={booking}
             lines={[
               { label: "Giá buổi chụp", value: booking.price },
               { label: "Đã đặt cọc", value: booking.depositAmount, tone: "minus" },
-              ...(coinsApplied > 0
-                ? [{ label: `Trừ ${COIN_LABEL}`, value: coinsApplied, tone: "minus" as const }]
-                : []),
             ]}
             dueLabel="Cần thanh toán"
-            due={cashDue}
+            due={remaining}
           >
             {payBooking.isError && (
-              <p className="mb-3 text-sm text-destructive">Thanh toán thất bại. Vui lòng thử lại.</p>
+              <p className="mb-3 text-sm text-destructive">
+                Thanh toán thất bại. Vui lòng thử lại.
+              </p>
             )}
             <Button
               size="lg"
               className="h-11 w-full rounded-full"
-              disabled={payBooking.isPending}
-              onClick={() => payBooking.mutate({ method, coinsToRedeem: coinsApplied })}
+              disabled={payBooking.isPending || Boolean(paymentAttempt) || !method}
+              onClick={() => {
+                if (method) payBooking.mutate({ method });
+              }}
             >
               {payBooking.isPending && <Spinner />}
-              Thanh toán {formatPrice(cashDue)}
+              {paymentAttempt
+                ? "Đã tạo yêu cầu · quét QR bên dưới"
+                : method
+                  ? `Thanh toán ${formatPrice(remaining)}`
+                  : "Chọn phương thức thanh toán"}
             </Button>
           </CheckoutSummary>
         </aside>

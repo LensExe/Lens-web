@@ -8,7 +8,6 @@ import { SidebarNav } from "@/components/workspace/SidebarNav";
 import { SidebarUserCard } from "@/components/workspace/SidebarUserCard";
 import { STUDIO_NAV, studioTitleFor } from "@/components/workspace/nav";
 import { currentUser } from "@/lib/session";
-import { useConversations } from "@/queries/useMessages";
 
 function Brand() {
   return (
@@ -28,16 +27,12 @@ function Brand() {
 export function StudioShell() {
   const [navOpen, setNavOpen] = useState(false);
   const { pathname } = useLocation();
-  // Same query as the header's message menu — no extra request.
-  const { data: conversations = [] } = useConversations();
-  const badges = { "/messages": conversations.reduce((n, c) => n + c.unreadCount, 0) };
-
   return (
     <div className="flex min-h-dvh">
       {/* Desktop sidebar — full height, stays put while the page scrolls */}
       <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-border/70 bg-card md:flex">
         <Brand />
-        <SidebarNav groups={STUDIO_NAV} badges={badges} />
+        <SidebarNav groups={STUDIO_NAV} />
         <SidebarUserCard />
       </aside>
 
@@ -53,7 +48,7 @@ export function StudioShell() {
               <SheetContent side="left" className="flex w-72 flex-col gap-0 p-0">
                 <SheetTitle className="sr-only">Điều hướng</SheetTitle>
                 <Brand />
-                <SidebarNav groups={STUDIO_NAV} badges={badges} onNavigate={() => setNavOpen(false)} />
+                <SidebarNav groups={STUDIO_NAV} onNavigate={() => setNavOpen(false)} />
                 <SidebarUserCard />
               </SheetContent>
             </Sheet>

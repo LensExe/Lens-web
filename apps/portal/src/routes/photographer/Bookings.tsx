@@ -55,7 +55,7 @@ function startOfToday() {
   return today;
 }
 
-export function DashboardBookings() {
+export function PhotographerBookings() {
   const { data: bookings = [], isLoading } = useIncomingBookings();
   const [group, setGroup] = useState<GroupKey>("pending");
   const [search, setSearch] = useState("");

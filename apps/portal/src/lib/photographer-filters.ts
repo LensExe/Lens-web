@@ -22,9 +22,11 @@ export const CITY_OPTIONS = [
   "Hải Phòng",
 ];
 
-// Price range (VND) for the slider filter — student-friendly tier (100k–320k/buổi).
+// Price range (VND) for the slider filter. Booking plans currently returned by
+// the backend range from 500k to about 2.9m per session, so the default range
+// must include those real values instead of filtering every photographer out.
 export const PRICE_MIN = 50_000;
-export const PRICE_MAX = 400_000;
+export const PRICE_MAX = 3_000_000;
 export const PRICE_STEP = 25_000;
 
 export const RATING_OPTIONS = [

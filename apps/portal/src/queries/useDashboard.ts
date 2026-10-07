@@ -3,18 +3,18 @@ import {
   getIncomingBookings,
   getMyEarnings,
   getMyPhotographerProfile,
-  getMySchedule,
-  saveMySchedule,
+  completeShoot,
   updateBookingStatus,
   updateMyPhotographerProfile,
 } from "@/services/dashboard";
-import type { BookingStatus, Photographer, WorkSchedule } from "@/types";
+import type { BookingStatus, Photographer } from "@/types";
+import { saveMyBookingPlans } from "@/services/booking-plans";
+import { addPortfolioImages } from "@/services/portfolio-media";
 
 // Layer 2 — Query hooks for the photographer dashboard.
 export const dashboardKeys = {
   profile: ["dashboard", "profile"] as const,
   incoming: ["dashboard", "incoming"] as const,
-  schedule: ["dashboard", "schedule"] as const,
   earnings: ["dashboard", "earnings"] as const,
 };
 
@@ -45,6 +45,31 @@ export function useUpdateMyPhotographerProfile() {
   });
 }
 
+export function useSaveMyBookingPlans() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: saveMyBookingPlans,
+    onSuccess: (plans) => {
+      qc.setQueryData(dashboardKeys.profile, (profile: Photographer | undefined) =>
+        profile ? { ...profile, packages: plans, pricePerSession: plans.length ? Math.min(...plans.map((plan) => plan.price)) : 0 } : profile,
+      );
+      qc.invalidateQueries({ queryKey: ["photographers"] });
+      qc.invalidateQueries({ queryKey: ["bookings", "mine"] });
+    },
+  });
+}
+
+export function useUploadPortfolioImages() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ files }: { files: File[] }) => addPortfolioImages(files),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: dashboardKeys.profile });
+      qc.invalidateQueries({ queryKey: ["photographers"] });
+    },
+  });
+}
+
 export function useIncomingBookings() {
   return useQuery({
     queryKey: dashboardKeys.incoming,
@@ -63,21 +88,13 @@ export function useUpdateBookingStatus() {
   });
 }
 
-export function useMySchedule() {
-  return useQuery({
-    queryKey: dashboardKeys.schedule,
-    queryFn: getMySchedule,
-  });
-}
-
-export function useSaveMySchedule() {
+export function useCompleteShoot() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (schedule: WorkSchedule) => saveMySchedule(schedule),
-    onSuccess: (saved) => {
-      qc.setQueryData(dashboardKeys.schedule, saved);
-      // Public free dates / slots derive from the schedule.
-      qc.invalidateQueries({ queryKey: ["photographers"] });
+    mutationFn: completeShoot,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: dashboardKeys.incoming });
+      qc.invalidateQueries({ queryKey: ["bookings", "mine"] });
     },
   });
 }

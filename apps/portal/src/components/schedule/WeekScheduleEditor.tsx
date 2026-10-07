@@ -211,13 +211,19 @@ export function WeekScheduleEditor({
   schedule,
   bookingsByDate,
   onChange,
+  readOnly = false,
+  windowDays = BOOKING_WINDOW_DAYS,
 }: {
   schedule: WorkSchedule;
   bookingsByDate: Record<string, Booking[]>;
   onChange: (next: WorkSchedule) => void;
+  /** Hide the legacy local schedule editor when the calendar is backed by /calendar/me. */
+  readOnly?: boolean;
+  /** Number of future days exposed by the backend calendar query. */
+  windowDays?: number;
 }) {
   const today = todayISO();
-  const bookingEnd = addDaysISO(today, BOOKING_WINDOW_DAYS);
+  const bookingEnd = addDaysISO(today, windowDays);
   const currentWeek = startOfWeekISO(today);
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDate, setSelectedDate] = useState(addDaysISO(today, 1));
@@ -431,7 +437,7 @@ export function WeekScheduleEditor({
             bookings={bookingsByDate[selectedDay.date] ?? []}
             busyRanges={schedule.busy.find((block) => block.date === selectedDay.date)?.ranges ?? []}
             busyAllDay={selectedBusyAllDay}
-            readOnly={!selectedEditable}
+            readOnly={readOnly || !selectedEditable}
             minDate={addDaysISO(today, 1)}
             maxDate={bookingEnd}
             onSelectDate={selectDate}

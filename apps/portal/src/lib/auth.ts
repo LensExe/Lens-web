@@ -6,14 +6,9 @@ export const ROLE_LABELS: Record<PortalRole, string> = {
   photographer: "Nhiếp ảnh gia",
 };
 
-export const isPortalRole = (v: unknown): v is PortalRole =>
-  v === "client" || v === "photographer";
+export const isPortalRole = (v: unknown): v is PortalRole => v === "client" || v === "photographer";
 
-const email = z
-  .string()
-  .trim()
-  .min(1, "Vui lòng nhập email")
-  .pipe(z.email("Email không hợp lệ"));
+const email = z.string().trim().min(1, "Vui lòng nhập email").pipe(z.email("Email không hợp lệ"));
 
 export const loginSchema = z.object({
   email,

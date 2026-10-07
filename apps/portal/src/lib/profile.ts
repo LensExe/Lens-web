@@ -15,7 +15,6 @@ export const profileSchema = z.object({
   birthday: z.string(),
   gender: z.union([z.literal(""), z.enum(["male", "female", "other"])]),
   city: z.string(),
-  addressDetail: z.string().trim().max(120, "Địa chỉ tối đa 120 ký tự"),
 });
 
 export type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -26,7 +25,6 @@ export const toProfileFormValues = (p: UserProfile): ProfileFormValues => ({
   birthday: p.birthday,
   gender: p.gender,
   city: p.city,
-  addressDetail: p.addressDetail,
 });
 
 export const passwordSchema = z

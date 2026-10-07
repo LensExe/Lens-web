@@ -78,7 +78,7 @@ function reprice(g: ShootGallery, tier: StoragePlanTier): ShootGallery {
     expiresAt:
       def.retentionDays == null
         ? null
-        : addDaysISO(g.deliveredAt, def.retentionDays),
+        : addDaysISO(g.deliveredAt ?? g.publishedAt ?? new Date().toISOString(), def.retentionDays),
   };
 }
 
@@ -101,7 +101,7 @@ export function storageSummaryOf(userId: string): StorageSummary {
 export function galleriesOf(userId: string): ShootGallery[] {
   return galleries
     .filter((g) => g.photographerId === userId)
-    .sort((a, b) => b.deliveredAt.localeCompare(a.deliveredAt));
+    .sort((a, b) => (b.deliveredAt ?? b.publishedAt ?? "").localeCompare(a.deliveredAt ?? a.publishedAt ?? ""));
 }
 
 export function setPlan(userId: string, tier: StoragePlanTier): StorageSummary {
@@ -163,5 +163,6 @@ export function addPhotos(
     galleries = galleries.map((x) => (x.bookingId === bookingId ? g! : x));
   }
   saveGalleries();
+  if (!g) throw new Error("Không thể tạo gallery.");
   return g;
 }

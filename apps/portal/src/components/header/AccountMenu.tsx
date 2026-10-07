@@ -12,8 +12,7 @@ import {
   formatPrice,
 } from "@lens/ui";
 import { clearSession, currentUser } from "@/lib/session";
-import { COIN_LABEL, formatXu } from "@/lib/wallet";
-import { useCoinSummary, useWalletSummary } from "@/queries/useWallet";
+import { useWalletSummary } from "@/queries/useWallet";
 import { useMyProfile } from "@/queries/useProfile";
 
 const LANDING_URL = import.meta.env.VITE_LANDING_URL ?? "http://localhost:5173";
@@ -62,7 +61,6 @@ export function AccountMenu() {
   const name = profile?.name ?? currentUser.name;
   const avatarSrc = profile?.avatar ?? currentUser.avatar;
   const { data: wallet } = useWalletSummary();
-  const { data: coins } = useCoinSummary();
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -110,15 +108,10 @@ export function AccountMenu() {
               <dd className="font-semibold tabular-nums">{wallet ? formatPrice(wallet.balance) : "…"}</dd>
             </div>
             <div className="flex items-center justify-between gap-3">
-              <dt className="text-muted-foreground">{COIN_LABEL}</dt>
-              <dd className="font-semibold tabular-nums">{coins ? formatXu(coins.balance) : "…"}</dd>
+              <dt className="text-muted-foreground">Đang giữ</dt>
+              <dd className="font-semibold tabular-nums">{wallet ? formatPrice(wallet.frozenBalance) : "…"}</dd>
             </div>
           </dl>
-          {coins && coins.expiringSoon > 0 && (
-            <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
-              {formatXu(coins.expiringSoon)} sắp hết hạn
-            </p>
-          )}
         </Link>
 
         {/* Navigation */}

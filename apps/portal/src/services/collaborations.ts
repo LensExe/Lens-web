@@ -1,7 +1,4 @@
-import { api } from "@/lib/api";
 import type { Booking } from "@/types";
-
-// Layer 3 — Service / API for multi-photographer shoots (liên kết thợ).
 
 export interface InviteInput {
   photographerId: string;
@@ -10,27 +7,8 @@ export interface InviteInput {
   sharePct: number;
 }
 
-/** Lead photographer invites another photographer to a shoot they lead. */
-export async function inviteCollaborator(
-  bookingId: string,
-  input: InviteInput
-): Promise<Booking> {
-  return (
-    await api.post<Booking>(`/me/bookings/${bookingId}/collaborators`, input)
-  ).data;
-}
+const unsupported = () => new Error("API cộng tác viên trong lens-backend hiện bị vô hiệu hoá.");
 
-/** Shoots where the signed-in photographer is invited as a collaborator. */
-export async function getMyCollaborations(): Promise<Booking[]> {
-  return (await api.get<Booking[]>("/me/collaborations")).data;
-}
-
-/** Invited photographer accepts or declines their agreed share. */
-export async function respondToInvite(
-  bookingId: string,
-  status: "accepted" | "declined"
-): Promise<Booking> {
-  return (
-    await api.patch<Booking>(`/me/collaborations/${bookingId}`, { status })
-  ).data;
-}
+export async function inviteCollaborator(bookingId: string, input: InviteInput): Promise<Booking> { void bookingId; void input; throw unsupported(); }
+export async function getMyCollaborations(): Promise<Booking[]> { throw unsupported(); }
+export async function respondToInvite(bookingId: string, status: "accepted" | "declined"): Promise<Booking> { void bookingId; void status; throw unsupported(); }

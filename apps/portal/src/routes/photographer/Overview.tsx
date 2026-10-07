@@ -16,7 +16,6 @@ import {
   BarChart,
   Button,
   PageContainer,
-  Progress,
   Skeleton,
   formatPrice,
   formatPriceCompact,
@@ -30,8 +29,7 @@ import {
   useMyPhotographerProfile,
 } from "@/queries/useDashboard";
 import { useMyAchievements } from "@/queries/useAchievements";
-import { BOOKING_STATUS_META } from "@/lib/booking";
-import { rankProgress } from "@/lib/achievements";
+import { bookingStatusMeta } from "@/lib/booking";
 import { addMinutesToTime } from "@/lib/schedule";
 import { currentUser } from "@/lib/session";
 import type { Booking } from "@/types";
@@ -95,12 +93,18 @@ function OverviewMetric({
   }[tone];
 
   return (
-    <div className={`h-full rounded-2xl border border-border bg-card p-4 shadow-xs ${interactive ? "transition-colors hover:bg-muted/40" : ""}`}>
+    <div
+      className={`h-full rounded-2xl border border-border bg-card p-4 shadow-xs ${interactive ? "transition-colors hover:bg-muted/40" : ""}`}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            {label}
+          </p>
           {delta !== undefined && (
-            <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold tabular-nums ${delta >= 0 ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400" : "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400"}`}>
+            <span
+              className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold tabular-nums ${delta >= 0 ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400" : "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400"}`}
+            >
               {delta >= 0 ? "↑" : "↓"} {Math.abs(delta).toFixed(0)}%
             </span>
           )}
@@ -118,11 +122,11 @@ function OverviewMetric({
 /** Compact agenda row: date block + client + style + status. */
 function AgendaItem({ booking }: { booking: Booking }) {
   const [, m, d] = booking.date.split("-");
-  const status = BOOKING_STATUS_META[booking.status];
+  const status = bookingStatusMeta(booking);
   const endTime = booking.timeSlot
     ? addMinutesToTime(
         booking.timeSlot,
-        Math.round((booking.packageSnapshot?.durationHours ?? 2) * 60)
+        Math.round((booking.packageSnapshot?.durationHours ?? 2) * 60),
       )
     : null;
   return (
@@ -140,7 +144,8 @@ function AgendaItem({ booking }: { booking: Booking }) {
           <span className="shrink-0 text-[9px] text-muted-foreground">{status.label}</span>
         </div>
         <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
-          {booking.style}{booking.timeSlot ? ` · ${booking.timeSlot}${endTime ? `–${endTime}` : ""}` : ""}
+          {booking.style}
+          {booking.timeSlot ? ` · ${booking.timeSlot}${endTime ? `–${endTime}` : ""}` : ""}
         </p>
         <p className="truncate text-[10px] text-muted-foreground">{booking.location}</p>
       </div>
@@ -148,7 +153,7 @@ function AgendaItem({ booking }: { booking: Booking }) {
   );
 }
 
-export function DashboardOverview() {
+export function PhotographerOverview() {
   const { data: bookings = [], isLoading } = useIncomingBookings();
   const { data: profile } = useMyPhotographerProfile();
   const { data: achievements } = useMyAchievements();
@@ -162,9 +167,10 @@ export function DashboardOverview() {
   const pending = bookings.filter((b) => b.status === "pending");
   const upcoming = bookings
     .filter((b) => b.date >= today && (b.status === "confirmed" || b.status === "held"))
-    .sort((a, b) => a.date.localeCompare(b.date) || (a.timeSlot ?? "").localeCompare(b.timeSlot ?? ""));
+    .sort(
+      (a, b) => a.date.localeCompare(b.date) || (a.timeSlot ?? "").localeCompare(b.timeSlot ?? ""),
+    );
   const upcomingThisWeek = upcoming.filter((booking) => booking.date <= sevenDaysISO);
-  const progress = achievements ? rankProgress(achievements.stats.completedSessions) : null;
 
   return (
     <PageContainer>
@@ -211,7 +217,13 @@ export function DashboardOverview() {
             value={earnings ? formatPrice(earnings.thisMonth) : "—"}
             label="Thu nhập tháng này"
             delta={earnings?.changePct ?? undefined}
-            hint={earnings ? <>Tháng trước: {formatPrice(earnings.lastMonth)}</> : undefined}
+            hint={
+              earnings ? (
+                <>Tháng trước: {formatPrice(earnings.lastMonth)}</>
+              ) : (
+                "Backend chưa có API báo cáo doanh thu"
+              )
+            }
           />
           {pending.length > 0 ? (
             <Link to="/dashboard/bookings" className="focus-ring rounded-2xl">
@@ -236,12 +248,21 @@ export function DashboardOverview() {
           />
           <OverviewMetric
             icon={Star}
-            value={profile ? (
-              <span className="inline-flex flex-wrap items-center gap-x-1.5">
-                {profile.rating.toFixed(1)}
-                <span className="text-[10px] tracking-tight text-amber-500" aria-label="thang điểm 5 sao">★★★★★</span>
-              </span>
-            ) : "—"}
+            value={
+              profile ? (
+                <span className="inline-flex flex-wrap items-center gap-x-1.5">
+                  {profile.rating.toFixed(1)}
+                  <span
+                    className="text-[10px] tracking-tight text-amber-500"
+                    aria-label="thang điểm 5 sao"
+                  >
+                    ★★★★★
+                  </span>
+                </span>
+              ) : (
+                "—"
+              )
+            }
             label={profile ? `${profile.reviewCount} đánh giá` : "Đánh giá"}
             tone="amber"
           />
@@ -255,7 +276,11 @@ export function DashboardOverview() {
             <h2 className="flex items-center gap-2 text-lg font-semibold">
               <span className="size-2 rounded-full bg-ember" />
               Yêu cầu mới cần duyệt
-              {pending.length > 0 && <span className="rounded-full bg-ember/10 px-2 py-0.5 text-[10px] font-semibold text-ember">{pending.length}</span>}
+              {pending.length > 0 && (
+                <span className="rounded-full bg-ember/10 px-2 py-0.5 text-[10px] font-semibold text-ember">
+                  {pending.length}
+                </span>
+              )}
             </h2>
             <Link
               to="/dashboard/bookings"
@@ -294,7 +319,9 @@ export function DashboardOverview() {
             <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
               <div>
                 <h2 className="text-base font-semibold">Thu nhập 6 tháng gần đây</h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">Sau phí sàn · tính theo tháng chụp</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Sau phí sàn · tính theo tháng chụp
+                </p>
               </div>
               {earnings && (
                 <span className="text-xs text-muted-foreground">
@@ -310,7 +337,9 @@ export function DashboardOverview() {
                 ariaLabel="Thu nhập 6 tháng gần đây"
               />
             ) : (
-              <Skeleton className="h-48 rounded-xl" />
+              <div className="flex h-48 items-center justify-center rounded-xl border border-dashed border-border px-6 text-center text-sm text-muted-foreground">
+                Chưa có endpoint tổng hợp doanh thu theo tháng.
+              </div>
             )}
           </div>
         </section>
@@ -320,7 +349,12 @@ export function DashboardOverview() {
           <div className="rounded-2xl border border-border bg-card p-3.5 shadow-xs sm:p-4">
             <div className="mb-2 flex items-center justify-between gap-2 px-1">
               <h2 className="text-sm font-semibold">Lịch chụp sắp tới</h2>
-              <Link to="/dashboard/bookings" className="text-[10px] font-medium text-ember hover:underline">Xem tất cả</Link>
+              <Link
+                to="/dashboard/bookings"
+                className="text-[10px] font-medium text-ember hover:underline"
+              >
+                Xem tất cả
+              </Link>
             </div>
             {isLoading ? (
               <div className="space-y-2 p-2">
@@ -345,7 +379,7 @@ export function DashboardOverview() {
             </Button>
           </div>
 
-          {achievements && progress && (
+          {achievements && (
             <Link
               to="/dashboard/achievements"
               className="block rounded-2xl border border-border bg-card p-4 shadow-xs transition-colors hover:bg-muted/40"
@@ -354,24 +388,11 @@ export function DashboardOverview() {
                 <h2 className="text-sm font-semibold">Cấp bậc của bạn</h2>
                 <RankBadge rank={achievements.rank} />
               </div>
-              {progress.next ? (
-                <>
-                  <div className="mt-3 flex items-center justify-between gap-2 text-xs">
-                    <span className="text-foreground">Còn <b>{progress.remaining} buổi</b> để lên {progress.next.name}</span>
-                    <span className="shrink-0 text-muted-foreground tabular-nums">
-                      {achievements.stats.completedSessions} / {progress.next.minSessions}
-                    </span>
-                  </div>
-                  <Progress value={progress.pct} className="mt-2 h-2" indicatorClassName="bg-ember" />
-                  <p className="mt-3 rounded-xl bg-muted/45 p-3 text-[10px] leading-relaxed text-muted-foreground">
-                    Hoa hồng cấp bậc hiện tại: <b className="text-foreground">{Math.round(achievements.commissionRate * 100)}%</b>. Lên hạng để mở khóa mức ưu đãi tiếp theo.
-                  </p>
-                </>
-              ) : (
-                <p className="mt-3 text-sm text-muted-foreground">
-                  Bạn đã đạt cấp bậc cao nhất.
-                </p>
-              )}
+              <p className="mt-3 text-xs text-muted-foreground">
+                Hoa hồng hiện tại:{" "}
+                <b className="text-foreground">{Math.round(achievements.commissionRate * 100)}%</b>.
+                Backend chưa trả số booking hoàn thành để tính tiến độ lên cấp.
+              </p>
             </Link>
           )}
 
@@ -385,7 +406,10 @@ export function DashboardOverview() {
                 <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
                   Mở thêm những khung giờ bạn sẵn sàng chụp để khách có thêm lựa chọn đặt lịch.
                 </p>
-                <Link to="/dashboard/availability" className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-orange-700 hover:underline dark:text-orange-300">
+                <Link
+                  to="/dashboard/availability"
+                  className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-orange-700 hover:underline dark:text-orange-300"
+                >
                   Cập nhật lịch làm việc <ArrowRight className="size-3" />
                 </Link>
               </div>
@@ -395,7 +419,9 @@ export function DashboardOverview() {
       </div>
 
       <section className="mt-6">
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Quản lý nhanh</h2>
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Quản lý nhanh
+        </h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <ShortcutCard
             to="/dashboard/packages"
@@ -407,7 +433,7 @@ export function DashboardOverview() {
             to="/dashboard/availability"
             icon={CalendarDays}
             title="Lịch làm việc"
-            hint="Giờ tuần & ngày bận"
+            hint="Booking và khoảng giờ bận"
           />
           <ShortcutCard
             to="/dashboard/portfolio"

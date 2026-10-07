@@ -1,9 +1,5 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { getDemoAccounts, login, register } from "@/services/auth";
-
-export const authKeys = {
-  demoAccounts: ["auth", "demo-accounts"] as const,
-};
+import { useMutation } from "@tanstack/react-query";
+import { login, register } from "@/services/auth";
 
 export function useLogin() {
   return useMutation({ mutationFn: login });
@@ -11,12 +7,4 @@ export function useLogin() {
 
 export function useRegister() {
   return useMutation({ mutationFn: register });
-}
-
-export function useDemoAccounts() {
-  return useQuery({
-    queryKey: authKeys.demoAccounts,
-    queryFn: getDemoAccounts,
-    staleTime: Infinity,
-  });
 }

@@ -1,32 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  getGallery,
-  getMyGalleries,
-  getStorageSummary,
-  setStoragePlan,
-  uploadPhotos,
-} from "@/services/storage";
-import type { StoragePlanTier } from "@/types";
+import { getGallery, getMyGalleries, publishGallery, uploadPhotos } from "@/services/storage";
 
-// Layer 2 — Query hooks.
 export const storageKeys = {
-  summary: ["storage", "summary"] as const,
   galleries: ["storage", "galleries"] as const,
   gallery: (id: string) => ["gallery", id] as const,
 };
 
-export function useStorageSummary() {
-  return useQuery({
-    queryKey: storageKeys.summary,
-    queryFn: getStorageSummary,
-  });
-}
-
 export function useMyGalleries() {
-  return useQuery({
-    queryKey: storageKeys.galleries,
-    queryFn: getMyGalleries,
-  });
+  return useQuery({ queryKey: storageKeys.galleries, queryFn: getMyGalleries });
 }
 
 export function useGallery(bookingId: string) {
@@ -37,25 +18,28 @@ export function useGallery(bookingId: string) {
   });
 }
 
-export function useSetStoragePlan() {
+function useRefreshGallery(bookingId: string) {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (tier: StoragePlanTier) => setStoragePlan(tier),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: storageKeys.summary });
-      qc.invalidateQueries({ queryKey: storageKeys.galleries });
-    },
-  });
+  return () => {
+    qc.invalidateQueries({ queryKey: storageKeys.gallery(bookingId) });
+    qc.invalidateQueries({ queryKey: storageKeys.galleries });
+    qc.invalidateQueries({ queryKey: ["bookings", "mine"] });
+    qc.invalidateQueries({ queryKey: ["dashboard", "incoming"] });
+  };
 }
 
 export function useUploadPhotos(bookingId: string) {
-  const qc = useQueryClient();
+  const refresh = useRefreshGallery(bookingId);
   return useMutation({
-    mutationFn: () => uploadPhotos(bookingId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: storageKeys.gallery(bookingId) });
-      qc.invalidateQueries({ queryKey: storageKeys.summary });
-      qc.invalidateQueries({ queryKey: storageKeys.galleries });
-    },
+    mutationFn: (files: File[]) => uploadPhotos(bookingId, files),
+    onSuccess: refresh,
+  });
+}
+
+export function usePublishGallery(bookingId: string) {
+  const refresh = useRefreshGallery(bookingId);
+  return useMutation({
+    mutationFn: () => publishGallery(bookingId),
+    onSuccess: refresh,
   });
 }

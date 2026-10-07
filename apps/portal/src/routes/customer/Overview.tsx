@@ -13,27 +13,22 @@ import {
   CreditCard,
   Images,
   MapPin,
-  MessageSquare,
   Search,
   ShieldCheck,
   Star,
   SunMedium,
   Wallet,
 } from "lucide-react";
-import {
-  Avatar,
-  AvatarFallback,
-  Button,
-  PageContainer,
-  Skeleton,
-  cn,
-  formatPrice,
-} from "@lens/ui";
-import { useConversations } from "@/queries/useMessages";
+import { Avatar, AvatarFallback, Button, PageContainer, Skeleton, cn, formatPrice } from "@lens/ui";
 import { useMyBookings } from "@/queries/useBookings";
 import { useMyProfile } from "@/queries/useProfile";
 import { addMinutesToTime, todayISO } from "@/lib/schedule";
-import { BOOKING_STATUS_META, remainingAmount } from "@/lib/booking";
+import {
+  bookingStatusMeta,
+  isPaymentDue,
+  needsRemainingPayment,
+  remainingAmount,
+} from "@/lib/booking";
 import { currentUser } from "@/lib/session";
 import type { Booking, BookingStatus } from "@/types";
 
@@ -59,20 +54,19 @@ const formatGreeting = () => {
 };
 
 const statusProgress: Record<BookingStatus, number> = {
-  awaiting_deposit: 0,
   pending: 1,
+  awaiting_deposit: 1,
   confirmed: 2,
   held: 3,
   released: 4,
   cancelled: 0,
 };
 
-const progressSteps = ["Đã đặt cọc", "Xác nhận lịch", "Thanh toán", "Hoàn thành"];
+const progressSteps = ["Gửi yêu cầu", "Đặt cọc", "Thanh toán phần còn lại", "Chụp & giao ảnh"];
 
-const depositPaidStatuses: BookingStatus[] = ["pending", "confirmed", "held", "released"];
-
-const hasPaidDeposit = (booking: Pick<Booking, "status" | "depositPaidAt">) =>
-  Boolean(booking.depositPaidAt) || depositPaidStatuses.includes(booking.status);
+const hasPaidDeposit = (
+  booking: Pick<Booking, "status" | "depositPaidAt" | "paidAmount" | "depositAmount">,
+) => Boolean(booking.depositPaidAt) || (booking.paidAmount ?? 0) >= booking.depositAmount;
 
 function SummaryMetric({
   icon: Icon,
@@ -99,7 +93,9 @@ function SummaryMetric({
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
-        <span className={cn("flex size-9 items-center justify-center rounded-xl", toneClasses[tone])}>
+        <span
+          className={cn("flex size-9 items-center justify-center rounded-xl", toneClasses[tone])}
+        >
           <Icon className="size-4" />
         </span>
         <span className="mt-1 size-2 rounded-full bg-foreground/70" />
@@ -117,8 +113,8 @@ function SummaryMetric({
   );
 }
 
-function BookingProgress({ status }: { status: BookingStatus }) {
-  const activeStep = statusProgress[status];
+function BookingProgress({ booking }: { booking: Booking }) {
+  const activeStep = isPaymentDue(booking) ? 2 : statusProgress[booking.status];
 
   return (
     <div className="mt-4 border-t border-border/70 pt-3">
@@ -180,7 +176,7 @@ function BookingAction({ booking }: { booking: Booking }) {
     );
   }
 
-  if (booking.status === "confirmed") {
+  if (needsRemainingPayment(booking)) {
     return (
       <Button
         asChild
@@ -215,27 +211,38 @@ function BookingAction({ booking }: { booking: Booking }) {
 }
 
 function BookingPaymentStatus({ booking }: { booking: Booking }) {
-  if (!hasPaidDeposit(booking)) return null;
-
   const waitingForConfirmation = booking.status === "pending";
-  const paidInFull = booking.status === "held" || booking.status === "released";
-  const title = paidInFull
-    ? "Đã thanh toán đủ"
-    : "Đã đặt cọc " + formatPrice(booking.depositAmount);
+  const paymentDue = isPaymentDue(booking);
+  const depositPaid = hasPaidDeposit(booking);
+  if (!waitingForConfirmation && !depositPaid) return null;
+  const paidInFull = (booking.paidAmount ?? 0) >= booking.price;
+  const title = waitingForConfirmation
+    ? "Đã đặt cọc · chờ xác nhận"
+    : paidInFull
+      ? "Đã thanh toán đủ"
+      : paymentDue
+        ? "Chờ thanh toán"
+        : booking.status === "held"
+          ? "Buổi chụp đang thực hiện"
+          : "Đã đặt cọc " + formatPrice(booking.depositAmount);
   const detail = waitingForConfirmation
-    ? "Yêu cầu đang chờ nhiếp ảnh gia xác nhận."
-    : booking.status === "confirmed"
-      ? "Thanh toán phần còn lại để khóa lịch chụp."
-      : booking.status === "held"
-        ? "Lens đang giữ tiền an toàn cho đến khi bạn nhận ảnh."
-        : "Buổi chụp đã hoàn tất và giao dịch đã được xử lý.";
+    ? "Đã thanh toán tiền cọc. Chờ nhiếp ảnh gia xác nhận yêu cầu."
+    : paymentDue
+      ? "Photographer đã đánh dấu đã chụp. Thanh toán phần còn lại để tiếp tục."
+      : booking.status === "confirmed"
+        ? "Thanh toán phần còn lại để khóa lịch chụp."
+        : booking.status === "held"
+          ? "Nhiếp ảnh gia đang thực hiện buổi chụp và cập nhật ảnh trong gallery."
+          : "Buổi chụp đã hoàn tất và giao dịch đã được xử lý.";
   const badge = waitingForConfirmation
     ? "Chờ xác nhận"
-    : booking.status === "confirmed"
+    : paymentDue
       ? "Còn lại " + formatPrice(remainingAmount(booking))
-      : booking.status === "held"
-        ? "Đang bảo vệ"
-        : "Hoàn tất";
+      : booking.status === "confirmed"
+        ? "Còn lại " + formatPrice(remainingAmount(booking))
+        : booking.status === "held"
+          ? "Đang bảo vệ"
+          : "Hoàn tất";
 
   return (
     <div
@@ -281,7 +288,7 @@ function OverviewBookingCard({
   booking: Booking;
   featured?: boolean;
 }) {
-  const status = BOOKING_STATUS_META[booking.status];
+  const status = bookingStatusMeta(booking);
   const duration = booking.packageSnapshot?.durationHours ?? 2;
   const endTime = booking.timeSlot ? addMinutesToTime(booking.timeSlot, duration * 60) : null;
   const depositPaid = hasPaidDeposit(booking);
@@ -304,8 +311,12 @@ function OverviewBookingCard({
 
         <Link to={"/client/bookings/" + booking.id} className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate text-sm font-semibold hover:underline">{booking.photographerName}</p>
-            <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", status.className)}>
+            <p className="truncate text-sm font-semibold hover:underline">
+              {booking.photographerName}
+            </p>
+            <span
+              className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", status.className)}
+            >
               {status.label}
             </span>
           </div>
@@ -337,7 +348,7 @@ function OverviewBookingCard({
 
       <BookingPaymentStatus booking={booking} />
 
-      {booking.status !== "cancelled" && <BookingProgress status={booking.status} />}
+      {booking.status !== "cancelled" && <BookingProgress booking={booking} />}
 
       <div className="mt-4 grid gap-3 border-t border-border/70 pt-4 sm:flex sm:items-center sm:justify-between">
         <div className="flex items-center gap-2 text-[11px] leading-4 text-muted-foreground">
@@ -359,11 +370,18 @@ function OverviewBookingCard({
               <span>Đang chờ nhiếp ảnh gia phản hồi</span>
             </>
           )}
-          {booking.status === "held" && (
+          {isPaymentDue(booking) ? (
             <>
-              <ShieldCheck className="size-3.5 shrink-0 text-lagoon" />
-              <span>Tiền đang được Lens bảo vệ</span>
+              <CreditCard className="size-3.5 shrink-0 text-ember" />
+              <span className="text-ember">Chờ thanh toán phần còn lại</span>
             </>
+          ) : (
+            booking.status === "held" && (
+              <>
+                <ShieldCheck className="size-3.5 shrink-0 text-lagoon" />
+                <span>Tiền đang được Lens bảo vệ</span>
+              </>
+            )
           )}
           {booking.status === "released" && (
             <>
@@ -446,17 +464,21 @@ function FilterTab({
       onClick={onClick}
       className={cn(
         "rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors",
-        active ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+        active
+          ? "bg-foreground text-background"
+          : "text-muted-foreground hover:bg-muted hover:text-foreground",
       )}
     >
-      {label} <span className={cn("ml-0.5", active ? "text-background/70" : "text-muted-foreground")}>({count})</span>
+      {label}{" "}
+      <span className={cn("ml-0.5", active ? "text-background/70" : "text-muted-foreground")}>
+        ({count})
+      </span>
     </button>
   );
 }
 
-export function ClientOverview() {
+export function CustomerOverview() {
   const { data: bookings = [], isLoading } = useMyBookings();
-  const { data: conversations = [] } = useConversations();
   const { data: profile } = useMyProfile();
   const [filter, setFilter] = useState<BookingFilter>("all");
 
@@ -468,16 +490,13 @@ export function ClientOverview() {
         ["awaiting_deposit", "pending", "confirmed", "held"].includes(booking.status),
     )
     .sort(
-      (a, b) =>
-        a.date.localeCompare(b.date) ||
-        (a.timeSlot ?? "").localeCompare(b.timeSlot ?? ""),
+      (a, b) => a.date.localeCompare(b.date) || (a.timeSlot ?? "").localeCompare(b.timeSlot ?? ""),
     );
   const completed = bookings.filter((booking) => booking.status === "released");
   const needsPayment = bookings.filter(
-    (booking) => booking.status === "awaiting_deposit" || booking.status === "confirmed",
+    (booking) => booking.status === "awaiting_deposit" || needsRemainingPayment(booking),
   );
   const pending = bookings.filter((booking) => booking.status === "pending");
-  const unread = conversations.reduce((total, conversation) => total + conversation.unreadCount, 0);
   const nearest = upcoming[0];
 
   const filteredBookings =
@@ -485,7 +504,7 @@ export function ClientOverview() {
       ? upcoming
       : filter === "payment"
         ? upcoming.filter(
-            (booking) => booking.status === "awaiting_deposit" || booking.status === "confirmed",
+            (booking) => booking.status === "awaiting_deposit" || needsRemainingPayment(booking),
           )
         : filter === "pending"
           ? upcoming.filter((booking) => booking.status === "pending")
@@ -615,7 +634,9 @@ export function ClientOverview() {
                     <CalendarDays className="size-5" />
                   </span>
                   <p className="mt-3 text-sm font-medium">
-                    {filter === "completed" ? "Chưa có buổi chụp hoàn thành" : "Chưa có buổi chụp phù hợp"}
+                    {filter === "completed"
+                      ? "Chưa có buổi chụp hoàn thành"
+                      : "Chưa có buổi chụp phù hợp"}
                   </p>
                   <p className="mt-1 max-w-sm text-xs text-muted-foreground">
                     Tìm một nhiếp ảnh gia phù hợp để bắt đầu lưu giữ khoảnh khắc của bạn.
@@ -643,9 +664,9 @@ export function ClientOverview() {
                 <Clock3 className="size-4 text-ember" />
                 <h2 className="text-sm font-semibold">Việc cần làm</h2>
               </div>
-              {needsPayment.length + pending.length + unread > 0 && (
+              {needsPayment.length + pending.length > 0 && (
                 <span className="rounded-full bg-ember/10 px-2 py-0.5 text-[10px] font-medium text-ember">
-                  {needsPayment.length + pending.length + unread} việc
+                  {needsPayment.length + pending.length} việc
                 </span>
               )}
             </div>
@@ -675,16 +696,7 @@ export function ClientOverview() {
                   tone="lagoon"
                 />
               )}
-              {unread > 0 && (
-                <TodoItem
-                  icon={MessageSquare}
-                  title="Bạn có tin nhắn mới"
-                  hint={unread + " tin nhắn chưa đọc từ nhiếp ảnh gia."}
-                  to="/messages"
-                  tone="lagoon"
-                />
-              )}
-              {needsPayment.length === 0 && pending.length === 0 && unread === 0 && (
+              {needsPayment.length === 0 && pending.length === 0 && (
                 <div className="flex items-center gap-2 rounded-xl bg-muted/60 p-3 text-xs text-muted-foreground">
                   <CheckCircle2 className="size-4 text-lagoon" />
                   Mọi thứ đang được cập nhật.
@@ -699,10 +711,17 @@ export function ClientOverview() {
                 <SunMedium className="size-4 text-ember" />
                 <h2 className="text-sm font-semibold">Ngày chụp gần nhất</h2>
               </div>
-              {nearest && <span className="text-[10px] text-muted-foreground">{formatDate(nearest.date)}</span>}
+              {nearest && (
+                <span className="text-[10px] text-muted-foreground">
+                  {formatDate(nearest.date)}
+                </span>
+              )}
             </div>
             {nearest ? (
-              <Link to={"/client/bookings/" + nearest.id} className="mt-3 block rounded-xl bg-muted/60 p-3 hover:bg-muted">
+              <Link
+                to={"/client/bookings/" + nearest.id}
+                className="mt-3 block rounded-xl bg-muted/60 p-3 hover:bg-muted"
+              >
                 <p className="text-2xl font-semibold tracking-tight">
                   {nearest.timeSlot ?? "--:--"}
                 </p>
@@ -744,7 +763,10 @@ export function ClientOverview() {
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {styleTags.map((style) => (
-                    <span key={style} className="rounded-full bg-muted px-2 py-1 text-[10px] text-muted-foreground">
+                    <span
+                      key={style}
+                      className="rounded-full bg-muted px-2 py-1 text-[10px] text-muted-foreground"
+                    >
                       #{style.replace(/\s+/g, "")}
                     </span>
                   ))}
@@ -753,7 +775,10 @@ export function ClientOverview() {
             )}
             <div className="mt-4 flex items-start gap-2 border-t border-border pt-3 text-[10px] leading-4 text-muted-foreground">
               <ShieldCheck className="mt-0.5 size-4 shrink-0 text-lagoon" />
-              <span>Lens bảo vệ 100%: tiền chỉ được chuyển cho nhiếp ảnh gia sau khi bạn xác nhận đã nhận ảnh.</span>
+              <span>
+                Lens bảo vệ 100%: tiền chỉ được chuyển cho nhiếp ảnh gia sau khi bạn xác nhận đã
+                nhận ảnh.
+              </span>
             </div>
           </section>
 

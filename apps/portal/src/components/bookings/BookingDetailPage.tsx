@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -5,12 +6,10 @@ import {
   Check,
   ChevronLeft,
   Clock,
-  Download,
-  HelpCircle,
   Loader2,
   MapPin,
   Package,
-  Phone,
+  RefreshCw,
   Send,
   Share2,
   ShieldCheck,
@@ -32,30 +31,35 @@ import {
   PageContainer,
 } from "@lens/ui";
 import { BookingTimeline } from "@/components/bookings/BookingTimeline";
+import { timelineStepNumber } from "@/components/bookings/booking-timeline-utils";
 import { GalleryPanel } from "@/components/storage/GalleryPanel";
 import { CancelBookingDialog } from "@/components/bookings/CancelBookingDialog";
 import { MessageButton } from "@/components/profile/MessageButton";
+import { useConfirmReceipt, useMyBookings } from "@/queries/useBookings";
 import {
-  useConfirmReceipt,
-  useMyBookings,
-} from "@/queries/useBookings";
-import { useIncomingBookings, useUpdateBookingStatus } from "@/queries/useDashboard";
+  useCompleteShoot,
+  useIncomingBookings,
+  useUpdateBookingStatus,
+} from "@/queries/useDashboard";
 import { usePhotographer } from "@/queries/usePhotographers";
 import { useGallery } from "@/queries/useStorage";
 import {
   BOOKING_STATUS_META,
-  commissionAmount,
-  photographerPayout,
+  bookingStatusMeta,
   canCancel,
   deliveryDeadline,
   deliveryProgress,
+  isPaymentDue,
   remainingAmount,
 } from "@/lib/booking";
-import { formatCoins } from "@/lib/wallet";
 import type { Booking, Photographer } from "@/types";
 
 const initialsOf = (name: string) =>
-  name.split(" ").slice(-2).map((w) => w[0]).join("");
+  name
+    .split(" ")
+    .slice(-2)
+    .map((w) => w[0])
+    .join("");
 const formatDate = (iso: string) => {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
@@ -68,7 +72,7 @@ function Row({ label, value, tone }: { label: string; value: string; tone?: "mut
       <span
         className={cn(
           "text-right font-semibold tabular-nums",
-          tone === "plus" && "text-emerald-600 dark:text-emerald-400"
+          tone === "plus" && "text-emerald-600 dark:text-emerald-400",
         )}
       >
         {value}
@@ -104,18 +108,22 @@ function BookingSummary({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-sm font-semibold">{otherName}</h2>
-            <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", status.className)}>
+            <span
+              className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", status.className)}
+            >
               {status.label}
             </span>
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
             <span>{booking.style}</span>
             <span className="text-border">·</span>
-            <span>{isClient ? "Lens Pro Photographer" : "Khách hàng Lens"}</span>
+            <span>{isClient ? "Nhiếp ảnh gia Lens" : "Khách hàng Lens"}</span>
             {isClient && (
               <span className="inline-flex items-center gap-0.5 text-amber-600 dark:text-amber-400">
                 <Star className="size-3 fill-current" />
-                {photographer?.rating?.toFixed(1) ?? "4.9"}/5.0
+                {photographer?.rating
+                  ? `${photographer.rating.toFixed(1)}/5.0`
+                  : "Chưa có đánh giá"}
               </span>
             )}
           </div>
@@ -124,28 +132,17 @@ function BookingSummary({
           <MessageButton
             participant={
               isClient
-                ? { id: booking.photographerId, name: booking.photographerName, role: "photographer" }
+                ? {
+                    id: booking.photographerId,
+                    name: booking.photographerName,
+                    role: "photographer",
+                  }
                 : { id: booking.clientId, name: booking.clientName, role: "client" }
             }
             label="Nhắn tin"
             size="sm"
             className="h-8 rounded-lg px-2.5 text-[10px]"
           />
-          <Button
-            variant="outline"
-            size="icon"
-            className="size-8 rounded-lg"
-            aria-label="Gọi điện"
-            onClick={() =>
-              toast(
-                booking.contactPhone
-                  ? `Số điện thoại liên hệ: ${booking.contactPhone}`
-                  : "Chưa có số điện thoại liên hệ"
-              )
-            }
-          >
-            <Phone className="size-3.5" />
-          </Button>
         </div>
       </div>
 
@@ -175,8 +172,18 @@ function BookingSummary({
           <DetailItem
             icon={<Send className="size-3.5" />}
             label="Hạn giao ảnh"
-            value={deliveryDeadline(booking.date, booking.packageSnapshot.deliveryDays)}
-            badge={booking.status === "held" ? "Đang thực hiện" : undefined}
+            value={
+              booking.packageSnapshot.deliveryDays
+                ? deliveryDeadline(booking.date, booking.packageSnapshot.deliveryDays)
+                : "Backend chưa có hạn giao ảnh"
+            }
+            badge={
+              isPaymentDue(booking)
+                ? "Chờ thanh toán"
+                : booking.status === "held"
+                  ? "Đang thực hiện"
+                  : undefined
+            }
           />
         ) : null}
         {booking.collaborators && booking.collaborators.length > 0 && (
@@ -187,7 +194,8 @@ function BookingSummary({
             <div className="min-w-0">
               <dt className="text-[10px] text-muted-foreground">Đội ngũ thực hiện</dt>
               <dd className="mt-0.5 text-xs font-medium">
-                Nhóm {booking.collaborators.length + 1} thợ · {booking.collaborators.map((c) => c.photographerName).join(", ")}
+                Nhóm {booking.collaborators.length + 1} thợ ·{" "}
+                {booking.collaborators.map((c) => c.photographerName).join(", ")}
               </dd>
             </div>
           </div>
@@ -217,33 +225,40 @@ function DetailItem({
         <dt className="text-[10px] text-muted-foreground">{label}</dt>
         <dd className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs font-medium">
           <span>{value}</span>
-          {badge && <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">{badge}</span>}
+          {badge && (
+            <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+              {badge}
+            </span>
+          )}
         </dd>
       </div>
     </div>
   );
 }
 
-function CostSummary({ booking, isClient }: { booking: Booking; isClient: boolean }) {
-  const paid =
-    booking.status === "held" || booking.status === "released"
-      ? booking.price - (booking.coinsRedeemed ?? 0)
-      : booking.status === "pending" || booking.status === "confirmed"
-        ? booking.depositAmount
-        : 0;
-  const isCompleted = booking.status === "held" || booking.status === "released";
+function CostSummary({ booking }: { booking: Booking }) {
+  const paid = booking.paidAmount ?? 0;
+  const depositPaid = paid >= booking.depositAmount;
+  const isCompleted = booking.status === "released";
 
   return (
     <section className="rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgb(24_24_27_/_.035),0_12px_28px_-24px_rgb(24_24_27_/_0.24)] sm:p-5">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">Chi phí</h2>
-        <span className="rounded bg-muted px-1.5 py-1 text-[9px] text-muted-foreground">VND (₫)</span>
+        <span className="rounded bg-muted px-1.5 py-1 text-[9px] text-muted-foreground">
+          VND (₫)
+        </span>
       </div>
       <Separator className="my-3" />
       <div className="space-y-3">
         <Row label="Giá buổi chụp" value={formatPrice(booking.price)} />
         <div className="flex items-center justify-between gap-4 text-xs">
-          <span className="text-muted-foreground">Đã đặt cọc <span className="ml-1 rounded bg-emerald-50 px-1 text-[9px] text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">30%</span></span>
+          <span className="text-muted-foreground">
+            {depositPaid ? "Đã đặt cọc" : "Tiền cọc"}{" "}
+            <span className="ml-1 rounded bg-emerald-50 px-1 text-[9px] text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+              30%
+            </span>
+          </span>
           <span className="font-semibold tabular-nums">{formatPrice(booking.depositAmount)}</span>
         </div>
         <div className="flex items-center justify-between gap-4 text-xs">
@@ -251,26 +266,22 @@ function CostSummary({ booking, isClient }: { booking: Booking; isClient: boolea
             {isCompleted ? "Đã thanh toán phần còn lại" : "Còn lại"}{" "}
             <span className="ml-1 rounded bg-muted px-1 text-[9px] text-muted-foreground">70%</span>
           </span>
-          <span className="font-semibold tabular-nums">{formatPrice(remainingAmount(booking))}</span>
+          <span className="font-semibold tabular-nums">
+            {formatPrice(remainingAmount(booking))}
+          </span>
         </div>
-        {booking.coinsRedeemed ? (
-          <Row label="Lens Xu đã dùng" value={`−${formatPrice(booking.coinsRedeemed)}`} />
-        ) : null}
-        {isClient && booking.coinsEarned ? (
-          <Row label="Lens Xu đã hoàn" value={`+${formatCoins(booking.coinsEarned)}`} tone="plus" />
-        ) : null}
-        {!isClient && (
-          <>
-            <Row label="Phí sàn" value={`−${formatPrice(commissionAmount(booking.price))}`} />
-            <Row label="Bạn nhận" value={formatPrice(photographerPayout(booking.price))} tone="plus" />
-          </>
-        )}
       </div>
       <div className="mt-4 flex items-end justify-between gap-4 border-t border-border pt-3">
         <div>
-          <p className="text-[10px] text-muted-foreground">{booking.status === "cancelled" ? "Đã hoàn / đã trả" : "Tổng đã trả"}</p>
+          <p className="text-[10px] text-muted-foreground">
+            {booking.status === "cancelled" ? "Đã hoàn / đã trả" : "Tổng đã trả"}
+          </p>
           <p className="mt-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-            {booking.status === "held" || booking.status === "released" ? "Đã thanh toán 100%" : paid ? "Đã thanh toán tiền cọc" : "Chưa thanh toán"}
+            {paid >= booking.price
+              ? "Đã thanh toán đủ"
+              : paid > 0
+                ? `Đã thanh toán ${formatPrice(paid)}`
+                : "Chưa thanh toán"}
           </p>
         </div>
         <span className="text-base font-bold tabular-nums">{formatPrice(paid)}</span>
@@ -279,28 +290,19 @@ function CostSummary({ booking, isClient }: { booking: Booking; isClient: boolea
   );
 }
 
-function timelineStep(status: Booking["status"]): number {
-  if (status === "cancelled") return 0;
-  if (status === "released") return 5;
-  return {
-    awaiting_deposit: 1,
-    pending: 2,
-    confirmed: 3,
-    held: 4,
-  }[status];
-}
+// timelineStep has been moved to BookingTimeline.tsx as timelineStepNumber
 
-export function BookingDetail({ mode }: { mode: "client" | "photographer" }) {
-  const { id = "" } = useParams();
+export function BookingDetailPage({ mode }: { mode: "client" | "photographer" }) {
+  const { booking_id = "" } = useParams();
   const navigate = useNavigate();
   const isClient = mode === "client";
 
   const clientBookings = useMyBookings();
   const incoming = useIncomingBookings();
   const source = isClient ? clientBookings : incoming;
-  const booking = (source.data ?? []).find((b) => b.id === id);
-  const galleryQuery = useGallery(booking?.id ?? id);
-  const photographerQuery = usePhotographer(isClient ? booking?.photographerId ?? "" : "");
+  const booking = (source.data ?? []).find((b) => b.id === booking_id);
+  const galleryQuery = useGallery(booking?.id ?? booking_id);
+  const photographerQuery = usePhotographer(isClient ? (booking?.photographerId ?? "") : "");
 
   const confirmReceipt = useConfirmReceipt();
   const updateStatus = useUpdateBookingStatus();
@@ -333,14 +335,16 @@ export function BookingDetail({ mode }: { mode: "client" | "photographer" }) {
     );
   }
 
-  const status = BOOKING_STATUS_META[booking.status];
+  const status = bookingStatusMeta(booking);
   const otherName = isClient ? booking.photographerName : booking.clientName;
   const showGallery = booking.status === "held" || booking.status === "released";
+  const hasRemainingPayment = isClient && isPaymentDue(booking);
   const showActionCard =
     !isClient ||
     booking.status !== "held" ||
     Boolean(galleryQuery.data?.photos.length) ||
-    canCancel(booking);
+    canCancel(booking) ||
+    hasRemainingPayment;
   const bookingCode = booking.id.toUpperCase().replace(/^BK-/, "LS-");
 
   const shareBooking = async () => {
@@ -354,18 +358,11 @@ export function BookingDetail({ mode }: { mode: "client" | "photographer" }) {
 
   const release = () =>
     confirmReceipt.mutate(booking.id, {
-      onSuccess: (updated) => {
-        const earned = updated.coinsEarned ?? 0;
-        toast.success(
-          earned > 0
-            ? `Đã xác nhận · nhận +${formatCoins(earned)} hoàn lại`
-            : "Đã xác nhận nhận ảnh"
-        );
-      },
+      onSuccess: () => toast.success("Đã xác nhận nhận ảnh"),
       onError: () => toast.error("Không thể xác nhận, vui lòng thử lại"),
     });
 
-  const decide = (next: "confirmed" | "cancelled") =>
+  const decide = (next: "confirmed" | "cancelled" | "held") =>
     updateStatus.mutate(
       { id: booking.id, status: next },
       {
@@ -373,10 +370,12 @@ export function BookingDetail({ mode }: { mode: "client" | "photographer" }) {
           toast.success(
             next === "confirmed"
               ? `Đã xác nhận lịch chụp với ${booking.clientName}`
-              : `Đã từ chối và hoàn cọc cho ${booking.clientName}`
+              : next === "held"
+                ? "Đã bắt đầu buổi chụp"
+                : `Đã từ chối yêu cầu đặt lịch với ${booking.clientName}`,
           ),
         onError: () => toast.error("Không thể cập nhật, vui lòng thử lại"),
-      }
+      },
     );
 
   return (
@@ -397,7 +396,12 @@ export function BookingDetail({ mode }: { mode: "client" | "photographer" }) {
               <h1 className="text-xl font-bold tracking-tight md:text-2xl">
                 Chi tiết lịch chụp #{bookingCode}
               </h1>
-              <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-medium", status.className)}>
+              <span
+                className={cn(
+                  "rounded-full border px-2 py-0.5 text-[10px] font-medium",
+                  status.className,
+                )}
+              >
                 {status.label}
               </span>
             </div>
@@ -406,18 +410,14 @@ export function BookingDetail({ mode }: { mode: "client" | "photographer" }) {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" className="h-8 rounded-lg text-xs" onClick={shareBooking}>
-              <Share2 className="size-3.5" />
-              Chia sẻ
-            </Button>
             <Button
               variant="outline"
               size="sm"
               className="h-8 rounded-lg text-xs"
-              onClick={() => toast("Tính năng tải hoá đơn sẽ sớm khả dụng")}
+              onClick={shareBooking}
             >
-              <Download className="size-3.5" />
-              Tải hoá đơn VAT
+              <Share2 className="size-3.5" />
+              Chia sẻ
             </Button>
           </div>
         </div>
@@ -437,49 +437,25 @@ export function BookingDetail({ mode }: { mode: "client" | "photographer" }) {
             <section className="rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgb(24_24_27_/_.035),0_12px_28px_-24px_rgb(24_24_27_/_0.24)] sm:p-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <h2 className="text-sm font-semibold">{isClient ? "Ảnh đã giao" : "Giao ảnh cho khách"}</h2>
+                  <h2 className="text-sm font-semibold">
+                    {isClient ? "Ảnh đã giao" : "Giao ảnh cho khách"}
+                  </h2>
                   <p className="mt-1 text-[11px] text-muted-foreground">
-                    {isClient ? "Kiểm tra và duyệt các sản phẩm sau buổi chụp" : "Tải lên các sản phẩm đã hoàn thiện cho khách hàng"}
+                    {isClient
+                      ? "Kiểm tra và duyệt các sản phẩm sau buổi chụp"
+                      : "Tải lên các sản phẩm đã hoàn thiện cho khách hàng"}
                   </p>
                 </div>
-                <div className="flex w-fit items-center gap-1 rounded-lg bg-muted/60 p-1 text-[10px]">
-                  <span className="rounded-md bg-card px-2 py-1 font-medium shadow-sm">
-                    Tất cả ảnh ({galleryQuery.data?.photos.length ?? 0})
-                  </span>
-                  <span className="px-2 py-1 text-muted-foreground">Ảnh gốc</span>
-                  <span className="px-2 py-1 text-muted-foreground">
-                    Ảnh hậu kỳ ({booking.packageSnapshot?.photoCount ?? 0})
-                  </span>
-                </div>
+                <span className="rounded-lg bg-muted/60 px-3 py-2 text-[10px] text-muted-foreground">
+                  {galleryQuery.data?.photos.length ?? 0} ảnh
+                </span>
               </div>
               <div className="mt-4">
                 <GalleryPanel
                   bookingId={booking.id}
                   canUpload={!isClient}
+                  canPublish={booking.backendStatus === "shot"}
                   required={booking.packageSnapshot?.photoCount}
-                  emptyActions={
-                    isClient ? (
-                      <div className="mt-4 flex flex-wrap justify-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 rounded-lg text-[11px]"
-                          onClick={() => toast("Đã gửi lời nhắc giao ảnh đến nhiếp ảnh gia")}
-                        >
-                          <Clock className="size-3" />
-                          Nhắc thợ giao đúng hạn
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="h-8 rounded-lg bg-ember text-[11px] text-white hover:bg-ember/90"
-                          onClick={() => toast("Quy định nghiệm thu sẽ được mở trong phiên bản tiếp theo")}
-                        >
-                          <ShieldCheck className="size-3" />
-                          Quy định nghiệm thu
-                        </Button>
-                      </div>
-                    ) : undefined
-                  }
                 />
               </div>
             </section>
@@ -501,34 +477,27 @@ export function BookingDetail({ mode }: { mode: "client" | "photographer" }) {
               <ShieldCheck className="size-4" />
             </span>
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-emerald-900 dark:text-emerald-200">Lens Safe &amp; Bảo vệ tiền cọc 100%</p>
+              <p className="text-xs font-semibold text-emerald-900 dark:text-emerald-200">
+                Thanh toán qua Lens
+              </p>
               <p className="mt-0.5 text-[10px] leading-4 text-emerald-800/75 dark:text-emerald-200/70">
-                Khoản tiền thanh toán của bạn được tạm giữ an toàn tại hệ thống Lens. Tiền chỉ được giải ngân khi bạn kiểm tra và duyệt toàn bộ ảnh nhận được.
+                Backend theo dõi trạng thái giao dịch và chỉ hoàn tất booking sau khi khách xác nhận
+                gallery đã giao.
               </p>
             </div>
           </div>
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-24">
-          <CostSummary booking={booking} isClient={isClient} />
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgb(24_24_27_/_.035),0_12px_28px_-24px_rgb(24_24_27_/_0.24)] sm:p-5">
+          <CostSummary booking={booking} />
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgb(24_24_27/.035),0_12px_28px_-24px_rgb(24_24_27/0.24)] sm:p-5">
             <div className="mb-4 flex items-center justify-between gap-2">
               <h2 className="text-sm font-semibold">Tiến trình giao dịch</h2>
               <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                Bước {timelineStep(booking.status)}/5
+                Bước {timelineStepNumber(booking.status, booking.backendStatus)}/6
               </span>
             </div>
-            <BookingTimeline status={booking.status} />
-          </div>
-          <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5 shadow-[0_1px_2px_rgb(24_24_27_/_.035),0_12px_28px_-24px_rgb(24_24_27_/_0.24)]">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-              <HelpCircle className="size-4" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold">Cần hỗ trợ đơn hàng?</p>
-              <p className="mt-0.5 text-[10px] text-muted-foreground">Lens Care 24/7 · phản hồi sớm</p>
-            </div>
-            <Button variant="outline" size="sm" className="h-7 rounded-md px-2.5 text-[10px]" onClick={() => toast("Lens Care sẽ hỗ trợ bạn sớm nhất")}>Trợ giúp</Button>
+            <BookingTimeline status={booking.status} backendStatus={booking.backendStatus} />
           </div>
         </aside>
       </div>
@@ -547,14 +516,14 @@ function BookingActions({
   booking: Booking;
   isClient: boolean;
   onRelease: () => void;
-  onDecide: (next: "confirmed" | "cancelled") => void;
+  onDecide: (next: "confirmed" | "cancelled" | "held") => void;
   releasing: boolean;
   deciding: boolean;
 }) {
   // Keep cancellation inside the booking detail so the overview stays focused
-  // on the next required action. The dialog explains refund / forfeit first.
+  // on the next required action.
   const wrap = (children: React.ReactNode) => (
-    <div className="rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgb(24_24_27_/_.035),0_12px_28px_-24px_rgb(24_24_27_/_0.24)] sm:p-5">
+    <div className="rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgb(24_24_27/.035),0_12px_28px_-24px_rgb(24_24_27/0.24)] sm:p-5">
       {children}
       {isClient && canCancel(booking) && (
         <div className="mt-4 flex justify-end border-t border-border pt-3">
@@ -577,7 +546,14 @@ function BookingActions({
   );
 
   const { data: gallery } = useGallery(booking.id);
+  const depositPaid = (booking.paidAmount ?? 0) >= booking.depositAmount;
   const progress = deliveryProgress(booking, gallery?.photos.length ?? 0);
+  const completeShoot = useCompleteShoot();
+  const markShootComplete = () =>
+    completeShoot.mutate(booking.id, {
+      onSuccess: () => toast.success("Đã cập nhật buổi chụp hoàn tất"),
+      onError: () => toast.error("Không thể cập nhật trạng thái buổi chụp"),
+    });
 
   // ── Client actions ─────────────────────────────────────────────────────────
   if (isClient) {
@@ -586,23 +562,24 @@ function BookingActions({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="flex items-start gap-2 text-sm text-muted-foreground">
             <Wallet className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-            Đặt cọc {formatPrice(booking.depositAmount)} để giữ lịch — yêu cầu chỉ
-            được gửi tới nhiếp ảnh gia sau khi bạn đặt cọc.
+            Đặt cọc {formatPrice(booking.depositAmount)} để nhiếp ảnh gia có thể xác nhận yêu cầu và
+            giữ lịch cho bạn.
           </p>
           <Button asChild className="shrink-0 rounded-full bg-ember text-white hover:bg-ember/90">
             <Link to={`/client/bookings/${booking.id}/deposit`}>
               Đặt cọc {formatPrice(booking.depositAmount)}
             </Link>
           </Button>
-        </div>
+        </div>,
       );
     if (booking.status === "pending")
       return wrap(
         <p className="flex items-start gap-2 text-sm text-muted-foreground">
           <Clock className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-          Đã đặt cọc {formatPrice(booking.depositAmount)}. Đang chờ nhiếp ảnh gia xác
-          nhận — nếu họ từ chối, tiền cọc được hoàn đầy đủ vào ví của bạn.
-        </p>
+          {depositPaid
+            ? "Đã thanh toán tiền cọc. Yêu cầu đang chờ nhiếp ảnh gia xác nhận."
+            : "Thanh toán tiền cọc trước để nhiếp ảnh gia có thể xác nhận yêu cầu."}
+        </p>,
       );
     if (booking.status === "confirmed")
       return wrap(
@@ -615,21 +592,40 @@ function BookingActions({
               Thanh toán {formatPrice(remainingAmount(booking))}
             </Link>
           </Button>
-        </div>
+        </div>,
       );
     if (booking.status === "held")
       return wrap(
         <div className="space-y-4">
+          {isPaymentDue(booking) && (
+            <div className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                <Wallet className="mt-0.5 size-4 shrink-0 text-ember" />
+                Thanh toán phần còn lại để hoàn tất giao dịch của buổi chụp.
+              </p>
+              <Button
+                asChild
+                className="shrink-0 rounded-full bg-ember text-white hover:bg-ember/90"
+              >
+                <Link to={`/client/bookings/${booking.id}/pay`}>
+                  Thanh toán {formatPrice(remainingAmount(booking))}
+                </Link>
+              </Button>
+            </div>
+          )}
           <p className="flex items-start gap-2 text-sm text-muted-foreground">
             <ShieldCheck className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-            Sàn đang giữ {formatPrice(booking.price)}. Sau khi nhận đủ ảnh, hãy
-            xác nhận để giải ngân cho nhiếp ảnh gia.
+            {gallery?.publishedAt
+              ? `Ảnh đã giao. Bạn đã thanh toán ${formatPrice(booking.paidAmount ?? 0)}; xác nhận sau khi kiểm tra đủ ảnh.`
+              : "Nhiếp ảnh gia đang thực hiện buổi chụp. Gallery sẽ xuất hiện sau khi họ giao ảnh."}
           </p>
           <div className="flex flex-col gap-2">
             <div>
               <Button
                 className="rounded-full"
-                disabled={releasing || !progress.complete}
+                disabled={
+                  releasing || isPaymentDue(booking) || !progress.complete || !gallery?.publishedAt
+                }
                 onClick={onRelease}
               >
                 {releasing && <Loader2 className="size-4 animate-spin" />}
@@ -637,63 +633,186 @@ function BookingActions({
                 Xác nhận đã nhận ảnh
               </Button>
             </div>
-            {!progress.complete && (
+            {gallery?.publishedAt && !progress.complete && (
               <p className="text-xs text-muted-foreground">
-                Bạn có thể xác nhận khi nhiếp ảnh gia giao đủ {progress.required} ảnh theo
-                gói (hiện có {progress.delivered}/{progress.required}).
+                Bạn có thể xác nhận khi nhiếp ảnh gia giao đủ {progress.required} ảnh theo gói (hiện
+                có {progress.delivered}/{progress.required}).
               </p>
             )}
           </div>
-        </div>
+        </div>,
       );
     return null; // released/cancelled → covered by timeline + breakdown
   }
 
   // ── Photographer actions ────────────────────────────────────────────────────
+  const runStatusAction = (action: PhotographerStatusAction) => {
+    if (action === "complete") {
+      markShootComplete();
+      return;
+    }
+    onDecide(action);
+  };
+
   if (booking.status === "pending")
     return wrap(
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="flex items-start gap-2 text-sm text-muted-foreground">
-          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-          Khách đã đặt cọc {formatPrice(booking.depositAmount)}. Xác nhận hoặc từ chối
-          (từ chối sẽ hoàn cọc cho khách).
-        </p>
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" className="rounded-full" disabled={deciding} onClick={() => onDecide("cancelled")}>
-            <X className="size-4" />
-            Từ chối
-          </Button>
-          <Button className="rounded-full" disabled={deciding} onClick={() => onDecide("confirmed")}>
-            <Check className="size-4" />
-            Xác nhận
-          </Button>
-        </div>
-      </div>
+      <PhotographerStatusPanel
+        booking={booking}
+        actions={[
+          { value: "confirmed", label: "Xác nhận booking" },
+          { value: "cancelled", label: "Từ chối booking" },
+        ]}
+        description="Khách đã thanh toán tiền cọc. Bạn có thể xác nhận booking sau khi kiểm tra lịch và địa điểm."
+        busy={deciding}
+        onUpdate={runStatusAction}
+      />,
     );
-  if (booking.status === "confirmed" || booking.status === "held")
+  if (booking.status === "awaiting_deposit")
     return wrap(
-      <p className="flex items-start gap-2 text-sm text-muted-foreground">
-        {booking.status === "confirmed" ? (
-          <>
-            <Clock className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-            Đang chờ khách thanh toán phần còn lại.
-          </>
-        ) : (
-          <>
-            <ShieldCheck className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-            Tiền đang được sàn giữ. Bạn nhận {formatPrice(photographerPayout(booking.price))}{" "}
-            sau khi khách xác nhận đã nhận ảnh.
-          </>
-        )}
-      </p>
+      <PhotographerStatusPanel
+        booking={booking}
+        description="Booking đang chờ khách thanh toán tiền cọc. Bạn chưa thể xác nhận khi khoản cọc chưa được ghi nhận."
+        onUpdate={runStatusAction}
+      />,
+    );
+  if (booking.status === "confirmed")
+    return wrap(
+      <PhotographerStatusPanel
+        booking={booking}
+        actions={[{ value: "held", label: "Bắt đầu buổi chụp" }]}
+        description="Tiền cọc đã thanh toán. Bạn có thể bắt đầu buổi chụp; khách sẽ thanh toán phần còn lại sau khi bạn đánh dấu đã chụp."
+        busy={deciding}
+        onUpdate={runStatusAction}
+      />,
+    );
+  if (booking.status === "held" && booking.backendStatus === "accepted")
+    return wrap(
+      <PhotographerStatusPanel
+        booking={booking}
+        actions={[{ value: "held", label: "Bắt đầu buổi chụp" }]}
+        description="Thanh toán đã được ghi nhận. Bắt đầu buổi chụp khi đến lịch."
+        busy={deciding}
+        onUpdate={runStatusAction}
+      />,
+    );
+  if (booking.status === "held" && booking.backendStatus === "in_progress")
+    return wrap(
+      <PhotographerStatusPanel
+        booking={booking}
+        actions={[{ value: "complete", label: "Đánh dấu đã chụp" }]}
+        description="Buổi chụp đang diễn ra. Cập nhật khi bạn đã hoàn tất để bắt đầu giao gallery cho khách."
+        busy={completeShoot.isPending}
+        onUpdate={runStatusAction}
+      />,
+    );
+  if (booking.status === "held" && booking.backendStatus === "shot")
+    return wrap(
+      <PhotographerStatusPanel
+        booking={booking}
+        description="Bạn đã đánh dấu đã chụp. Chờ khách thanh toán phần còn lại trước khi hoàn tất booking; bạn vẫn có thể giao gallery."
+        onUpdate={runStatusAction}
+      />,
+    );
+  if (booking.status === "held")
+    return wrap(
+      <PhotographerStatusPanel
+        booking={booking}
+        description="Buổi chụp đã hoàn tất. Tải ảnh lên và giao gallery cho khách."
+        onUpdate={runStatusAction}
+      />,
     );
   if (booking.status === "released")
     return wrap(
-      <p className="flex items-start gap-2 text-sm text-muted-foreground">
-        <Wallet className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-        Đã nhận {formatPrice(photographerPayout(booking.price))} (đã trừ phí sàn{" "}
-        {formatPrice(commissionAmount(booking.price))}).
-      </p>
+      <PhotographerStatusPanel
+        booking={booking}
+        description="Booking đã được backend hoàn tất. Số dư và giao dịch thực nhận xem trong Ví Lens."
+        onUpdate={runStatusAction}
+      />,
     );
-  return null;
+  return wrap(
+    <PhotographerStatusPanel
+      booking={booking}
+      description="Booking đã kết thúc và không còn trạng thái nào cần cập nhật."
+      onUpdate={runStatusAction}
+    />,
+  );
+}
+
+type PhotographerStatusAction = "confirmed" | "cancelled" | "held" | "complete";
+
+function PhotographerStatusPanel({
+  booking,
+  actions = [],
+  description,
+  busy = false,
+  onUpdate,
+}: {
+  booking: Booking;
+  actions?: { value: PhotographerStatusAction; label: string }[];
+  description: string;
+  busy?: boolean;
+  onUpdate: (action: PhotographerStatusAction) => void;
+}) {
+  const actionKey = actions.map((action) => action.value).join(",");
+  const defaultAction = actions[0]?.value ?? "";
+  const [selection, setSelection] = useState<{
+    key: string;
+    value: PhotographerStatusAction | "";
+  }>({ key: actionKey, value: defaultAction });
+  const selectedAction = selection.key === actionKey ? selection.value : defaultAction;
+  const status = bookingStatusMeta(booking);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-start gap-3">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-ember/10 text-ember">
+          <RefreshCw className="size-4" />
+        </span>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-semibold">Cập nhật trạng thái booking</h3>
+            <span
+              className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", status.className)}
+            >
+              Hiện tại: {status.label}
+            </span>
+          </div>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      {actions.length > 0 ? (
+        <div className="flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-center">
+          <select
+            value={selectedAction}
+            onChange={(event) =>
+              setSelection({
+                key: actionKey,
+                value: event.target.value as PhotographerStatusAction,
+              })
+            }
+            className="h-9 min-w-0 flex-1 rounded-xl border border-border bg-background px-3 text-xs outline-none focus:border-ember focus:ring-2 focus:ring-ember/20"
+            aria-label="Trạng thái booking tiếp theo"
+          >
+            {actions.map((action) => (
+              <option key={action.value} value={action.value}>
+                {action.label}
+              </option>
+            ))}
+          </select>
+          <Button
+            className="h-9 shrink-0 rounded-xl text-xs"
+            disabled={!selectedAction || busy}
+            onClick={() => selectedAction && onUpdate(selectedAction)}
+          >
+            {busy && <Loader2 className="size-4 animate-spin" />}
+            Cập nhật trạng thái
+          </Button>
+        </div>
+      ) : (
+        <p className="border-t border-border pt-3 text-xs text-muted-foreground">
+          Chưa có thao tác chuyển trạng thái tiếp theo từ bước này.
+        </p>
+      )}
+    </div>
+  );
 }

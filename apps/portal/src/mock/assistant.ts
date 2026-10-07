@@ -19,7 +19,7 @@ export const seedAssistantConfig: AssistantConfig = {
     },
     {
       q: "Thanh toán và đặt cọc thế nào?",
-      a: "Bạn đặt cọc 30% để giữ lịch, phần còn lại thanh toán sau khi mình xác nhận. Tiền do sàn Lens giữ đến khi bạn nhận đủ ảnh. Huỷ trước buổi chụp từ 7 ngày được hoàn 100%, muộn hơn sẽ mất cọc.",
+      a: "Bạn đặt cọc 30% trước để nhiếp ảnh gia xác nhận lịch, phần còn lại thanh toán trước buổi chụp. Tiền do sàn Lens giữ đến khi bạn nhận đủ ảnh. Huỷ trước buổi chụp từ 7 ngày được hoàn 100%, muộn hơn sẽ mất cọc.",
     },
   ],
   tone: "Thân thiện, ngắn gọn",

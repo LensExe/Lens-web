@@ -27,17 +27,34 @@ export function WithdrawDialog({
   const withdraw = useWithdraw();
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("");
+  const [reason, setReason] = useState("");
+  const [bankCode, setBankCode] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [accountName, setAccountName] = useState("");
 
   const value = Number(amount.replace(/\D/g, ""));
-  const invalid = !value || value > balance;
+  const invalid = !value || value > balance || !reason.trim() || !bankCode.trim() || !accountNumber.trim() || !accountName.trim();
 
   const submit = () => {
     if (invalid) return;
-    withdraw.mutate(value, {
+    withdraw.mutate({
+      amount: value,
+      reason: reason.trim(),
+      payout_destination: {
+        bank_code: bankCode.trim(),
+        account_number: accountNumber.trim(),
+        account_name: accountName.trim(),
+      },
+      idempotency_key: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    }, {
       onSuccess: () => {
         toast.success(`Đã gửi yêu cầu rút ${formatPrice(value)}`);
         setOpen(false);
         setAmount("");
+        setReason("");
+        setBankCode("");
+        setAccountNumber("");
+        setAccountName("");
       },
       onError: () => toast.error("Không thể rút tiền, vui lòng thử lại"),
     });
@@ -52,9 +69,9 @@ export function WithdrawDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Rút tiền về ngân hàng</DialogTitle>
-          <DialogDescription>Số dư khả dụng: {formatPrice(balance)}. Nhập số tiền muốn rút.</DialogDescription>
+        <DialogDescription>Số dư khả dụng: {formatPrice(balance)}. Nhập thông tin tài khoản nhận tiền.</DialogDescription>
         </DialogHeader>
-        <div className="space-y-2">
+        <div className="space-y-3">
           <Input
             inputMode="numeric"
             placeholder="Ví dụ: 500000"
@@ -62,6 +79,10 @@ export function WithdrawDialog({
             onChange={(e) => setAmount(e.target.value)}
             className="h-11 rounded-xl"
           />
+          <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Lý do rút tiền" className="rounded-xl" />
+          <Input value={bankCode} onChange={(e) => setBankCode(e.target.value)} placeholder="Mã ngân hàng (bank code)" className="rounded-xl" />
+          <Input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} placeholder="Số tài khoản" className="rounded-xl" />
+          <Input value={accountName} onChange={(e) => setAccountName(e.target.value)} placeholder="Tên chủ tài khoản" className="rounded-xl" />
           <div className="flex flex-wrap gap-1.5">
             {[0.25, 0.5, 1].map((share) => (
               <button
@@ -76,7 +97,7 @@ export function WithdrawDialog({
           </div>
           {value > 0 && (
             <p className="text-sm text-muted-foreground">
-              Rút {formatPrice(value)}
+              Yêu cầu rút {formatPrice(value)}
               {value > balance && <span className="text-destructive"> — vượt số dư</span>}
             </p>
           )}

@@ -1,11 +1,11 @@
 // Lightweight VN time formatting for messaging (no date-fns dependency).
-
-const pad = (n: number) => String(n).padStart(2, "0");
+import { vietnamDateTimeParts } from "@/lib/vietnam-time";
 
 /** "HH:mm" — the clock time of a message. */
 export function formatClock(iso: string): string {
-  const d = new Date(iso);
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const parts = vietnamDateTimeParts(iso);
+  if (!parts) return "";
+  return parts.time;
 }
 
 /** Compact relative label for a conversation list (e.g. "5 phút", "3 giờ", "2 ngày"). */
@@ -17,6 +17,8 @@ export function formatRelative(iso: string): string {
   if (diffHour < 24) return `${diffHour} giờ`;
   const diffDay = Math.round(diffHour / 24);
   if (diffDay < 7) return `${diffDay} ngày`;
-  const d = new Date(iso);
-  return `${d.getDate()}/${d.getMonth() + 1}`;
+  const date = vietnamDateTimeParts(iso)?.date;
+  if (!date) return "";
+  const [, month, day] = date.split("-");
+  return `${Number(day)}/${Number(month)}`;
 }

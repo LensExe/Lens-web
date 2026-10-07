@@ -340,7 +340,7 @@ function ReviewTips() {
   );
 }
 
-export function ClientReviews() {
+export function CustomerReviews() {
   const { data: bookings = [], isLoading: bookingsLoading } = useMyBookings();
   const { data: submittedReviews = [], isLoading: reviewsLoading } = useMyBookingReviews();
   const [tab, setTab] = useState<ReviewTab>("pending");

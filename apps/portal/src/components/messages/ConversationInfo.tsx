@@ -1,21 +1,18 @@
 import { Link } from "react-router-dom";
 import { CalendarDays, CalendarPlus, Inbox, UserRound } from "lucide-react";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-  Button,
-  Skeleton,
-  cn,
-} from "@lens/ui";
+import { Avatar, AvatarFallback, AvatarImage, Button, Skeleton, cn } from "@lens/ui";
 import { useMyBookings } from "@/queries/useBookings";
 import { useIncomingBookings } from "@/queries/useDashboard";
-import { BOOKING_STATUS_META } from "@/lib/booking";
+import { bookingStatusMeta } from "@/lib/booking";
 import { currentUser } from "@/lib/session";
 import type { Conversation } from "@/types";
 
 const initialsOf = (name: string) =>
-  name.split(" ").slice(-2).map((w) => w[0]).join("");
+  name
+    .split(" ")
+    .slice(-2)
+    .map((w) => w[0])
+    .join("");
 const formatDate = (iso: string) => {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
@@ -37,7 +34,7 @@ export function ConversationInfo({ conversation }: { conversation: Conversation 
   const shared = (source.data ?? []).filter((b) =>
     isPhotographer
       ? b.clientId === conversation.participantId
-      : b.photographerId === conversation.participantId
+      : b.photographerId === conversation.participantId,
   );
   const detailBase = isPhotographer ? "/dashboard/bookings" : "/client/bookings";
 
@@ -53,7 +50,7 @@ export function ConversationInfo({ conversation }: { conversation: Conversation 
           <span
             className={cn(
               "mt-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium",
-              ROLE[conversation.participantRole].chip
+              ROLE[conversation.participantRole].chip,
             )}
           >
             {ROLE[conversation.participantRole].label}
@@ -85,16 +82,14 @@ export function ConversationInfo({ conversation }: { conversation: Conversation 
           ) : (
             <div className="mt-3 space-y-2">
               {shared.map((b) => {
-                const status = BOOKING_STATUS_META[b.status];
+                const status = bookingStatusMeta(b);
                 return (
                   <Link
                     key={b.id}
                     to={`${detailBase}/${b.id}`}
                     className="focus-ring flex items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-muted/40"
                   >
-                    <span
-                      className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground"
-                    >
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground">
                       <CalendarDays className="size-4" />
                     </span>
                     <div className="min-w-0 flex-1">
@@ -103,7 +98,7 @@ export function ConversationInfo({ conversation }: { conversation: Conversation 
                         <span
                           className={cn(
                             "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium",
-                            status.className
+                            status.className,
                           )}
                         >
                           {status.label}

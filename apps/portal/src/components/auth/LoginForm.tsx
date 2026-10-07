@@ -4,7 +4,6 @@ import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { ArrowRight } from "lucide-react";
 import { Button, Spinner } from "@lens/ui";
 import { AuthInput } from "./AuthInput";
-import { DemoAccounts } from "./DemoAccounts";
 import { FormError } from "./FormError";
 import { FormField } from "./FormField";
 import { PasswordInput } from "./PasswordInput";
@@ -12,7 +11,6 @@ import { useLogin } from "@/queries/useAuth";
 import { loginSchema, type LoginValues } from "@/lib/auth";
 import { portalHomeFor } from "@/lib/links";
 import { saveSession } from "@/lib/session";
-import type { DemoAccount } from "@/types";
 
 export function LoginForm() {
   const [searchParams] = useSearchParams();
@@ -22,7 +20,6 @@ export function LoginForm() {
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors },
   } = useForm<LoginValues>({
     resolver: standardSchemaResolver(loginSchema),
@@ -33,16 +30,10 @@ export function LoginForm() {
   const onSubmit = (values: LoginValues) => {
     login.mutate(values, {
       onSuccess: (user) => {
-        saveSession(user);
-        window.location.replace(portalHomeFor(user.role, redirect));
+        saveSession(user.user, { accessToken: user.accessToken, refreshToken: user.refreshToken });
+        window.location.replace(portalHomeFor(user.user.role, redirect));
       },
     });
-  };
-
-  const fillDemo = ({ email, password }: DemoAccount) => {
-    setValue("email", email, { shouldValidate: true });
-    setValue("password", password, { shouldValidate: true });
-    login.reset();
   };
 
   const busy = login.isPending || login.isSuccess;
@@ -97,10 +88,6 @@ export function LoginForm() {
           Đăng ký
         </Link>
       </p>
-
-      <div className="mt-8">
-        <DemoAccounts onPick={fillDemo} />
-      </div>
     </div>
   );
 }

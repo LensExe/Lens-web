@@ -582,38 +582,38 @@ export const handlers = [
     return HttpResponse.json(data.map(withRank));
   }),
 
-  http.get("/api/photographers/:id", async ({ params }) => {
+  http.get("/api/photographers/:photographer_id", async ({ params }) => {
     await delay();
-    if (params.id === "me") return HttpResponse.json(withRank(withAvailability(profile)));
-    const found = mockPhotographers.find((p) => p.id === params.id);
+    if (params.photographer_id === "me") return HttpResponse.json(withRank(withAvailability(profile)));
+    const found = mockPhotographers.find((p) => p.id === params.photographer_id);
     return HttpResponse.json(found ? withRank(withAvailability(found)) : null);
   }),
 
   // Day-by-day slots for the booking calendar (free / busy / booked).
-  http.get("/api/photographers/:id/availability", async ({ params, request }) => {
+  http.get("/api/photographers/:photographer_id/availability", async ({ params, request }) => {
     await delay();
     const days = Number(new URL(request.url).searchParams.get("days")) || BOOKING_WINDOW_DAYS;
-    return HttpResponse.json(availabilityOf(params.id as string, Math.min(days, 60)));
+    return HttpResponse.json(availabilityOf(params.photographer_id as string, Math.min(days, 60)));
   }),
 
-  http.get("/api/photographers/:id/reviews", async ({ params }) => {
+  http.get("/api/photographers/:photographer_id/reviews", async ({ params }) => {
     await delay();
     return HttpResponse.json(
-      mockReviews.filter((r) => r.photographerId === params.id)
+      mockReviews.filter((r) => r.photographerId === params.photographer_id)
     );
   }),
 
   // Star breakdown consistent with the profile's headline numbers: the 5★ share
   // comes from the public achievement stats, the rest splits 4★ > 3★ > 2★ > 1★.
-  http.get("/api/photographers/:id/reviews/summary", async ({ params }) => {
+  http.get("/api/photographers/:photographer_id/reviews/summary", async ({ params }) => {
     await delay();
-    const id = params.id as string;
-    const p = id === profile.id ? profile : mockPhotographers.find((x) => x.id === id);
+    const photographerId = params.photographer_id as string;
+    const p = photographerId === profile.id ? profile : mockPhotographers.find((x) => x.id === photographerId);
     if (!p) {
       return HttpResponse.json({ message: "Không tìm thấy nhiếp ảnh gia" }, { status: 404 });
     }
     const total = p.reviewCount;
-    const five = Math.round((total * achievementFor(id).stats.fiveStarPct) / 100);
+    const five = Math.round((total * (achievementFor(photographerId).stats?.fiveStarPct ?? 0)) / 100);
     const rest = total - five;
     const four = Math.round(rest * 0.75);
     const three = Math.round(rest * 0.17);
@@ -633,9 +633,9 @@ export const handlers = [
     return HttpResponse.json(summary);
   }),
 
-  http.get("/api/photographers/:id/achievements", async ({ params }) => {
+  http.get("/api/photographers/:photographer_id/achievements", async ({ params }) => {
     await delay();
-    return HttpResponse.json(achievementFor(params.id as string));
+    return HttpResponse.json(achievementFor(params.photographer_id as string));
   }),
 
   http.get("/api/me/reviews", async ({ request }) => {
@@ -767,7 +767,7 @@ export const handlers = [
     const booking: Booking = {
       id: `bk-${Date.now()}`,
       clientId: userIdOf(request),
-      clientName: input.contactName,
+      clientName: input.contactName ?? "Khách hàng",
       photographerId: input.photographerId,
       photographerName: input.photographerName,
       style: input.style,
@@ -792,10 +792,10 @@ export const handlers = [
 
   // Client pays the deposit → the platform holds it and the request goes to the
   // photographer ("pending"). Expired holds are released instead.
-  http.post("/api/bookings/:id/deposit", async ({ params, request }) => {
+  http.post("/api/bookings/:booking_id/deposit", async ({ params, request }) => {
     await delay();
     const userId = userIdOf(request);
-    const booking = bookings.find((b) => b.id === params.id && b.clientId === userId);
+    const booking = bookings.find((b) => b.id === params.booking_id && b.clientId === userId);
     if (!booking) {
       return HttpResponse.json({ message: "Không tìm thấy lịch đặt" }, { status: 404 });
     }
@@ -827,14 +827,14 @@ export const handlers = [
   // Client pays → platform holds the money in escrow (status "held"). Lens Xu may
   // be applied to reduce the cash charged (capped at a % of the order). Money
   // moves through the PaymentProvider seam, never touched directly here.
-  http.post("/api/bookings/:id/pay", async ({ params, request }) => {
+  http.post("/api/bookings/:booking_id/pay", async ({ params, request }) => {
     await delay();
     const userId = userIdOf(request);
     const { coinsToRedeem = 0 } = ((await request
       .json()
       .catch(() => ({}))) as PaymentInput) ?? {};
     const booking = bookings.find(
-      (b) => b.id === params.id && b.clientId === userId
+      (b) => b.id === params.booking_id && b.clientId === userId
     );
     if (!booking) {
       return HttpResponse.json(
@@ -878,11 +878,11 @@ export const handlers = [
   // Client confirms delivery → escrow releases to the photographer(s) ("released")
   // AND cashback Lens Xu is credited on the CASH portion (not on coins → no
   // xu-on-xu). Cashback lands ONLY here (shoot done), never at booking time.
-  http.post("/api/bookings/:id/confirm-receipt", async ({ params, request }) => {
+  http.post("/api/bookings/:booking_id/confirm-receipt", async ({ params, request }) => {
     await delay();
     const userId = userIdOf(request);
     const booking = bookings.find(
-      (b) => b.id === params.id && b.clientId === userId
+      (b) => b.id === params.booking_id && b.clientId === userId
     );
     if (!booking) {
       return HttpResponse.json(
@@ -935,11 +935,11 @@ export const handlers = [
 
   // Client cancels a held/confirmed booking → refund the cash paid + return any
   // Lens Xu that were redeemed (client isn't penalized for a cancellation).
-  http.post("/api/bookings/:id/cancel", async ({ params, request }) => {
+  http.post("/api/bookings/:booking_id/cancel", async ({ params, request }) => {
     await delay();
     const userId = userIdOf(request);
     const booking = bookings.find(
-      (b) => b.id === params.id && b.clientId === userId
+      (b) => b.id === params.booking_id && b.clientId === userId
     );
     if (!booking) {
       return HttpResponse.json(
@@ -1074,12 +1074,12 @@ export const handlers = [
     );
   }),
 
-  http.patch("/api/me/bookings/:id", async ({ params, request }) => {
+  http.patch("/api/me/bookings/:booking_id", async ({ params, request }) => {
     await delay();
     const userId = userIdOf(request);
     const { status } = (await request.json()) as { status: BookingStatus };
     const booking = bookings.find(
-      (b) => b.id === params.id && b.photographerId === userId
+      (b) => b.id === params.booking_id && b.photographerId === userId
     );
     if (!booking) {
       return HttpResponse.json(
@@ -1110,7 +1110,7 @@ export const handlers = [
 
   // ── Liên kết thợ (multi-photographer) ───────────────────────────────────────
   // Lead photographer invites another photographer + agreed payout share.
-  http.post("/api/me/bookings/:id/collaborators", async ({ params, request }) => {
+  http.post("/api/me/bookings/:booking_id/collaborators", async ({ params, request }) => {
     await delay();
     const userId = userIdOf(request);
     const input = (await request.json()) as {
@@ -1120,7 +1120,7 @@ export const handlers = [
       sharePct: number;
     };
     const booking = bookings.find(
-      (b) => b.id === params.id && b.photographerId === userId
+      (b) => b.id === params.booking_id && b.photographerId === userId
     );
     if (!booking) {
       return HttpResponse.json(
@@ -1178,13 +1178,13 @@ export const handlers = [
   }),
 
   // Invited photographer accepts / declines their agreed share.
-  http.patch("/api/me/collaborations/:id", async ({ params, request }) => {
+  http.patch("/api/me/collaborations/:collaboration_id", async ({ params, request }) => {
     await delay();
     const userId = userIdOf(request);
     const { status } = (await request.json()) as {
       status: "accepted" | "declined";
     };
-    const booking = bookings.find((b) => b.id === params.id);
+    const booking = bookings.find((b) => b.id === params.collaboration_id);
     const isCollaborator = (booking?.collaborators ?? []).some(
       (c) => c.photographerId === userId
     );
@@ -1290,28 +1290,28 @@ export const handlers = [
     return HttpResponse.json(conversationForViewer(conv, viewer));
   }),
 
-  http.get("/api/conversations/:id/messages", async ({ params }) => {
+  http.get("/api/conversations/:conversation_id/messages", async ({ params }) => {
     await delay();
-    const id = params.id as string;
-    return HttpResponse.json((threads[id] ?? []).map((m) => ({ ...m })));
+    const conversationId = params.conversation_id as string;
+    return HttpResponse.json((threads[conversationId] ?? []).map((m) => ({ ...m })));
   }),
 
-  http.post("/api/conversations/:id/messages", async ({ params, request }) => {
+  http.post("/api/conversations/:conversation_id/messages", async ({ params, request }) => {
     await delay();
-    const id = params.id as string;
+    const conversationId = params.conversation_id as string;
     const viewer = userIdOf(request);
     const { text } = (await request.json()) as { text: string };
     const now = Date.now();
     const message: Message = {
       id: `m-${now}`,
-      conversationId: id,
+      conversationId,
       senderId: viewer, // real sender id — UI decides "mine" via currentUser.id
       text,
       sentAt: new Date().toISOString(),
     };
-    threads[id] = [...(threads[id] ?? []), message];
+    threads[conversationId] = [...(threads[conversationId] ?? []), message];
 
-    const conv = conversations.find((c) => c.id === id);
+    const conv = conversations.find((c) => c.id === conversationId);
     if (conv) {
       // The recipient(s) gain an unread message.
       for (const p of conv.participants) {
@@ -1328,7 +1328,7 @@ export const handlers = [
         const handedOff = needsHandoff(text);
         const aiReply: Message = {
           id: `m-${now}-ai`,
-          conversationId: id,
+          conversationId,
           senderId: photographer.id, // sent on the photographer's behalf
           text: handedOff
             ? HANDOFF_MESSAGE
@@ -1336,7 +1336,7 @@ export const handlers = [
           sentAt: new Date(now + 1).toISOString(),
           isAI: true,
         };
-        threads[id] = [...threads[id], aiReply];
+        threads[conversationId] = [...threads[conversationId], aiReply];
         if (handedOff) conv.aiEnabled = false;
       }
     }
@@ -1347,21 +1347,21 @@ export const handlers = [
   }),
 
   // Toggle the AI assistant for a single conversation (set by the photographer).
-  http.post("/api/conversations/:id/ai", async ({ params, request }) => {
+  http.post("/api/conversations/:conversation_id/ai", async ({ params, request }) => {
     await delay();
     const viewer = userIdOf(request);
     const { enabled } = (await request.json()) as { enabled: boolean };
-    const conv = conversations.find((c) => c.id === params.id);
+    const conv = conversations.find((c) => c.id === params.conversation_id);
     if (!conv) return HttpResponse.json(null);
     conv.aiEnabled = enabled;
     saveConversations();
     return HttpResponse.json(conversationForViewer(conv, viewer));
   }),
 
-  http.post("/api/conversations/:id/read", async ({ params, request }) => {
+  http.post("/api/conversations/:conversation_id/read", async ({ params, request }) => {
     await delay();
     const viewer = userIdOf(request);
-    const conv = conversations.find((c) => c.id === params.id);
+    const conv = conversations.find((c) => c.id === params.conversation_id);
     if (conv) {
       conv.unread[viewer] = 0;
       saveConversations();
@@ -1407,6 +1407,7 @@ export const handlers = [
       .filter((amount) => amount > 0);
     const summary: WalletSummary = {
       balance: walletBalanceOf(userId),
+      frozenBalance: held.reduce((s, a) => s + a, 0),
       pendingPayout: held.reduce((s, a) => s + a, 0),
       pendingPayoutCount: held.length,
       receivedThisMonth: ledger
@@ -1473,17 +1474,17 @@ export const handlers = [
   }),
 
   // A booking's gallery — readable by the client who booked it or the photographer.
-  http.get("/api/bookings/:id/gallery", async ({ params }) => {
+  http.get("/api/bookings/:booking_id/gallery", async ({ params }) => {
     await delay();
-    return HttpResponse.json(galleryOf(params.id as string));
+    return HttpResponse.json(galleryOf(params.booking_id as string));
   }),
 
   // Photographer delivers / adds photos to their booking's gallery.
-  http.post("/api/me/bookings/:id/gallery", async ({ params, request }) => {
+  http.post("/api/me/bookings/:booking_id/gallery", async ({ params, request }) => {
     await delay();
     const userId = userIdOf(request) || "me";
     const booking = bookings.find(
-      (b) => b.id === params.id && b.photographerId === userId
+      (b) => b.id === params.booking_id && b.photographerId === userId
     );
     if (!booking) {
       return HttpResponse.json(

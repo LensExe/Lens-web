@@ -66,8 +66,8 @@ export function SignupForm() {
   const onSubmit = (values: SignupValues) => {
     signup.mutate(values, {
       onSuccess: (user) => {
-        saveSession(user);
-        window.location.replace(portalHomeFor(user.role, redirect));
+        saveSession(user.user, { accessToken: user.accessToken, refreshToken: user.refreshToken });
+        window.location.replace(portalHomeFor(user.user.role, redirect));
       },
     });
   };

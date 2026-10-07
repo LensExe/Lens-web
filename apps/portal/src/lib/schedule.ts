@@ -1,4 +1,5 @@
 import { TIME_SLOTS } from "@/lib/booking";
+import { todayVietnamISO } from "@/lib/vietnam-time";
 import type { Booking, DayAvailability, TimeRange, WorkSchedule } from "@/types";
 
 // Schedule helpers shared by the mock backend, public booking flow and the
@@ -28,7 +29,7 @@ export const startOfWeekISO = (iso: string) => {
   const day = fromISODate(iso).getDay();
   return addDaysISO(iso, -(day === 0 ? 6 : day - 1));
 };
-export const todayISO = () => toISODate(new Date());
+export const todayISO = todayVietnamISO;
 const weekdayOf = (iso: string) => fromISODate(iso).getDay();
 
 export const timeToMinutes = (time: string) => {
