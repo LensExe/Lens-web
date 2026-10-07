@@ -1,9 +1,10 @@
-import js from '@eslint/js'
-import globals from 'globals'
-import reactHooks from 'eslint-plugin-react-hooks'
-import reactRefresh from 'eslint-plugin-react-refresh'
-import tseslint from 'typescript-eslint'
-import { defineConfig, globalIgnores } from 'eslint/config'
+import js from "@eslint/js";
+import prettierConfig from "eslint-config-prettier/flat";
+import globals from "globals";
+import reactHooks from "eslint-plugin-react-hooks";
+import reactRefresh from "eslint-plugin-react-refresh";
+import tseslint from "typescript-eslint";
+import { defineConfig, globalIgnores } from "eslint/config";
 
 export default defineConfig([
   // `dist` build output + vendored third-party design-system code (shadcn UI
@@ -11,14 +12,16 @@ export default defineConfig([
   // author these — they follow upstream conventions that trip the React Compiler
   // / react-refresh rules. `tsc` still type-checks them.
   globalIgnores([
-    'dist',
-    'packages/ui/src/components/ui/**',
-    'packages/ui/src/components/reui/**',
-    'packages/ui/src/components/effects/**',
-    'packages/ui/src/hooks/use-mobile.ts',
+    "**/dist/**",
+    "**/public/mockServiceWorker.js",
+    "**/*.tsbuildinfo",
+    "packages/ui/src/components/ui/**",
+    "packages/ui/src/components/reui/**",
+    "packages/ui/src/components/effects/**",
+    "packages/ui/src/hooks/use-mobile.ts",
   ]),
   {
-    files: ['**/*.{ts,tsx}'],
+    files: ["**/*.{js,mjs,cjs,jsx,ts,tsx}"],
     extends: [
       js.configs.recommended,
       tseslint.configs.recommended,
@@ -29,4 +32,5 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
-])
+  prettierConfig,
+]);

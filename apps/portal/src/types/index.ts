@@ -51,7 +51,8 @@ export interface PhotographerPackage {
   /** Shooting time, in hours. */
   durationHours: number;
   /** Days after the shoot within which the photos are delivered. */
-  deliveryDays: number;
+  /** Not stored by the backend booking-plan endpoint yet. */
+  deliveryDays?: number;
 }
 
 /** A half-hour precision interval used by working hours and busy exceptions. */
@@ -119,9 +120,12 @@ export interface AchievementStats {
 export interface PhotographerAchievements {
   photographerId: string;
   rank: RankId;
-  stats: AchievementStats;
+  rankName?: string;
+  /** Aggregate performance metrics are not returned by lens-backend yet. */
+  stats?: AchievementStats;
   /** Ids of specialty badges this photographer has earned. */
   badges: string[];
+  badgeCatalog?: { id: string; name: string; description: string }[];
   /** Platform commission for this rank (a rank perk — lower is better). */
   commissionRate: number;
 }
@@ -132,11 +136,12 @@ export type StoragePlanTier = "free" | "pro" | "studio";
 export interface GalleryPhoto {
   id: string;
   url: string;
+  originalUrl?: string;
   name: string;
   sizeBytes: number;
 }
 
-/** Photos a photographer delivered for one shoot, with retention metadata. */
+/** Photos attached to a booking's backend delivery gallery. */
 export interface ShootGallery {
   bookingId: string;
   photographerId: string;
@@ -144,22 +149,21 @@ export interface ShootGallery {
   style: string;
   photos: GalleryPhoto[];
   sizeBytes: number;
-  /** ISO datetime the photos were delivered. */
-  deliveredAt: string;
-  /** ISO datetime the gallery auto-deletes; null = long-term (while subscribed). */
-  expiresAt: string | null;
-  planTier: StoragePlanTier;
-  /** True when a downgrade put this gallery over quota — access locked, not deleted. */
-  locked: boolean;
+  /** ISO datetime the photographer published the gallery to the customer. */
+  publishedAt?: string | null;
+  /** Legacy mock fields retained only for the unused MSW fixtures. */
+  deliveredAt?: string;
+  expiresAt?: string | null;
+  planTier?: StoragePlanTier;
+  locked?: boolean;
 }
 
-/** A photographer's storage plan + usage (derived). */
+/** Legacy mock response shape; no production route consumes this endpoint. */
 export interface StorageSummary {
   plan: StoragePlanTier;
   usedBytes: number;
   galleryCount: number;
   quotaBytesPerShoot: number;
-  /** Days photos are kept; null = long-term while subscribed. */
   retentionDays: number | null;
 }
 
@@ -202,15 +206,13 @@ export interface DemoAccount {
   role: PortalRole;
 }
 
-// Escrow lifecycle: the client books and pays a DEPOSIT to hold the slot; the
-// photographer then accepts; the client pays the REMAINDER before the shoot; the
-// platform HOLDS the money and RELEASES it after the client confirms delivery.
+// UI lifecycle mapped from backend booking and payment states.
 export type BookingStatus =
-  | "awaiting_deposit" // booked, deposit not paid yet (hidden from the photographer)
-  | "pending" // deposit paid, awaiting the photographer's decision
-  | "confirmed" // photographer accepted, awaiting the remaining payment
-  | "held" // paid in full, platform holds the money in escrow
-  | "released" // client confirmed delivery, money released to photographer (done)
+  | "awaiting_deposit" // request created; customer has not paid the deposit yet
+  | "pending" // deposit paid; waiting for photographer confirmation
+  | "confirmed" // deposit paid; remaining payment due before the shoot
+  | "held" // shoot active or complete; any paid amount remains in escrow
+  | "released" // customer confirmed delivery and backend completed the booking
   | "cancelled";
 
 export interface Booking {
@@ -219,7 +221,7 @@ export interface Booking {
   clientName: string;
   photographerId: string;
   photographerName: string;
-  style: PhotoStyle;
+  style: PhotoStyle | "";
   /** ISO date string. */
   date: string;
   location: string;
@@ -228,6 +230,12 @@ export interface Booking {
   packageId?: string;
   /** Snapshot of the chosen package's terms (photo count gates completion). */
   packageSnapshot?: PackageTerms;
+  /** Original backend status, used for exact shoot and delivery actions. */
+  backendStatus?: import("./bookings").BookingStatus;
+  /** Backend timestamp set when the photographer publishes the delivery gallery. */
+  galleryPublishedAt?: string | null;
+  /** Total amount confirmed paid by the backend. */
+  paidAmount?: number;
   /** "HH:mm" start time. */
   timeSlot?: string;
   contactPhone?: string;
@@ -257,8 +265,8 @@ export interface BookingCollaborator {
   status: "invited" | "accepted" | "declined";
 }
 
-/** Mock payment methods offered at the payment step (UI phase only). */
-export type PaymentMethod = "bank" | "card" | "momo";
+/** Payment methods currently accepted by lens-backend. */
+export type PaymentMethod = "gateway" | "wallet";
 
 /** Payload sent when a client pays the deposit for a new booking. */
 export interface DepositInput {
@@ -268,7 +276,7 @@ export interface DepositInput {
 /** Payload sent when a client pays the remainder of a confirmed booking. */
 export interface PaymentInput {
   method: PaymentMethod;
-  /** Lens Xu to apply, reducing the cash charged. Capped server-side. */
+  /** Legacy field used only by disabled MSW handlers; lens-backend ignores it. */
   coinsToRedeem?: number;
 }
 
@@ -282,10 +290,11 @@ export interface BookingInput {
   date: string;
   timeSlot: string;
   location: string;
-  contactName: string;
-  contactPhone: string;
-  note?: string;
   price: number;
+  /** Legacy mock-only fields; the backend booking DTO does not store these. */
+  contactName?: string;
+  contactPhone?: string;
+  note?: string;
 }
 
 export interface Review {
@@ -332,7 +341,7 @@ export interface WalletTransaction {
   userId: string;
   /** payout = earnings released to a photographer; refund = money back to a
    *  client; withdraw = cash-out request; topup = money added. */
-  type: "payout" | "refund" | "withdraw" | "topup";
+  type: "payout" | "refund" | "withdraw" | "topup" | "booking";
   /** Signed VND: credits (+) increase balance, debits (−) decrease it. */
   amount: number;
   status: "completed" | "pending";
@@ -362,15 +371,13 @@ export interface CoinTransaction {
 /** Real-money wallet summary (derived from the wallet ledger + bookings). */
 export interface WalletSummary {
   balance: number;
-  /** Photographer: their share (after fees) of shoots the platform still holds. */
-  pendingPayout: number;
-  pendingPayoutCount: number;
-  /** Payouts received this calendar month. */
-  receivedThisMonth: number;
-  /** Cashed out to the bank, all time. */
-  withdrawnTotal: number;
-  /** Refunds received, all time. */
-  refundedTotal: number;
+  frozenBalance: number;
+  /** Legacy fields from the disabled mock API. */
+  pendingPayout?: number;
+  pendingPayoutCount?: number;
+  receivedThisMonth?: number;
+  withdrawnTotal?: number;
+  refundedTotal?: number;
 }
 
 /** Lens Xu summary (derived from the coin ledger). */

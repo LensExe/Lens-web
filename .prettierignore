@@ -1,0 +1,14 @@
+node_modules
+dist
+.turbo
+coverage
+*.tsbuildinfo
+
+# Generated Mock Service Worker output.
+apps/*/public/mockServiceWorker.js
+
+# Vendored UI primitives and effects are maintained against their upstream style.
+packages/ui/src/components/ui/**
+packages/ui/src/components/reui/**
+packages/ui/src/components/effects/**
+packages/ui/src/hooks/use-mobile.ts
