@@ -71,15 +71,16 @@ services to a shared Docker network and proxy by service name. Until then, use
 `http://<SERVER_IP>:5173`, `http://<SERVER_IP>:5174`, and
 `http://<SERVER_IP>:5175` directly.
 
-The `VITE_*` values are compiled into the frontend images at build time. Store
-them as GitHub Actions **Environment variables** in the `production`
-environment; Portainer only selects and runs the resulting images. Since Vite
-exposes these values in browser code, they must be public URLs and flags, never
-passwords, tokens, or other secrets. Changing one requires rebuilding and
-publishing the images before Portainer redeploys them.
+The `VITE_*` values are compiled into the frontend images at build time. This
+workflow reads them from GitHub Actions **Environment secrets** in the
+`Deploy-FE` environment; Portainer only selects and runs the resulting images.
+Although they are stored as GitHub secrets, Vite exposes these values in
+browser code, so use only public URLs and flags here, never passwords, tokens,
+or other credentials. Changing one requires rebuilding and publishing the
+images before Portainer redeploys them.
 
-Configure these variables under **GitHub → Settings → Environments →
-production → Environment variables**:
+Configure these secrets under **GitHub → Settings → Environments → Deploy-FE →
+Environment secrets**:
 
 ```dotenv
 VITE_BACKEND_API_URL=http://<SERVER_IP>:3000
