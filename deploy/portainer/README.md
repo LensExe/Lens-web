@@ -1,7 +1,7 @@
 # Portainer frontend stack
 
 This stack runs the three frontend images published by GitHub Actions. It does
-not build from source. Each image uses Nginx to serve its static SPA on port 80;
+not build from source. Each image uses Caddy to serve its static SPA on port 80;
 you can access the published host ports directly by server IP for now. A
 separate, public-facing reverse proxy such as Caddy is optional when domains
 and HTTPS are ready.
