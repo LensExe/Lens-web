@@ -80,7 +80,9 @@ export function hasRole(allow: UserRole[], role: UserRole | undefined = sessionU
 }
 
 export function mapBackendRole(value: unknown): PortalRole | null {
-  if (value === "customer" || value === "client") return "client";
-  if (value === "photographer") return "photographer";
+  if (typeof value !== "string") return null;
+  const role = value.trim().toLowerCase();
+  if (role === "customer" || role === "client") return "client";
+  if (role === "photographer") return "photographer";
   return null;
 }
