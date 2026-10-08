@@ -25,14 +25,15 @@ not build from source and it does not contain runtime secrets.
 
 7. Deploy the stack. The images expose port `80` internally and are published
    on the host ports above.
-8. In the stack's **Editor** tab, enable **Create a stack webhook** and save
-   the copied URL as the GitHub Actions repository/environment secret
-   `PORTAINER_WEBHOOK_URL`.
+8. In the stack settings, enable **GitOps updates**, choose **Webhook**, and
+   enable **Re-pull image**. Save the generated GitOps webhook URL as the
+   GitHub Actions repository/environment secret `PORTAINER_WEBHOOK_URL`.
 
 GitHub Actions publishes `latest` plus an immutable `sha-<commit>` tag. After
-publishing, it calls the Portainer webhook with `IMAGE_TAG=sha-<commit>`, so the
-stack redeploys the exact image built by that workflow instead of relying on a
-mutable tag.
+publishing, it calls the GitOps webhook. Portainer checks out the new commit
+from `main`, re-pulls the `latest` images, and redeploys all three services.
+The immutable `sha-<commit>` tags remain available for a manual rollback by
+setting `IMAGE_TAG` in Portainer.
 
 The `VITE_*` values are compiled into the frontend images at build time. Store
 them as GitHub Actions **Environment variables** in the `production`
