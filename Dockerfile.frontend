@@ -40,16 +40,16 @@ COPY build ./build
 
 RUN pnpm --filter "${APP}" build
 
-FROM nginx:1.27-alpine AS runtime
+FROM caddy:2.11.6-alpine AS runtime
 
 ARG APP
 
-COPY deploy/nginx-spa.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /workspace/apps/${APP}/dist /usr/share/nginx/html
+COPY deploy/Caddyfile.frontend /etc/caddy/Caddyfile
+COPY --from=build /workspace/apps/${APP}/dist /srv
 
 EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD wget -q -O /dev/null http://127.0.0.1/ || exit 1
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]

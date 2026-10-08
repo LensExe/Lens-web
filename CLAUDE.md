@@ -153,7 +153,7 @@ When I say "tiếp" / "next", continue with the next sensible block.
 4. **Goal-driven.** For non-trivial tasks, give a brief plan with verification checks, let me review, then execute. Plan before each build block. Always follow `DESIGN.md` + shadcn for consistency.
 
 ## 10. Deployment
-Each app deploys **independently** (its own `dist/`), to any host (Vercel / VPS / cloud — mix freely). Apps talk only via URLs in env vars. One repo → per-app CI: `git push` rebuilds only the apps that changed. Keep builds portable (standard Vite output). Config files (`vercel.json` / GitHub Actions / nginx) to be added when we actually deploy.
+Each app deploys **independently** (its own `dist/`). Apps talk only via URLs in env vars. The GitHub Actions workflow builds all three frontend Docker images on pushes to `main`; Caddy inside each image serves the SPA, while a public-facing Caddy can reverse proxy the domains to their published ports. Keep builds portable (standard Vite output).
 
 ## 11. Testing
 No test setup in the UI phase (correctness judged visually). Add **Vitest** in Phase 2 when there's real logic (booking rules, payments).

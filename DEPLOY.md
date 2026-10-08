@@ -91,7 +91,7 @@ Mỗi `vercel.json` đã cấu hình:
 
 ---
 
-## Host khác (VPS / nginx / Cloudflare Pages / Netlify)
+## Host khác (VPS / Caddy / Cloudflare Pages / Netlify)
 
 Build local hoặc CI rồi serve `dist/` tĩnh:
 
@@ -102,10 +102,12 @@ pnpm build:portal    # → apps/portal/dist
 pnpm build:admin     # → apps/admin/dist
 ```
 
-Yêu cầu duy nhất của host: **SPA fallback** — rewrite mọi path lạ về `/index.html`. Với nginx:
+Yêu cầu duy nhất của host: **SPA fallback** — rewrite mọi path lạ về `/index.html`. Với Caddy:
 
-```nginx
-location / {
-  try_files $uri $uri/ /index.html;
+```caddyfile
+:80 {
+    root * /srv
+    try_files {path} /index.html
+    file_server
 }
 ```
