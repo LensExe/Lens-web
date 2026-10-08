@@ -1,0 +1,138 @@
+name: Lens Web CI/CD
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  quality:
+    name: Validate frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.1.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build workspace
+        run: pnpm build
+        env:
+          VITE_BACKEND_API_URL: http://localhost:3000
+          VITE_API_URL: http://localhost:3000
+          VITE_API_MOCKING: disabled
+          VITE_PORTAL_URL: http://localhost:5174
+          VITE_LANDING_URL: http://localhost:5173
+          VITE_ADMIN_URL: http://localhost:5175
+
+  publish:
+    name: Publish ${{ matrix.app }} image
+    if: ${{ github.event_name != 'pull_request' }}
+    needs: quality
+    runs-on: ubuntu-latest
+    environment: production
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - landing
+          - portal
+          - admin
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Normalize image owner
+        run: echo "IMAGE_OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+
+      - name: Validate deployment variables
+        env:
+          VITE_BACKEND_API_URL: ${{ vars.VITE_BACKEND_API_URL }}
+        run: |
+          test -n "$VITE_BACKEND_API_URL"
+          case "$VITE_BACKEND_API_URL" in
+            http://*|https://*) ;;
+            *) echo "VITE_BACKEND_API_URL must start with http:// or https://" >&2; exit 1 ;;
+          esac
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ env.IMAGE_OWNER }}/lens-${{ matrix.app }}
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix=sha-
+            type=ref,event=branch
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.frontend
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP=${{ matrix.app }}
+            VITE_BACKEND_API_URL=${{ vars.VITE_BACKEND_API_URL }}
+            VITE_API_URL=${{ vars.VITE_API_URL || vars.VITE_BACKEND_API_URL }}
+            VITE_API_MOCKING=${{ vars.VITE_API_MOCKING || 'disabled' }}
+            VITE_PORTAL_URL=${{ vars.VITE_PORTAL_URL || 'http://localhost:5174' }}
+            VITE_LANDING_URL=${{ vars.VITE_LANDING_URL || 'http://localhost:5173' }}
+            VITE_ADMIN_URL=${{ vars.VITE_ADMIN_URL || 'http://localhost:5175' }}
+          cache-from: type=gha,scope=frontend-${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=frontend-${{ matrix.app }}
+
+  deploy:
+    name: Redeploy Portainer stack
+    if: ${{ github.event_name != 'pull_request' }}
+    needs: publish
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      PORTAINER_WEBHOOK_URL: ${{ secrets.PORTAINER_WEBHOOK_URL }}
+    steps:
+      - name: Trigger Portainer webhook
+        if: ${{ env.PORTAINER_WEBHOOK_URL != '' }}
+        run: >-
+          curl --fail-with-body --silent --show-error --retry 3
+          --retry-all-errors --request POST "$PORTAINER_WEBHOOK_URL"
+
+      - name: Skip Portainer redeploy when webhook is not configured
+        if: ${{ env.PORTAINER_WEBHOOK_URL == '' }}
+        run: echo "PORTAINER_WEBHOOK_URL is not configured; images were published only."
