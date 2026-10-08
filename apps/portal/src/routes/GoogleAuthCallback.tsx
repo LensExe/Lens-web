@@ -12,17 +12,16 @@ export function GoogleAuthCallback() {
   const code = searchParams.get("code");
   const callbackError = searchParams.get("error_description") ?? searchParams.get("error");
   const started = useRef(false);
-  const [error, setError] = useState<string | null>(callbackError);
+  const [error, setError] = useState<string | null>(
+    callbackError ?? (!code ? "Không nhận được mã đăng nhập Google từ backend." : null),
+  );
 
   useEffect(() => {
     if (started.current) return;
     started.current = true;
 
     if (callbackError) return;
-    if (!code) {
-      setError("Không nhận được mã đăng nhập Google từ backend.");
-      return;
-    }
+    if (!code) return;
 
     void loginWithGoogleCode(code)
       .then((result) => {
