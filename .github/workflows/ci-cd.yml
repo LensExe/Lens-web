@@ -52,7 +52,7 @@ jobs:
     if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
     needs: quality
     runs-on: ubuntu-latest
-    environment: production
+    environment: Deploy-FE
     permissions:
       contents: read
       packages: write
@@ -73,15 +73,15 @@ jobs:
 
       - name: Validate deployment variables
         env:
-          VITE_BACKEND_API_URL: ${{ vars.VITE_BACKEND_API_URL }}
-          VITE_LANDING_URL: ${{ vars.VITE_LANDING_URL }}
-          VITE_PORTAL_URL: ${{ vars.VITE_PORTAL_URL }}
-          VITE_ADMIN_URL: ${{ vars.VITE_ADMIN_URL }}
+          VITE_BACKEND_API_URL: ${{ secrets.VITE_BACKEND_API_URL }}
+          VITE_LANDING_URL: ${{ secrets.VITE_LANDING_URL }}
+          VITE_PORTAL_URL: ${{ secrets.VITE_PORTAL_URL }}
+          VITE_ADMIN_URL: ${{ secrets.VITE_ADMIN_URL }}
         run: |
-          test -n "$VITE_BACKEND_API_URL" || { echo "Set VITE_BACKEND_API_URL in the production environment" >&2; exit 1; }
-          test -n "$VITE_LANDING_URL" || { echo "Set VITE_LANDING_URL in the production environment" >&2; exit 1; }
-          test -n "$VITE_PORTAL_URL" || { echo "Set VITE_PORTAL_URL in the production environment" >&2; exit 1; }
-          test -n "$VITE_ADMIN_URL" || { echo "Set VITE_ADMIN_URL in the production environment" >&2; exit 1; }
+          test -n "$VITE_BACKEND_API_URL" || { echo "Set VITE_BACKEND_API_URL in the Deploy-FE environment secrets" >&2; exit 1; }
+          test -n "$VITE_LANDING_URL" || { echo "Set VITE_LANDING_URL in the Deploy-FE environment secrets" >&2; exit 1; }
+          test -n "$VITE_PORTAL_URL" || { echo "Set VITE_PORTAL_URL in the Deploy-FE environment secrets" >&2; exit 1; }
+          test -n "$VITE_ADMIN_URL" || { echo "Set VITE_ADMIN_URL in the Deploy-FE environment secrets" >&2; exit 1; }
           for url in "$VITE_BACKEND_API_URL" "$VITE_LANDING_URL" "$VITE_PORTAL_URL" "$VITE_ADMIN_URL"; do
             case "$url" in
               http://*|https://*) ;;
@@ -119,11 +119,11 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             APP=${{ matrix.app }}
-            VITE_BACKEND_API_URL=${{ vars.VITE_BACKEND_API_URL }}
-            VITE_API_URL=${{ vars.VITE_API_URL || vars.VITE_BACKEND_API_URL }}
-            VITE_API_MOCKING=${{ vars.VITE_API_MOCKING || 'disabled' }}
-            VITE_PORTAL_URL=${{ vars.VITE_PORTAL_URL }}
-            VITE_LANDING_URL=${{ vars.VITE_LANDING_URL }}
-            VITE_ADMIN_URL=${{ vars.VITE_ADMIN_URL }}
+            VITE_BACKEND_API_URL=${{ secrets.VITE_BACKEND_API_URL }}
+            VITE_API_URL=${{ secrets.VITE_API_URL || secrets.VITE_BACKEND_API_URL }}
+            VITE_API_MOCKING=${{ secrets.VITE_API_MOCKING || 'disabled' }}
+            VITE_PORTAL_URL=${{ secrets.VITE_PORTAL_URL }}
+            VITE_LANDING_URL=${{ secrets.VITE_LANDING_URL }}
+            VITE_ADMIN_URL=${{ secrets.VITE_ADMIN_URL }}
           cache-from: type=gha,scope=frontend-${{ matrix.app }}
           cache-to: type=gha,mode=max,scope=frontend-${{ matrix.app }}
