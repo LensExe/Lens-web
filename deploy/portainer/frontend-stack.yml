@@ -1,0 +1,23 @@
+name: lens-web
+
+services:
+  landing:
+    image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_OWNER:-lensexe}/lens-landing:${IMAGE_TAG:-latest}
+    pull_policy: always
+    ports:
+      - "${LANDING_HOST_PORT:-5173}:80"
+    restart: unless-stopped
+
+  portal:
+    image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_OWNER:-lensexe}/lens-portal:${IMAGE_TAG:-latest}
+    pull_policy: always
+    ports:
+      - "${PORTAL_HOST_PORT:-5174}:80"
+    restart: unless-stopped
+
+  admin:
+    image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_OWNER:-lensexe}/lens-admin:${IMAGE_TAG:-latest}
+    pull_policy: always
+    ports:
+      - "${ADMIN_HOST_PORT:-5175}:80"
+    restart: unless-stopped
