@@ -9,6 +9,9 @@ export interface PortalAuthResult {
   refreshToken: string;
 }
 
+/** Temporary redirect target kept while the browser is away at Google/Keycloak. */
+export const GOOGLE_REDIRECT_STORAGE_KEY = "lens.auth.google.redirect";
+
 function tokenRoles(token: string): string[] {
   try {
     const payload = token.split(".")[1];
@@ -53,6 +56,11 @@ function toPortalAuthResult(session: AuthSession): PortalAuthResult {
 
 export async function login(input: LoginInput): Promise<PortalAuthResult> {
   const session = await authApi.login(input);
+  return toPortalAuthResult(session);
+}
+
+export async function loginWithGoogleCode(code: string): Promise<PortalAuthResult> {
+  const session = await authApi.exchangeGoogleCode({ code });
   return toPortalAuthResult(session);
 }
 
