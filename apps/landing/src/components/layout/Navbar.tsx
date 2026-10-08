@@ -4,7 +4,7 @@ import { Menu } from "lucide-react";
 import { Button, Logo, scrollToHash } from "@lens/ui";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@lens/ui";
 import { ThemeToggle } from "@lens/ui";
-import { useAuthModal } from "@/components/auth/auth-modal-context";
+import { portalLogin, portalSignup } from "@/lib/links";
 
 type NavLinkItem = { label: string; hash: string };
 
@@ -19,7 +19,6 @@ const pillClass =
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
-  const { openLogin, openSignup } = useAuthModal();
   const location = useLocation();
 
   // Same-page anchor: scroll smoothly (via Lenis) instead of letting the browser
@@ -55,11 +54,11 @@ export function Navbar() {
 
         <div className="hidden items-center gap-2 md:flex">
           <ThemeToggle />
-          <Button variant="ghost" className="rounded-full" onClick={openLogin}>
-            Đăng nhập
+          <Button asChild variant="ghost" className="rounded-full">
+            <a href={portalLogin()}>Đăng nhập</a>
           </Button>
-          <Button className="rounded-full" onClick={openSignup}>
-            Đăng ký
+          <Button asChild className="rounded-full">
+            <a href={portalSignup()}>Đăng ký</a>
           </Button>
         </div>
 
@@ -74,7 +73,7 @@ export function Navbar() {
             </SheetTrigger>
             <SheetContent side="right" className="w-72">
               <div className="p-5">
-                <span className="text-lg font-semibold">Menu</span>
+                <span className="text-lg font-semibold">Điều hướng</span>
               </div>
               <SheetTitle className="sr-only">Điều hướng</SheetTitle>
               <nav className="flex flex-col gap-1 px-3">
@@ -90,24 +89,11 @@ export function Navbar() {
                 ))}
               </nav>
               <div className="mt-4 flex flex-col gap-2 px-3">
-                <Button
-                  variant="outline"
-                  className="rounded-full"
-                  onClick={() => {
-                    setOpen(false);
-                    openLogin();
-                  }}
-                >
-                  Đăng nhập
+                <Button asChild variant="outline" className="rounded-full">
+                  <a href={portalLogin()}>Đăng nhập</a>
                 </Button>
-                <Button
-                  className="rounded-full"
-                  onClick={() => {
-                    setOpen(false);
-                    openSignup();
-                  }}
-                >
-                  Đăng ký
+                <Button asChild className="rounded-full">
+                  <a href={portalSignup()}>Đăng ký</a>
                 </Button>
               </div>
             </SheetContent>

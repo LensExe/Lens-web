@@ -15,6 +15,7 @@ export const PLAN_QUOTA_BYTES = {
 const row = (
   photographerId: string,
   name: string,
+  email: string,
   seed: string,
   plan: keyof typeof PLAN_QUOTA_BYTES,
   usedGb: number,
@@ -25,6 +26,7 @@ const row = (
   return {
     photographerId,
     name,
+    email,
     avatar: av(seed),
     plan,
     usedBytes,
@@ -35,10 +37,10 @@ const row = (
 };
 
 export const mockStorageRows: AdminStorageRow[] = [
-  row("u1", "Lý Gia Hân", "giahan-av", "free", 2.4, 6), // over quota
-  row("u2", "Nguyễn Minh Anh", "minhanh-av", "pro", 12.5, 18),
-  row("u3", "Trần Quốc Bảo", "quocbao-av", "studio", 64, 41),
-  row("u8", "Vũ Hoàng Lan", "hoanglan-av", "free", 1.1, 3),
-  row("u9", "Đỗ Khánh Vy", "khanhvy-av", "pro", 21.2, 24), // over quota
-  row("u10", "Bùi Thanh Tùng", "thanhtung-av", "free", 0.6, 2),
+  row("u1", "Lý Gia Hân", "giahan.ly@lens.vn", "giahan-av", "free", 2.4, 6), // over quota
+  row("u2", "Nguyễn Minh Anh", "minhanh.photo@gmail.com", "minhanh-av", "pro", 12.5, 18),
+  row("u3", "Trần Quốc Bảo", "bao.tran@studiospot.com", "quocbao-av", "studio", 64, 41),
+  row("u13", "Vũ Hoàng Lan", "lanvu.art@gmail.com", "hoanglan-av", "free", 1.6, 4), // nearly full
+  row("u14", "Đỗ Khánh Vy", "vy.dokhanh@lens.vn", "khanhvy-av", "pro", 21.2, 24), // over quota
+  row("u15", "Bùi Thanh Tùng", "tungbui.capture@gmail.com", "thanhtung-av", "free", 0.6, 2),
 ];

@@ -19,8 +19,19 @@ Awesomic operates on a white-and-near-black canvas with maximum roundness — 36
 | Fog | `#ececee` | `--color-fog` | Card backgrounds (mid variant), badge borders, section dividers — the second surface step above the canvas |
 | Mist | `#f4f4f5` | `--color-mist` | Page canvas, light card backgrounds, tag/link hover surface — the dominant background tone |
 | Snow | `#ffffff` | `--color-snow` | White card surfaces, input backgrounds, button fill for outlined variant — the brightest surface in the stack |
-| Ember | `#ff5a00` | `--color-ember` | YC batch badge backgrounds — vivid orange signals startup-ecosystem provenance, appears only on badge-sized labels |
+| Ember | `#ff5a00` | `--color-ember` | **Lens brand accent** — the booking/payment CTA (Đặt lịch, Đặt cọc, Thanh toán), star ratings and a few key highlights. Still used sparingly: one ember CTA per view |
+| Lagoon | `#0f766e` (dark `#2dd4bf`) | `--color-lagoon` | **Secondary accent** (teal — pairs with Ember like an orange/teal grade). Tint `bg-lagoon/10 text-lagoon` for "on / earned / selected" marks (weekly working slots, earned badges); single-series ranked bars (`BarList`) use its chart step `--chart-lagoon` (`#0d9488` / dark `#17a898`, validated). Never a CTA, never a status pill |
 | Orchid Flash | `#fe45e2` | `--color-orchid-flash` | Decorative card wash accent — single-use vivid pink on a large card background to punctuate the portfolio grid |
+
+## Lens color extension (2026-09)
+
+The pure black-and-white system read too flat on data-heavy screens (dashboards, reports, admin). Lens keeps the neutral canvas and adds hue **with meaning, never decoration**:
+
+- **Restrained palette (2026-09, replaces the accent-tone rule):** the interface is ink / white / grey. Icons, KPI tiles, shortcut cards, banners and info boxes are neutral (`bg-muted text-foreground`) — no tinted cards, no gradients, no one-colour-per-item. **Ember** (`#ff5a00`, `bg-ember`) is the main accent: the one primary CTA of a view, star ratings, notification counts. **Lagoon** (`--color-lagoon`, teal) is the one secondary accent: "on / earned / selected" states (working-hour slots, earned badges) and ranked `BarList` bars — never CTAs, never status pills. Other hues appear **only where they carry meaning**: status pills (`TONE_CHIP` — sky scheduled, emerald done, violet money held, amber waiting, rose problem), money in/out and ▲▼ deltas (green/red), and warnings (over quota, high cancel rate, coins expiring, photos short).
+- **Notification counts** (unread messages, items waiting on an admin) always use `CountBadge` from `@lens/ui` — an Ember pill. One colour for every count; red (`destructive`) is reserved for errors and destructive actions.
+- **Status pills** keep the existing mapping (orange = chờ đặt cọc, amber = chờ duyệt, blue = chờ thanh toán, violet = sàn giữ tiền, emerald = hoàn thành, muted = đã huỷ) and always carry a text label.
+- **Charts** are restrained too: a single series is grey bars (`--chart-muted`) with the highlighted bar — usually the current month — in Ember (`BarChart highlight`); ranked `BarList`s are Lagoon; ordered tiers (plans, ranks) use the grey `--ordinal-1..5` ramp. `--chart-1..5` (validated categorical) is kept only for genuinely multi-series charts. Values/labels stay in text ink.
+- **No solid black blocks for data** — metric panels are white cards with neutral icon chips; Obsidian stays for text, primary neutral buttons and the nav's active item.
 
 ## Tokens — Typography
 
@@ -174,18 +185,18 @@ Large numeral at 40–56px Cosmica weight 700 in #09090b or #18181b. Descriptor 
 ### Do
 - Use border-radius 36px for all primary cards and portfolio tiles — this extreme rounding is the system's most recognizable surface trait.
 - Apply the multi-layer button shadow (rgba(255,255,255,0.5) inset + rgba(117,123,133,0.4) inset + rgb(44,46,52) 1.5px ring + rgba(0,0,0,0.14) drop) only on the primary #09090b pill button — it defines the CTA's physicality.
-- Reserve Ember (#ff5a00) exclusively for YC batch badges and Orchid Flash (#fe45e2) exclusively for single decorative card washes — these vivid colors derive their impact from appearing nowhere else.
+- Keep Ember (#ff5a00) for the booking/payment CTA and brand highlights (one ember CTA per view) and Orchid Flash (#fe45e2) for single decorative card washes. Icons, KPI tiles and charts stay neutral (see *Restrained palette*); status colour only on status pills, deltas and warnings.
 - Use Cosmica weight 300–400 for lead-in words and weight 600–700 for the key noun/verb in the same line to create inline tonal contrast without changing size.
 - Maintain a 4-step neutral surface stack (Mist → Snow → Fog → Obsidian) per page — don't introduce more than four background tones in a single section view.
 - Apply border-radius 12px to all badge and tag components regardless of content length — pill tags use 10000px only for navigation-level controls.
 - Use backdrop-filter blur (5–17px range) on overlaid panels and the announcement banner to create depth without hard shadows on light surfaces.
 
 ### Don't
-- Don't use any color other than #09090b/#222222 for filled button backgrounds — the system has no chromatic CTA color; dark filled + white text is the only primary action pattern.
+- Don't use chromatic fills for buttons other than the ember booking/payment CTA — every other primary action is dark filled (#09090b) + white text.
 - Don't reduce card border-radius below 28px — smaller radii break the soft-container language and make surfaces read as generic rectangles.
 - Don't introduce new typefaces — Cosmica's weight range handles all hierarchy; adding a second family destroys the single-voice typographic system.
 - Don't apply drop shadows to cards — card depth is expressed through background color steps (#ffffff vs #ececee vs #09090b), not elevation shadows.
-- Don't use #ff5a00 or #fe45e2 for UI states, hover effects, or repeated interface elements — their power is scarcity; repeated use collapses their impact.
+- Don't use accent colours as decoration or for hover effects, and don't let a colour carry meaning alone — pair it with an icon or label. Don't use solid black panels to present data.
 - Don't use letter-spacing overrides on headlines — Cosmica's normal tracking at large sizes is a deliberate choice; tracked-out display text would clash with the type system.
 - Don't place text directly on the vivid Orchid Flash (#fe45e2) card background at body size — it is a decorative wash only; any overlaid text must use display weight white.
 
@@ -220,7 +231,8 @@ Max-width approximately 1200px, centered on the canvas (#f4f4f5). The hero is a 
 - background (canvas): #f4f4f5
 - card surface: #ffffff
 - border / divider: #ececee / #3f3f46
-- accent (badge only): #ff5a00 (YC), #fe45e2 (decorative card)
+- accent: #ff5a00 (brand CTA/highlight), #fe45e2 (decorative card)
+- data: neutral tiles, grey charts + one Ember highlight, status tones only on pills (see Restrained palette)
 - primary action: #09090b (filled action)
 
 **Example Component Prompts**

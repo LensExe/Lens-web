@@ -2,18 +2,19 @@
 
 > Read the root `CLAUDE.md` first. This file only adds landing-specific notes.
 
-**Role:** public marketing site + authentication. Dev port **5173**.
+**Role:** public marketing site. Dev port **5173**.
 
 **Scope (what lives here):**
 - Marketing landing page (hero, featured photographers showcase, sections).
-- Auth: login / signup. **Login → role redirect** to the other apps.
+- Auth: login / signup live in the portal app. Landing only links users there.
 - **Browse photographers + profile do NOT live here** — they're public routes in the **portal** app. Landing's discovery CTAs (`portalBrowse()` in `src/lib/links.ts`) link out to `VITE_PORTAL_URL/photographers`. Landing keeps a small photographer mock only for the homepage "featured" showcase.
 
-**Auth redirect (UI phase, no real backend):**
-- The login screen (`src/routes/Login.tsx`) lets the user pick a role, then redirects:
-  - client / photographer → `VITE_PORTAL_URL` (portal)
-  - admin → `VITE_ADMIN_URL` (admin)
+**Auth redirect (UI phase):**
+- `/login` and `/signup` are compatibility routes that immediately redirect to the portal app. Navbar, footer, and CTA buttons link directly to the portal auth pages.
+- Admins sign in on the admin app at its own `/login`.
 - URLs come from `.env` (dev defaults to localhost:5174 / 5175).
+
+**Router & errors:** a data router (`createBrowserRouter`, one splat route around `<App/>`, `errorElement` = `components/RouteError.tsx` → `ErrorScreen` from `@lens/ui`). `main.tsx` reloads a page restored from the back/forward cache, and `lib/api.ts` rejects HTML responses — see the portal CLAUDE.md for why (MSW unregisters when the tab leaves).
 
 **Motion:** this is the bold one (§7/§7b of root) — hero has the lazy Three.js particle accent, GSAP parallax, animate-text headline, Lenis smooth scroll, magnetic CTAs, React Bits effects. Keep heavy effects code-split (deep `@lens/ui/...` imports in lazy sections). The photographer grid stays clean.
 

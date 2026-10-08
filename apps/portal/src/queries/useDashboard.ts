@@ -1,20 +1,29 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getIncomingBookings,
-  getMyAvailability,
+  getMyEarnings,
   getMyPhotographerProfile,
-  toggleAvailability,
+  completeShoot,
   updateBookingStatus,
   updateMyPhotographerProfile,
 } from "@/services/dashboard";
 import type { BookingStatus, Photographer } from "@/types";
+import { saveMyBookingPlans } from "@/services/booking-plans";
+import { addPortfolioImages } from "@/services/portfolio-media";
 
 // Layer 2 — Query hooks for the photographer dashboard.
 export const dashboardKeys = {
   profile: ["dashboard", "profile"] as const,
   incoming: ["dashboard", "incoming"] as const,
-  availability: ["dashboard", "availability"] as const,
+  earnings: ["dashboard", "earnings"] as const,
 };
+
+export function useMyEarnings() {
+  return useQuery({
+    queryKey: dashboardKeys.earnings,
+    queryFn: getMyEarnings,
+  });
+}
 
 export function useMyPhotographerProfile() {
   return useQuery({
@@ -31,6 +40,31 @@ export function useUpdateMyPhotographerProfile() {
     onSuccess: (updated) => {
       qc.setQueryData(dashboardKeys.profile, updated);
       // The public roster/profile show this photographer too — refresh them.
+      qc.invalidateQueries({ queryKey: ["photographers"] });
+    },
+  });
+}
+
+export function useSaveMyBookingPlans() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: saveMyBookingPlans,
+    onSuccess: (plans) => {
+      qc.setQueryData(dashboardKeys.profile, (profile: Photographer | undefined) =>
+        profile ? { ...profile, packages: plans, pricePerSession: plans.length ? Math.min(...plans.map((plan) => plan.price)) : 0 } : profile,
+      );
+      qc.invalidateQueries({ queryKey: ["photographers"] });
+      qc.invalidateQueries({ queryKey: ["bookings", "mine"] });
+    },
+  });
+}
+
+export function useUploadPortfolioImages() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ files }: { files: File[] }) => addPortfolioImages(files),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: dashboardKeys.profile });
       qc.invalidateQueries({ queryKey: ["photographers"] });
     },
   });
@@ -54,19 +88,13 @@ export function useUpdateBookingStatus() {
   });
 }
 
-export function useMyAvailability() {
-  return useQuery({
-    queryKey: dashboardKeys.availability,
-    queryFn: getMyAvailability,
-  });
-}
-
-export function useToggleAvailability() {
+export function useCompleteShoot() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (date: string) => toggleAvailability(date),
-    onSuccess: (dates) => {
-      qc.setQueryData(dashboardKeys.availability, dates);
+    mutationFn: completeShoot,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: dashboardKeys.incoming });
+      qc.invalidateQueries({ queryKey: ["bookings", "mine"] });
     },
   });
 }

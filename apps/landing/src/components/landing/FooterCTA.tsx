@@ -1,12 +1,10 @@
 import { useRef } from "react";
-import { useNavigate } from "react-router-dom";
 import { ArrowRight, Camera } from "lucide-react";
 import { Button } from "@lens/ui";
 import { useReveal } from "@lens/ui";
-import { portalBrowse } from "@/lib/links";
+import { portalBrowse, portalSignup } from "@/lib/links";
 
 export function FooterCTA() {
-  const navigate = useNavigate();
   const scope = useRef<HTMLElement>(null);
   useReveal(scope);
 
@@ -55,7 +53,9 @@ export function FooterCTA() {
               size="lg"
               variant="outline"
               className="rounded-full border-white/30 bg-transparent px-6 text-snow hover:bg-white/10 hover:text-snow"
-              onClick={() => navigate("/signup")}
+              onClick={() => {
+                window.location.href = portalSignup("photographer");
+              }}
             >
               <Camera className="size-4" />
               Trở thành nhiếp ảnh gia

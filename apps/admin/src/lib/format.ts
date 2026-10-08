@@ -39,3 +39,15 @@ export function formatRelative(iso: string): string {
   const diffDay = Math.round(diffHour / 24);
   return `${diffDay} ngày`;
 }
+
+/** Days from today to an ISO date: "Hôm nay", "Còn 5 ngày", "3 ngày trước". */
+export function relativeDay(iso: string): string {
+  const [y, m, d] = iso.split("T")[0].split("-").map(Number);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days = Math.round((new Date(y, m - 1, d).getTime() - today.getTime()) / 86_400_000);
+  if (days === 0) return "Hôm nay";
+  if (days === 1) return "Ngày mai";
+  if (days === -1) return "Hôm qua";
+  return days > 0 ? `Còn ${days} ngày` : `${-days} ngày trước`;
+}

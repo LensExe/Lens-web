@@ -1,4 +1,6 @@
+import { TONE_CHIP } from "@lens/ui";
 import type {
+  AdminCollaborator,
   ApprovalStatus,
   EscrowStatus,
   RankId,
@@ -8,86 +10,75 @@ import type {
   WithdrawalStatus,
 } from "@/types";
 
-/** VN label + subtle tinted pill per application status. */
-export const APPROVAL_STATUS_META: Record<
-  ApprovalStatus,
-  { label: string; className: string }
-> = {
-  pending: {
-    label: "Chờ duyệt",
-    className: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
+/** A status as shown in the console: VN label + tinted pill classes. */
+export interface StatusMeta {
+  label: string;
+  className: string;
+}
+
+export const APPROVAL_STATUS_META: Record<ApprovalStatus, StatusMeta> = {
+  pending: { label: "Chờ duyệt", className: TONE_CHIP.amber },
+  approved: { label: "Đã duyệt", className: TONE_CHIP.emerald },
+  rejected: { label: "Từ chối", className: TONE_CHIP.rose },
+};
+
+export const USER_STATUS_META: Record<UserStatus, StatusMeta> = {
+  active: { label: "Hoạt động", className: TONE_CHIP.emerald },
+  suspended: { label: "Tạm khoá", className: TONE_CHIP.rose },
+};
+
+export const ROLE_META: Record<UserRole, StatusMeta> = {
+  client: { label: "Khách hàng", className: TONE_CHIP.neutral },
+  photographer: { label: "Nhiếp ảnh gia", className: "text-foreground ring-1 ring-inset ring-foreground/25" },
+};
+
+export const WITHDRAWAL_STATUS_META: Record<WithdrawalStatus, StatusMeta> = {
+  pending: { label: "Chờ duyệt", className: TONE_CHIP.amber },
+  approved: { label: "Đã duyệt", className: TONE_CHIP.emerald },
+  rejected: { label: "Từ chối", className: TONE_CHIP.rose },
+  completed: { label: "Đã chuyển tiền", className: TONE_CHIP.emerald },
+};
+
+// Same hues as the portal's booking statuses.
+export const ESCROW_STATUS_META: Record<EscrowStatus, StatusMeta> = {
+  awaiting_deposit: { label: "Chờ đặt cọc", className: TONE_CHIP.ember },
+  pending: { label: "Chờ xác nhận", className: TONE_CHIP.amber },
+  confirmed: { label: "Chờ thanh toán", className: TONE_CHIP.sky },
+  held: { label: "Sàn đang giữ tiền", className: TONE_CHIP.violet },
+  released: { label: "Hoàn thành", className: TONE_CHIP.emerald },
+  cancelled: { label: "Đã huỷ", className: TONE_CHIP.neutral },
+};
+
+export const COLLAB_STATUS_META: Record<AdminCollaborator["status"], StatusMeta> = {
+  invited: { label: "Đã mời", className: TONE_CHIP.amber },
+  accepted: { label: "Đã nhận", className: TONE_CHIP.emerald },
+  declined: { label: "Từ chối", className: TONE_CHIP.rose },
+};
+
+// Plans are ordered (Free < Pro < Studio): light → dark on the ordinal ramp.
+export const STORAGE_PLAN_META: Record<StoragePlanTier, StatusMeta & { color: string }> = {
+  free: { label: "Free", className: TONE_CHIP.neutral, color: "var(--ordinal-1)" },
+  pro: { label: "Pro", className: "bg-muted text-foreground", color: "var(--ordinal-3)" },
+  studio: { label: "Studio", className: "text-foreground ring-1 ring-inset ring-foreground/25", color: "var(--ordinal-5)" },
+};
+
+// Matches the portal's rank colours: copper bronze, clearly apart from gold.
+export const RANK_META: Record<RankId, StatusMeta & { color: string }> = {
+  newbie: { label: "Tân binh", className: TONE_CHIP.neutral, color: "#a1a1aa" },
+  bronze: {
+    label: "Thợ Đồng",
+    className: "bg-[#f4e4d8] text-[#7c4420] dark:bg-[#b0703f]/20 dark:text-[#e3a978]",
+    color: "#b0703f",
   },
-  approved: {
-    label: "Đã duyệt",
-    className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
+  silver: {
+    label: "Thợ Bạc",
+    className: "bg-slate-200 text-slate-700 dark:bg-slate-500/20 dark:text-slate-300",
+    color: "#94a3b8",
   },
-  rejected: {
-    label: "Từ chối",
-    className: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400",
+  gold: {
+    label: "Thợ Vàng",
+    className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-400",
+    color: "#eab308",
   },
-};
-
-export const USER_STATUS_META: Record<
-  UserStatus,
-  { label: string; className: string }
-> = {
-  active: {
-    label: "Hoạt động",
-    className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
-  },
-  suspended: {
-    label: "Tạm khoá",
-    className: "bg-muted text-muted-foreground",
-  },
-};
-
-export const ROLE_LABEL: Record<UserRole, string> = {
-  client: "Khách hàng",
-  photographer: "Nhiếp ảnh gia",
-};
-
-const TINT = {
-  amber: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
-  emerald: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
-  rose: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400",
-  blue: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
-  violet: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400",
-  muted: "bg-muted text-muted-foreground",
-} as const;
-
-export const WITHDRAWAL_STATUS_META: Record<
-  WithdrawalStatus,
-  { label: string; className: string }
-> = {
-  pending: { label: "Chờ duyệt", className: TINT.amber },
-  approved: { label: "Đã duyệt", className: TINT.emerald },
-  rejected: { label: "Từ chối", className: TINT.rose },
-};
-
-export const ESCROW_STATUS_META: Record<
-  EscrowStatus,
-  { label: string; className: string }
-> = {
-  pending: { label: "Chờ xác nhận", className: TINT.amber },
-  confirmed: { label: "Đã xác nhận", className: TINT.blue },
-  held: { label: "Đang giữ tiền", className: TINT.violet },
-  released: { label: "Hoàn thành", className: TINT.emerald },
-  cancelled: { label: "Đã huỷ", className: TINT.muted },
-};
-
-export const STORAGE_PLAN_META: Record<
-  StoragePlanTier,
-  { label: string; className: string }
-> = {
-  free: { label: "Free", className: TINT.muted },
-  pro: { label: "Pro", className: TINT.blue },
-  studio: { label: "Studio", className: TINT.violet },
-};
-
-export const RANK_META: Record<RankId, { label: string; className: string }> = {
-  newbie: { label: "Tân binh", className: TINT.muted },
-  bronze: { label: "Đồng", className: TINT.amber },
-  silver: { label: "Bạc", className: "bg-slate-200 text-slate-700 dark:bg-slate-500/20 dark:text-slate-300" },
-  gold: { label: "Vàng", className: TINT.amber },
-  diamond: { label: "Kim Cương", className: TINT.blue },
+  diamond: { label: "Thợ Kim Cương", className: TONE_CHIP.sky, color: "#6366f1" },
 };

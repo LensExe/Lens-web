@@ -1,6 +1,7 @@
 import { http, HttpResponse } from "msw";
-import { delay } from "@lens/ui";
+import { avatar, delay } from "@lens/ui";
 import { mockPhotographers } from "@/mock/photographers";
+import { mockAuthAccounts, type MockAuthAccount } from "@/mock/auth";
 import { mockReviews } from "@/mock/reviews";
 import {
   seedConversations,
@@ -9,15 +10,37 @@ import {
   type ConvParticipant,
 } from "@/mock/messages";
 import { seedBookings } from "@/mock/bookings";
-import { myPhotographer } from "@/mock/dashboard";
-import { photographerPayout } from "@/lib/booking";
+import { myPhotographer, seedMonthlyEarnings } from "@/mock/dashboard";
+import { rosterSchedule, seedMySchedule } from "@/mock/schedules";
+import {
+  DEPOSIT_HOLD_MINUTES,
+  cancelTerms,
+  depositAmount,
+  normalizePackage,
+  packageTerms,
+  resolvePackages,
+  photographerPayout,
+  remainingAmount,
+} from "@/lib/booking";
+import {
+  BOOKING_WINDOW_DAYS,
+  DEFAULT_WORKING_RANGE,
+  addDaysISO,
+  bookingSlots,
+  countSlots,
+  dayAvailability,
+  occupiesSlot,
+  sanitizeSchedule,
+  slotsForDuration,
+} from "@/lib/schedule";
 import { rankForSessions } from "@/lib/achievements";
 import {
   generateReply,
   HANDOFF_MESSAGE,
   needsHandoff,
 } from "@/lib/assistant";
-import { seedAssistantConfig } from "@/mock/assistant";
+import { seedAssistantConfigs } from "@/mock/assistant";
+import { seedProfiles } from "@/mock/profiles";
 import {
   cashbackCoins,
   COIN_EXPIRY_MONTHS,
@@ -42,15 +65,30 @@ import {
 } from "@/msw/payments";
 import type {
   Booking,
+  BookingReview,
+  BookingReviewInput,
   BookingInput,
   BookingStatus,
+  AuthUser,
   Conversation,
+  DayAvailability,
+  EarningsSummary,
   Message,
   PaymentInput,
   Photographer,
   PhotographerAchievements,
+  DemoAccount,
+  LoginInput,
+  PortalRole,
+  SignupInput,
   AssistantConfig,
+  ChangePasswordInput,
+  ProfileInput,
+  ReviewSummary,
   StoragePlanTier,
+  UserProfile,
+  WalletSummary,
+  WorkSchedule,
 } from "@/types";
 
 // Mock backend for portal. Handlers play the role of the server: own the
@@ -59,8 +97,8 @@ import type {
 // Bookings are a SINGLE table persisted to localStorage so they survive a full
 // reload — which is what a role switch (re-login) is. That makes the cross-role
 // flow real: log in as a client, book a photographer, then log in as that
-// photographer and the request is waiting. (Availability/conversations are
-// lighter and still reset on reload.) Clear localStorage to reseed.
+// photographer and the request is waiting. The photographer's work schedule
+// persists the same way. Clear localStorage to reseed.
 
 const todayISO = () => {
   const d = new Date();
@@ -76,6 +114,9 @@ const byUpcomingFirst = (a: Booking, b: Booking) => {
   if (af !== bf) return af ? -1 : 1;
   return af ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date);
 };
+
+const minutesFromNow = (minutes: number) =>
+  new Date(Date.now() + minutes * 60_000).toISOString();
 
 // UI-phase auth stand-in: the signed-in user's id, sent by the axios client (see
 // lib/api.ts) as a header. Lets handlers scope data to the current user.
@@ -124,32 +165,17 @@ const withRank = (p: Photographer): Photographer => ({
   rank: achievementFor(p.id).rank,
 });
 
-// ── Bookings "table" — persisted to localStorage (survives reload) ───────────
-const BOOKINGS_DB_KEY = "lens.bookings.v1";
-const loadBookings = (): Booking[] => {
-  try {
-    const raw = localStorage.getItem(BOOKINGS_DB_KEY);
-    if (raw) return JSON.parse(raw) as Booking[];
-  } catch {
-    /* storage blocked — fall back to a fresh seed */
-  }
-  return seedBookings.map((b) => ({ ...b }));
-};
-let bookings: Booking[] = loadBookings();
-const saveBookings = () => {
-  try {
-    localStorage.setItem(BOOKINGS_DB_KEY, JSON.stringify(bookings));
-  } catch {
-    /* storage blocked — state still lives in memory for this session */
-  }
-};
-
 // ── Signed-in photographer profile — persisted (survives reload) so edits stick.
+// Packages saved before the structured fields existed are upgraded on load.
 const PROFILE_DB_KEY = "lens.profile.v1";
+const withNormalizedPackages = (p: Photographer): Photographer => ({
+  ...p,
+  packages: p.packages?.map((pkg) => normalizePackage(pkg)),
+});
 const loadProfile = (): Photographer => {
   try {
     const raw = localStorage.getItem(PROFILE_DB_KEY);
-    if (raw) return JSON.parse(raw) as Photographer;
+    if (raw) return withNormalizedPackages(JSON.parse(raw) as Photographer);
   } catch {
     /* storage blocked — fall back to the seed */
   }
@@ -164,13 +190,199 @@ const saveProfile = () => {
   }
 };
 
-// ── In-memory stores (reset on reload) ───────────────────────────────────────
-let availableDates: string[] = [...myPhotographer.availableDates];
+// Auth is intentionally local to the portal now that its login/register pages
+// live here. The in-memory table resets on a full reload, matching the rest of
+// the UI-phase mock backend.
+let authAccounts: MockAuthAccount[] = [...mockAuthAccounts];
+const findAuthAccount = (email: string) => {
+  const key = email.trim().toLowerCase();
+  return authAccounts.find((account) => account.email.toLowerCase() === key);
+};
+const toAuthUser = ({ id, name, email, avatar, role }: MockAuthAccount): AuthUser => ({
+  id,
+  name,
+  email,
+  avatar,
+  role: role as PortalRole,
+});
 
-// The photographer's profile + her live availability, as the public sees it.
-const profileWithDates = (): Photographer => ({
-  ...profile,
-  availableDates: [...availableDates].sort(),
+// The package list a photographer offers right now (the signed-in one is live).
+const packagesOf = (photographerId: string) => {
+  const owner =
+    photographerId === profile.id
+      ? profile
+      : mockPhotographers.find((p) => p.id === photographerId);
+  return owner ? resolvePackages(owner) : [];
+};
+
+// Give a booking its package snapshot if it lacks one (seeds / older rows):
+// the booked package by id, else the tier closest in price. For shoots already
+// delivered, the required count never exceeds what was delivered, so the demo
+// bookings can still complete.
+const withTerms = (b: Booking): Booking => {
+  if (b.packageSnapshot && b.packageSnapshot.photoCount > 0) return b;
+  const pkgs = packagesOf(b.photographerId);
+  const pkg =
+    pkgs.find((p) => p.id === b.packageId) ??
+    [...pkgs].sort((x, y) => Math.abs(x.price - b.price) - Math.abs(y.price - b.price))[0];
+  if (!pkg) return b;
+  const terms = packageTerms(pkg);
+  const delivered = galleryOf(b.id)?.photos.length;
+  return {
+    ...b,
+    packageSnapshot:
+      delivered && (b.status === "held" || b.status === "released")
+        ? { ...terms, photoCount: Math.min(terms.photoCount, delivered) }
+        : terms,
+  };
+};
+
+// ── Bookings "table" — persisted to localStorage (survives reload) ───────────
+// v2: bookings carry a deposit (older v1 rows would lack it).
+const BOOKINGS_DB_KEY = "lens.bookings.v2";
+const loadBookings = (): Booking[] => {
+  try {
+    const raw = localStorage.getItem(BOOKINGS_DB_KEY);
+    if (raw) {
+      const stored = (JSON.parse(raw) as Booking[]).map(withTerms);
+      const storedIds = new Set(stored.map((booking) => booking.id));
+      const additions = seedBookings
+        .filter((booking) => !storedIds.has(booking.id))
+        .map((b) =>
+          withTerms({
+            ...b,
+            depositAmount: depositAmount(b.price),
+            ...(b.status === "awaiting_deposit"
+              ? { depositDeadline: minutesFromNow(DEPOSIT_HOLD_MINUTES) }
+              : { depositPaidAt: new Date().toISOString() }),
+          })
+        );
+      return [...stored, ...additions];
+    }
+  } catch {
+    /* storage blocked — fall back to a fresh seed */
+  }
+  // Seeds get their deposit derived here; past "awaiting_deposit" it's paid,
+  // and an unpaid seed gets a fresh hold window.
+  return seedBookings.map((b) =>
+    withTerms({
+      ...b,
+      depositAmount: depositAmount(b.price),
+      ...(b.status === "awaiting_deposit"
+        ? { depositDeadline: minutesFromNow(DEPOSIT_HOLD_MINUTES) }
+        : { depositPaidAt: new Date().toISOString() }),
+    })
+  );
+};
+let bookings: Booking[] = loadBookings();
+const saveBookings = () => {
+  try {
+    localStorage.setItem(BOOKINGS_DB_KEY, JSON.stringify(bookings));
+  } catch {
+    /* storage blocked — state still lives in memory for this session */
+  }
+};
+
+// ── Client reviews — one review per completed booking + photographer ─────────
+const CLIENT_REVIEWS_DB_KEY = "lens.clientReviews.v1";
+const loadClientReviews = (): BookingReview[] => {
+  try {
+    const raw = localStorage.getItem(CLIENT_REVIEWS_DB_KEY);
+    if (raw) return JSON.parse(raw) as BookingReview[];
+  } catch {
+    /* storage blocked — state still lives in memory for this session */
+  }
+  return [];
+};
+let clientReviews: BookingReview[] = loadClientReviews();
+const saveClientReviews = () => {
+  try {
+    localStorage.setItem(CLIENT_REVIEWS_DB_KEY, JSON.stringify(clientReviews));
+  } catch {
+    /* storage blocked — state still lives in memory for this session */
+  }
+};
+
+// ── Account profiles (personal info + settings), keyed by user id — persisted.
+const USER_PROFILES_DB_KEY = "lens.userProfile.v1";
+const loadUserProfiles = (): Record<string, UserProfile> => {
+  try {
+    const raw = localStorage.getItem(USER_PROFILES_DB_KEY);
+    if (raw) {
+      return {
+        ...structuredClone(seedProfiles),
+        ...(JSON.parse(raw) as Record<string, UserProfile>),
+      };
+    }
+  } catch {
+    /* storage blocked — fall back to the seed */
+  }
+  return structuredClone(seedProfiles);
+};
+let userProfiles: Record<string, UserProfile> = loadUserProfiles();
+const saveUserProfiles = () => {
+  try {
+    localStorage.setItem(USER_PROFILES_DB_KEY, JSON.stringify(userProfiles));
+  } catch {
+    /* storage blocked */
+  }
+};
+
+// ── Work schedules — the signed-in photographer's is persisted (saved only via
+// "Lưu lịch"); roster photographers use a fixed seed. Public availability is
+// computed from the schedule + the bookings table, so a booked slot disappears
+// for every other client.
+const SCHEDULE_DB_KEY = "lens.schedule.v1";
+const loadMySchedule = (): WorkSchedule => {
+  try {
+    const raw = localStorage.getItem(SCHEDULE_DB_KEY);
+    if (raw) {
+      const saved = sanitizeSchedule(JSON.parse(raw) as WorkSchedule, todayISO());
+      return {
+        ...saved,
+        weekly: Array.from({ length: 7 }, () => [{ ...DEFAULT_WORKING_RANGE }]),
+      };
+    }
+  } catch {
+    /* storage blocked — fall back to the seed */
+  }
+  return structuredClone(seedMySchedule);
+};
+let mySchedule: WorkSchedule = loadMySchedule();
+const saveMySchedule = () => {
+  try {
+    localStorage.setItem(SCHEDULE_DB_KEY, JSON.stringify(mySchedule));
+  } catch {
+    /* storage blocked */
+  }
+};
+
+const scheduleOf = (photographerId: string): WorkSchedule | null => {
+  if (photographerId === profile.id) return mySchedule;
+  const index = mockPhotographers.findIndex((p) => p.id === photographerId);
+  return index < 0 ? null : rosterSchedule(index);
+};
+
+// Bookable window starts tomorrow (no same-day bookings).
+const availabilityOf = (photographerId: string, days = BOOKING_WINDOW_DAYS): DayAvailability[] => {
+  const schedule = scheduleOf(photographerId);
+  if (!schedule) return [];
+  const now = new Date().toISOString();
+  const held = bookings.filter((b) => b.photographerId === photographerId && occupiesSlot(b, now));
+  const from = addDaysISO(todayISO(), 1);
+  return Array.from({ length: days }, (_, i) => {
+    const date = addDaysISO(from, i);
+    const booked = held.filter((b) => b.date === date).flatMap((b) => bookingSlots(b));
+    return dayAvailability(schedule, date, booked);
+  });
+};
+
+// A photographer as the public sees it: the dates that still have a free slot.
+const withAvailability = (p: Photographer): Photographer => ({
+  ...p,
+  availableDates: availabilityOf(p.id)
+    .filter((d) => countSlots(d, "free") > 0)
+    .map((d) => d.date),
 });
 // ── Conversations + threads — 2-party shared threads, persisted (survive reload
 // + cross-role, like bookings). Each conversation is between two real users; the
@@ -180,7 +392,19 @@ const THREADS_DB_KEY = "lens.threads.v1";
 const loadConversations = (): ConversationSeed[] => {
   try {
     const raw = localStorage.getItem(CONVERSATIONS_DB_KEY);
-    if (raw) return JSON.parse(raw) as ConversationSeed[];
+    if (raw) {
+      const stored = JSON.parse(raw) as ConversationSeed[];
+      const storedIds = new Set(stored.map((conversation) => conversation.id));
+      return [
+        ...stored,
+        ...seedConversations
+          .filter((conversation) => !storedIds.has(conversation.id))
+          .map((conversation) => ({
+            ...conversation,
+            unread: { ...conversation.unread },
+          })),
+      ];
+    }
   } catch {
     /* storage blocked */
   }
@@ -189,7 +413,16 @@ const loadConversations = (): ConversationSeed[] => {
 const loadThreads = (): Record<string, Message[]> => {
   try {
     const raw = localStorage.getItem(THREADS_DB_KEY);
-    if (raw) return JSON.parse(raw) as Record<string, Message[]>;
+    if (raw) {
+      const stored = JSON.parse(raw) as Record<string, Message[]>;
+      const merged = Object.fromEntries(
+        Object.entries(seedThreads).map(([id, messages]) => [
+          id,
+          [...(stored[id] ?? []), ...(stored[id] ? [] : messages.map((m) => ({ ...m })))],
+        ])
+      );
+      return { ...merged, ...stored };
+    }
   } catch {
     /* storage blocked */
   }
@@ -197,7 +430,7 @@ const loadThreads = (): Record<string, Message[]> => {
     Object.entries(seedThreads).map(([id, msgs]) => [id, msgs.map((m) => ({ ...m }))])
   );
 };
-let conversations: ConversationSeed[] = loadConversations();
+const conversations: ConversationSeed[] = loadConversations();
 const threads: Record<string, Message[]> = loadThreads();
 const saveConversations = () => {
   try {
@@ -222,13 +455,25 @@ const ASSISTANT_DB_KEY = "lens.assistant.v2";
 const loadAssistants = (): Record<string, AssistantConfig> => {
   try {
     const raw = localStorage.getItem(ASSISTANT_DB_KEY);
-    if (raw) return JSON.parse(raw) as Record<string, AssistantConfig>;
+    if (raw) {
+      return {
+        ...Object.fromEntries(
+          Object.entries(seedAssistantConfigs).map(([id, config]) => [id, { ...config }])
+        ),
+        ...(JSON.parse(raw) as Record<string, AssistantConfig>),
+      };
+    }
   } catch {
     /* storage blocked */
   }
-  return { [seedAssistantConfig.photographerId]: { ...seedAssistantConfig } };
+  return Object.fromEntries(
+    Object.entries(seedAssistantConfigs).map(([id, config]) => [id, {
+      ...config,
+      faqs: config.faqs.map((faq) => ({ ...faq })),
+    }])
+  );
 };
-let assistantConfigs: Record<string, AssistantConfig> = loadAssistants();
+const assistantConfigs: Record<string, AssistantConfig> = loadAssistants();
 const saveAssistants = () => {
   try {
     localStorage.setItem(ASSISTANT_DB_KEY, JSON.stringify(assistantConfigs));
@@ -261,6 +506,7 @@ const conversationForViewer = (c: ConversationSeed, viewer: string): Conversatio
   const last = msgs[msgs.length - 1];
   return {
     id: c.id,
+    participantId: other.id,
     participantName: other.name,
     participantAvatar: other.avatar,
     participantRole: other.role,
@@ -279,12 +525,56 @@ for (const c of seedConversations)
   for (const p of c.participants) participantRegistry[p.id] = p;
 
 export const handlers = [
+  // ── Auth (UI phase — no tokens; session is kept client-side) ──────────────
+  http.post("/api/auth/login", async ({ request }) => {
+    await delay();
+    const { email, password } = (await request.json()) as LoginInput;
+    const account = findAuthAccount(email);
+    if (!account || account.password !== password) {
+      return HttpResponse.json(
+        { message: "Email hoặc mật khẩu không đúng" },
+        { status: 401 }
+      );
+    }
+    return HttpResponse.json(toAuthUser(account));
+  }),
+
+  http.post("/api/auth/register", async ({ request }) => {
+    await delay();
+    const input = (await request.json()) as SignupInput;
+    if (findAuthAccount(input.email)) {
+      return HttpResponse.json(
+        { message: "Email này đã được sử dụng" },
+        { status: 409 }
+      );
+    }
+    const email = input.email.trim().toLowerCase();
+    const account: MockAuthAccount = {
+      id: `u-${Date.now()}`,
+      name: input.name.trim(),
+      email,
+      avatar: avatar(email),
+      role: input.role,
+      password: input.password,
+    };
+    authAccounts = [...authAccounts, account];
+    return HttpResponse.json(toAuthUser(account), { status: 201 });
+  }),
+
+  http.get("/api/auth/demo-accounts", async () => {
+    await delay();
+    const demo: DemoAccount[] = authAccounts
+      .filter((account) => account.demo)
+      .map(({ email, password, role }) => ({ email, password, role }));
+    return HttpResponse.json(demo);
+  }),
+
   // ── Photographers (public discovery) ──────────────────────────────────────
   http.get("/api/photographers", async ({ request }) => {
     await delay();
     // Reflect the signed-in photographer's edits in the public roster too.
     const roster = mockPhotographers.map((p) =>
-      p.id === "me" ? profileWithDates() : p
+      withAvailability(p.id === "me" ? profile : p)
     );
     const featured = new URL(request.url).searchParams.get("featured");
     const data =
@@ -292,23 +582,130 @@ export const handlers = [
     return HttpResponse.json(data.map(withRank));
   }),
 
-  http.get("/api/photographers/:id", async ({ params }) => {
+  http.get("/api/photographers/:photographer_id", async ({ params }) => {
     await delay();
-    if (params.id === "me") return HttpResponse.json(withRank(profileWithDates()));
-    const found = mockPhotographers.find((p) => p.id === params.id);
-    return HttpResponse.json(found ? withRank(found) : null);
+    if (params.photographer_id === "me") return HttpResponse.json(withRank(withAvailability(profile)));
+    const found = mockPhotographers.find((p) => p.id === params.photographer_id);
+    return HttpResponse.json(found ? withRank(withAvailability(found)) : null);
   }),
 
-  http.get("/api/photographers/:id/reviews", async ({ params }) => {
+  // Day-by-day slots for the booking calendar (free / busy / booked).
+  http.get("/api/photographers/:photographer_id/availability", async ({ params, request }) => {
+    await delay();
+    const days = Number(new URL(request.url).searchParams.get("days")) || BOOKING_WINDOW_DAYS;
+    return HttpResponse.json(availabilityOf(params.photographer_id as string, Math.min(days, 60)));
+  }),
+
+  http.get("/api/photographers/:photographer_id/reviews", async ({ params }) => {
     await delay();
     return HttpResponse.json(
-      mockReviews.filter((r) => r.photographerId === params.id)
+      mockReviews.filter((r) => r.photographerId === params.photographer_id)
     );
   }),
 
-  http.get("/api/photographers/:id/achievements", async ({ params }) => {
+  // Star breakdown consistent with the profile's headline numbers: the 5★ share
+  // comes from the public achievement stats, the rest splits 4★ > 3★ > 2★ > 1★.
+  http.get("/api/photographers/:photographer_id/reviews/summary", async ({ params }) => {
     await delay();
-    return HttpResponse.json(achievementFor(params.id as string));
+    const photographerId = params.photographer_id as string;
+    const p = photographerId === profile.id ? profile : mockPhotographers.find((x) => x.id === photographerId);
+    if (!p) {
+      return HttpResponse.json({ message: "Không tìm thấy nhiếp ảnh gia" }, { status: 404 });
+    }
+    const total = p.reviewCount;
+    const five = Math.round((total * (achievementFor(photographerId).stats?.fiveStarPct ?? 0)) / 100);
+    const rest = total - five;
+    const four = Math.round(rest * 0.75);
+    const three = Math.round(rest * 0.17);
+    const two = Math.round(rest * 0.05);
+    const one = rest - four - three - two;
+    const summary: ReviewSummary = {
+      average: p.rating,
+      total,
+      breakdown: [
+        { stars: 5, count: five },
+        { stars: 4, count: four },
+        { stars: 3, count: three },
+        { stars: 2, count: two },
+        { stars: 1, count: Math.max(0, one) },
+      ],
+    };
+    return HttpResponse.json(summary);
+  }),
+
+  http.get("/api/photographers/:photographer_id/achievements", async ({ params }) => {
+    await delay();
+    return HttpResponse.json(achievementFor(params.photographer_id as string));
+  }),
+
+  http.get("/api/me/reviews", async ({ request }) => {
+    await delay();
+    const clientId = userIdOf(request);
+    return HttpResponse.json(
+      clientReviews
+        .filter((review) => review.clientId === clientId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    );
+  }),
+
+  http.post("/api/me/reviews", async ({ request }) => {
+    await delay();
+    const clientId = userIdOf(request);
+    const input = (await request.json()) as BookingReviewInput;
+    const rating = Math.round(Number(input.rating));
+    const comment = input.comment?.trim() ?? "";
+
+    if (!input.bookingId || !input.photographerId || rating < 1 || rating > 5 || comment.length < 10) {
+      return HttpResponse.json(
+        { message: "Vui lòng chọn số sao và viết nhận xét tối thiểu 10 ký tự" },
+        { status: 400 },
+      );
+    }
+
+    const booking = bookings.find(
+      (item) => item.id === input.bookingId && item.clientId === clientId,
+    );
+    const canReviewPerson =
+      booking &&
+      (booking.photographerId === input.photographerId ||
+        (booking.collaborators ?? []).some(
+          (collaborator) =>
+            collaborator.photographerId === input.photographerId &&
+            collaborator.status === "accepted",
+        ));
+
+    if (!booking || booking.status !== "released" || !canReviewPerson) {
+      return HttpResponse.json(
+        { message: "Chỉ có thể đánh giá người chụp trong buổi đã hoàn thành" },
+        { status: 400 },
+      );
+    }
+
+    const duplicate = clientReviews.some(
+      (review) =>
+        review.clientId === clientId &&
+        review.bookingId === input.bookingId &&
+        review.photographerId === input.photographerId,
+    );
+    if (duplicate) {
+      return HttpResponse.json(
+        { message: "Bạn đã đánh giá người chụp này cho booking" },
+        { status: 409 },
+      );
+    }
+
+    const review: BookingReview = {
+      id: "br-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8),
+      bookingId: input.bookingId,
+      clientId,
+      photographerId: input.photographerId,
+      rating,
+      comment,
+      createdAt: new Date().toISOString(),
+    };
+    clientReviews = [review, ...clientReviews];
+    saveClientReviews();
+    return HttpResponse.json(review, { status: 201 });
   }),
 
   http.get("/api/me/achievements", async ({ request }) => {
@@ -320,6 +717,19 @@ export const handlers = [
   http.get("/api/bookings", async ({ request }) => {
     await delay();
     const userId = userIdOf(request);
+    // A slot held without a deposit is released once its window passes.
+    const now = new Date().toISOString();
+    const expired = bookings.some(
+      (b) => b.status === "awaiting_deposit" && b.depositDeadline && b.depositDeadline < now
+    );
+    if (expired) {
+      bookings = bookings.map((b) =>
+        b.status === "awaiting_deposit" && b.depositDeadline && b.depositDeadline < now
+          ? { ...b, status: "cancelled" }
+          : b
+      );
+      saveBookings();
+    }
     return HttpResponse.json(
       bookings.filter((b) => b.clientId === userId).sort(byUpcomingFirst)
     );
@@ -328,35 +738,103 @@ export const handlers = [
   http.post("/api/bookings", async ({ request }) => {
     await delay();
     const input = (await request.json()) as BookingInput;
+    // Price + terms come from the photographer's current package, not the client.
+    const pkg = packagesOf(input.photographerId).find((p) => p.id === input.packageId);
+    if (!pkg) {
+      return HttpResponse.json(
+        { message: "Gói chụp này không còn tồn tại, vui lòng chọn lại" },
+        { status: 400 }
+      );
+    }
+    // The slot must still be open — another client may have just taken it.
+    const day = availabilityOf(input.photographerId).find((d) => d.date === input.date);
+    const required = slotsForDuration(input.timeSlot, pkg.durationHours);
+    const available =
+      required.length === Math.ceil((pkg.durationHours * 60) / 30) &&
+      required.every((time) => day?.slots.find((slot) => slot.time === time)?.status === "free");
+    const startSlot = day?.slots.find((slot) => slot.time === input.timeSlot);
+    if (!available) {
+      return HttpResponse.json(
+        {
+          message:
+            startSlot?.status === "booked"
+              ? "Khung giờ này vừa có người đặt, vui lòng chọn khung khác"
+              : "Nhiếp ảnh gia không nhận lịch vào khung giờ này, vui lòng chọn khung khác",
+        },
+        { status: 409 }
+      );
+    }
     const booking: Booking = {
       id: `bk-${Date.now()}`,
       clientId: userIdOf(request),
-      clientName: input.contactName,
+      clientName: input.contactName ?? "Khách hàng",
       photographerId: input.photographerId,
       photographerName: input.photographerName,
       style: input.style,
       date: input.date,
       location: input.location,
-      price: input.price,
-      status: "pending",
+      price: pkg.price,
+      packageId: pkg.id,
+      packageSnapshot: packageTerms(pkg),
+      timeSlot: input.timeSlot,
+      contactPhone: input.contactPhone,
+      note: input.note,
+      status: "awaiting_deposit",
+      depositAmount: depositAmount(pkg.price),
+      depositDeadline: minutesFromNow(DEPOSIT_HOLD_MINUTES),
     };
-    // One row in the shared table → instantly visible to the photographer too.
+    // One row in the shared table. The photographer only sees it once the
+    // deposit is paid (GET /me/bookings hides "awaiting_deposit").
     bookings = [booking, ...bookings];
     saveBookings();
     return HttpResponse.json(booking, { status: 201 });
   }),
 
+  // Client pays the deposit → the platform holds it and the request goes to the
+  // photographer ("pending"). Expired holds are released instead.
+  http.post("/api/bookings/:booking_id/deposit", async ({ params, request }) => {
+    await delay();
+    const userId = userIdOf(request);
+    const booking = bookings.find((b) => b.id === params.booking_id && b.clientId === userId);
+    if (!booking) {
+      return HttpResponse.json({ message: "Không tìm thấy lịch đặt" }, { status: 404 });
+    }
+    if (booking.status !== "awaiting_deposit") {
+      return HttpResponse.json(
+        { message: "Lịch đặt này không còn chờ đặt cọc" },
+        { status: 409 }
+      );
+    }
+    if (booking.depositDeadline && booking.depositDeadline < new Date().toISOString()) {
+      bookings = bookings.map((b) => (b.id === booking.id ? { ...b, status: "cancelled" } : b));
+      saveBookings();
+      return HttpResponse.json(
+        { message: "Đã hết thời gian giữ lịch, vui lòng đặt lại" },
+        { status: 409 }
+      );
+    }
+    paymentProvider.hold({ bookingId: booking.id, clientId: userId, amount: booking.depositAmount });
+    const updated: Booking = {
+      ...booking,
+      status: "pending",
+      depositPaidAt: new Date().toISOString(),
+    };
+    bookings = bookings.map((b) => (b.id === booking.id ? updated : b));
+    saveBookings();
+    return HttpResponse.json(updated);
+  }),
+
   // Client pays → platform holds the money in escrow (status "held"). Lens Xu may
   // be applied to reduce the cash charged (capped at a % of the order). Money
   // moves through the PaymentProvider seam, never touched directly here.
-  http.post("/api/bookings/:id/pay", async ({ params, request }) => {
+  http.post("/api/bookings/:booking_id/pay", async ({ params, request }) => {
     await delay();
     const userId = userIdOf(request);
     const { coinsToRedeem = 0 } = ((await request
       .json()
       .catch(() => ({}))) as PaymentInput) ?? {};
     const booking = bookings.find(
-      (b) => b.id === params.id && b.clientId === userId
+      (b) => b.id === params.booking_id && b.clientId === userId
     );
     if (!booking) {
       return HttpResponse.json(
@@ -370,12 +848,15 @@ export const handlers = [
         { status: 409 }
       );
     }
-    // Clamp the redemption to what's actually allowed (cap % + balance).
+    // The deposit is already held — only the remainder is due now. Lens Xu
+    // apply to that remainder (capped by the usual % + balance rules).
+    const remaining = remainingAmount(booking);
     const coins = Math.min(
       Math.max(0, Math.round(coinsToRedeem)),
-      maxRedeemableCoins(booking.price, coinBalanceOf(userId))
+      maxRedeemableCoins(booking.price, coinBalanceOf(userId)),
+      remaining
     );
-    const cash = booking.price - coins;
+    const cash = remaining - coins;
     if (coins > 0) {
       paymentProvider.debitCoins({
         userId,
@@ -397,11 +878,11 @@ export const handlers = [
   // Client confirms delivery → escrow releases to the photographer(s) ("released")
   // AND cashback Lens Xu is credited on the CASH portion (not on coins → no
   // xu-on-xu). Cashback lands ONLY here (shoot done), never at booking time.
-  http.post("/api/bookings/:id/confirm-receipt", async ({ params, request }) => {
+  http.post("/api/bookings/:booking_id/confirm-receipt", async ({ params, request }) => {
     await delay();
     const userId = userIdOf(request);
     const booking = bookings.find(
-      (b) => b.id === params.id && b.clientId === userId
+      (b) => b.id === params.booking_id && b.clientId === userId
     );
     if (!booking) {
       return HttpResponse.json(
@@ -417,9 +898,11 @@ export const handlers = [
     }
     // Client can only complete after the photographer has delivered photos.
     const gallery = galleryOf(booking.id);
-    if (!gallery || gallery.photos.length === 0) {
+    const required = booking.packageSnapshot?.photoCount ?? 1;
+    const delivered = gallery?.photos.length ?? 0;
+    if (delivered < required) {
       return HttpResponse.json(
-        { message: "Nhiếp ảnh gia chưa giao ảnh" },
+        { message: `Nhiếp ảnh gia mới giao ${delivered}/${required} ảnh` },
         { status: 409 }
       );
     }
@@ -452,11 +935,11 @@ export const handlers = [
 
   // Client cancels a held/confirmed booking → refund the cash paid + return any
   // Lens Xu that were redeemed (client isn't penalized for a cancellation).
-  http.post("/api/bookings/:id/cancel", async ({ params, request }) => {
+  http.post("/api/bookings/:booking_id/cancel", async ({ params, request }) => {
     await delay();
     const userId = userIdOf(request);
     const booking = bookings.find(
-      (b) => b.id === params.id && b.clientId === userId
+      (b) => b.id === params.booking_id && b.clientId === userId
     );
     if (!booking) {
       return HttpResponse.json(
@@ -464,29 +947,34 @@ export const handlers = [
         { status: 404 }
       );
     }
-    if (booking.status !== "held" && booking.status !== "confirmed") {
+    if (booking.status === "released" || booking.status === "cancelled") {
       return HttpResponse.json(
         { message: "Không thể huỷ lịch ở trạng thái này" },
         { status: 409 }
       );
     }
-    // Only a held booking had money/coins taken — refund those.
-    if (booking.status === "held") {
-      const coins = booking.coinsRedeemed ?? 0;
-      paymentProvider.refund({
+    // Cancellation policy (lib/booking.ts cancelTerms): free before the
+    // photographer accepts or ≥ FREE_CANCEL_DAYS before the shoot; later, the
+    // deposit is forfeited to the photographer (net of the platform fee) and the
+    // rest of what was paid comes back.
+    const terms = cancelTerms(booking);
+    if (terms.refund > 0) {
+      paymentProvider.refund({ bookingId: booking.id, clientId: userId, amount: terms.refund });
+    }
+    if (terms.coinsBack > 0) {
+      paymentProvider.creditCoins({
+        userId,
+        amount: terms.coinsBack,
         bookingId: booking.id,
-        clientId: userId,
-        amount: booking.price - coins,
+        expiresAt: coinExpiryISO(),
+        note: "Hoàn lại xu do huỷ buổi chụp",
       });
-      if (coins > 0) {
-        paymentProvider.creditCoins({
-          userId,
-          amount: coins,
-          bookingId: booking.id,
-          expiresAt: coinExpiryISO(),
-          note: "Hoàn lại xu do huỷ buổi chụp",
-        });
-      }
+    }
+    if (terms.forfeit > 0) {
+      paymentProvider.release({
+        bookingId: booking.id,
+        recipients: [{ payeeId: booking.photographerId, amount: photographerPayout(terms.forfeit) }],
+      });
     }
     const updated: Booking = {
       ...booking,
@@ -498,10 +986,61 @@ export const handlers = [
     return HttpResponse.json(updated);
   }),
 
+  // ── Signed-in user: account profile + settings (both roles) ────────────────
+  http.get("/api/me/profile", async ({ request }) => {
+    await delay();
+    const found = userProfiles[userIdOf(request)];
+    if (!found) {
+      return HttpResponse.json({ message: "Không tìm thấy hồ sơ" }, { status: 404 });
+    }
+    return HttpResponse.json(found);
+  }),
+
+  http.patch("/api/me/profile", async ({ request }) => {
+    await delay();
+    const userId = userIdOf(request);
+    const current = userProfiles[userId];
+    if (!current) {
+      return HttpResponse.json({ message: "Không tìm thấy hồ sơ" }, { status: 404 });
+    }
+    const p = (await request.json()) as ProfileInput;
+    const updated: UserProfile = {
+      ...current,
+      ...(p.name !== undefined && { name: p.name.trim() }),
+      ...(p.phone !== undefined && { phone: p.phone.trim() }),
+      ...(p.birthday !== undefined && { birthday: p.birthday }),
+      ...(p.gender !== undefined && { gender: p.gender }),
+      ...(p.city !== undefined && { city: p.city }),
+      ...(p.addressDetail !== undefined && { addressDetail: p.addressDetail.trim() }),
+      ...(p.notifications !== undefined && {
+        notifications: { ...current.notifications, ...p.notifications },
+      }),
+    };
+    userProfiles = { ...userProfiles, [userId]: updated };
+    saveUserProfiles();
+    // A photographer's account name is also their public name.
+    if (userId === profile.id && p.name !== undefined) {
+      profile = { ...profile, name: updated.name };
+      saveProfile();
+    }
+    return HttpResponse.json(updated);
+  }),
+
+  // UI phase: the portal holds no password store (accounts live with auth), so
+  // this only validates the payload shape.
+  http.post("/api/me/password", async ({ request }) => {
+    await delay();
+    const { currentPassword, newPassword } = (await request.json()) as ChangePasswordInput;
+    if (!currentPassword || !newPassword || newPassword.length < 8) {
+      return HttpResponse.json({ message: "Mật khẩu không hợp lệ" }, { status: 400 });
+    }
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   // ── Signed-in photographer: profile, incoming requests, availability ───────
   http.get("/api/me/photographer", async () => {
     await delay();
-    return HttpResponse.json(profileWithDates());
+    return HttpResponse.json(withAvailability(profile));
   }),
 
   // Photographer edits her own profile (bio, price, styles, portfolio, …).
@@ -517,33 +1056,51 @@ export const handlers = [
       ...(p.experienceYears !== undefined && { experienceYears: p.experienceYears }),
       ...(p.styles !== undefined && { styles: p.styles }),
       ...(p.portfolio !== undefined && { portfolio: p.portfolio }),
-      ...(p.packages !== undefined && { packages: p.packages }),
+      ...(p.packages !== undefined && { packages: p.packages.map((pkg) => normalizePackage(pkg)) }),
     };
     saveProfile();
-    return HttpResponse.json(profileWithDates());
+    return HttpResponse.json(withAvailability(profile));
   }),
 
   // Booking requests sent TO the signed-in photographer.
   http.get("/api/me/bookings", async ({ request }) => {
     await delay();
     const userId = userIdOf(request);
+    // A request only reaches the photographer once its deposit is paid.
     return HttpResponse.json(
-      bookings.filter((b) => b.photographerId === userId).sort(byUpcomingFirst)
+      bookings
+        .filter((b) => b.photographerId === userId && b.status !== "awaiting_deposit")
+        .sort(byUpcomingFirst)
     );
   }),
 
-  http.patch("/api/me/bookings/:id", async ({ params, request }) => {
+  http.patch("/api/me/bookings/:booking_id", async ({ params, request }) => {
     await delay();
     const userId = userIdOf(request);
     const { status } = (await request.json()) as { status: BookingStatus };
     const booking = bookings.find(
-      (b) => b.id === params.id && b.photographerId === userId
+      (b) => b.id === params.booking_id && b.photographerId === userId
     );
     if (!booking) {
       return HttpResponse.json(
         { message: "Không tìm thấy yêu cầu đặt lịch" },
         { status: 404 }
       );
+    }
+    // The photographer only decides on a request whose deposit is paid.
+    if (booking.status !== "pending" || (status !== "confirmed" && status !== "cancelled")) {
+      return HttpResponse.json(
+        { message: "Không thể cập nhật yêu cầu ở trạng thái này" },
+        { status: 409 }
+      );
+    }
+    // Declining returns the client's deposit in full.
+    if (status === "cancelled") {
+      paymentProvider.refund({
+        bookingId: booking.id,
+        clientId: booking.clientId,
+        amount: booking.depositAmount,
+      });
     }
     const updated: Booking = { ...booking, status };
     bookings = bookings.map((b) => (b.id === booking.id ? updated : b));
@@ -553,7 +1110,7 @@ export const handlers = [
 
   // ── Liên kết thợ (multi-photographer) ───────────────────────────────────────
   // Lead photographer invites another photographer + agreed payout share.
-  http.post("/api/me/bookings/:id/collaborators", async ({ params, request }) => {
+  http.post("/api/me/bookings/:booking_id/collaborators", async ({ params, request }) => {
     await delay();
     const userId = userIdOf(request);
     const input = (await request.json()) as {
@@ -563,7 +1120,7 @@ export const handlers = [
       sharePct: number;
     };
     const booking = bookings.find(
-      (b) => b.id === params.id && b.photographerId === userId
+      (b) => b.id === params.booking_id && b.photographerId === userId
     );
     if (!booking) {
       return HttpResponse.json(
@@ -621,13 +1178,13 @@ export const handlers = [
   }),
 
   // Invited photographer accepts / declines their agreed share.
-  http.patch("/api/me/collaborations/:id", async ({ params, request }) => {
+  http.patch("/api/me/collaborations/:collaboration_id", async ({ params, request }) => {
     await delay();
     const userId = userIdOf(request);
     const { status } = (await request.json()) as {
       status: "accepted" | "declined";
     };
-    const booking = bookings.find((b) => b.id === params.id);
+    const booking = bookings.find((b) => b.id === params.collaboration_id);
     const isCollaborator = (booking?.collaborators ?? []).some(
       (c) => c.photographerId === userId
     );
@@ -648,18 +1205,44 @@ export const handlers = [
     return HttpResponse.json(updated);
   }),
 
-  http.get("/api/me/availability", async () => {
+  // Payouts per month for the studio overview (seeded history + live releases).
+  http.get("/api/me/earnings", async ({ request }) => {
     await delay();
-    return HttpResponse.json([...availableDates].sort());
+    const viewer = userIdOf(request) || profile.id;
+    const now = new Date();
+    const months = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
+      return { key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`, label: `Th${d.getMonth() + 1}` };
+    });
+    const released = bookings.filter((b) => b.status === "released");
+    const amounts = months.map(({ key }, i) => {
+      const live = released
+        .filter((b) => b.date.startsWith(key))
+        .reduce((sum, b) => sum + (payoutRecipients(b).find((r) => r.payeeId === viewer)?.amount ?? 0), 0);
+      return (viewer === profile.id ? seedMonthlyEarnings[i] : 0) + live;
+    });
+    const thisMonth = amounts[5];
+    const lastMonth = amounts[4];
+    const summary: EarningsSummary = {
+      months: months.map((m, i) => ({ label: m.label, amount: amounts[i] })),
+      thisMonth,
+      lastMonth,
+      changePct: lastMonth > 0 ? Math.round(((thisMonth - lastMonth) / lastMonth) * 100) : null,
+    };
+    return HttpResponse.json(summary);
   }),
 
-  http.put("/api/me/availability", async ({ request }) => {
+  http.get("/api/me/schedule", async () => {
     await delay();
-    const { date } = (await request.json()) as { date: string };
-    availableDates = availableDates.includes(date)
-      ? availableDates.filter((d) => d !== date)
-      : [...availableDates, date];
-    return HttpResponse.json([...availableDates].sort());
+    return HttpResponse.json(mySchedule);
+  }),
+
+  // Replaces the whole schedule — the studio only sends it on "Lưu lịch".
+  http.put("/api/me/schedule", async ({ request }) => {
+    await delay();
+    mySchedule = sanitizeSchedule((await request.json()) as WorkSchedule, todayISO());
+    saveMySchedule();
+    return HttpResponse.json(mySchedule);
   }),
 
   // ── Messaging — scoped to the signed-in user (each side sees its own inbox) ──
@@ -698,7 +1281,8 @@ export const handlers = [
         id: `c-${Date.now()}`,
         participants: [viewerP, participant],
         unread: {},
-        aiEnabled: true,
+        // Assistant only between a client and a photographer.
+        aiEnabled: viewerP.role !== participant.role,
       };
       conversations.push(conv);
       saveConversations();
@@ -706,43 +1290,45 @@ export const handlers = [
     return HttpResponse.json(conversationForViewer(conv, viewer));
   }),
 
-  http.get("/api/conversations/:id/messages", async ({ params }) => {
+  http.get("/api/conversations/:conversation_id/messages", async ({ params }) => {
     await delay();
-    const id = params.id as string;
-    return HttpResponse.json((threads[id] ?? []).map((m) => ({ ...m })));
+    const conversationId = params.conversation_id as string;
+    return HttpResponse.json((threads[conversationId] ?? []).map((m) => ({ ...m })));
   }),
 
-  http.post("/api/conversations/:id/messages", async ({ params, request }) => {
+  http.post("/api/conversations/:conversation_id/messages", async ({ params, request }) => {
     await delay();
-    const id = params.id as string;
+    const conversationId = params.conversation_id as string;
     const viewer = userIdOf(request);
     const { text } = (await request.json()) as { text: string };
     const now = Date.now();
     const message: Message = {
       id: `m-${now}`,
-      conversationId: id,
+      conversationId,
       senderId: viewer, // real sender id — UI decides "mine" via currentUser.id
       text,
       sentAt: new Date().toISOString(),
     };
-    threads[id] = [...(threads[id] ?? []), message];
+    threads[conversationId] = [...(threads[conversationId] ?? []), message];
 
-    const conv = conversations.find((c) => c.id === id);
+    const conv = conversations.find((c) => c.id === conversationId);
     if (conv) {
       // The recipient(s) gain an unread message.
       for (const p of conv.participants) {
         if (p.id !== viewer) conv.unread[p.id] = (conv.unread[p.id] ?? 0) + 1;
       }
 
-      // The photographer's AI assistant auto-replies when the OTHER side (a
-      // client) writes and AI is on — unless the topic needs a human
-      // (complaint/cancel/refund/dispute), where it hands off and turns off.
+      // The photographer's AI assistant auto-replies when the client writes and
+      // AI is on — unless the topic needs a human (complaint/cancel/refund/
+      // dispute), where it hands off and turns off. Photographer ↔ photographer
+      // threads never get an assistant.
       const photographer = conv.participants.find((p) => p.role === "photographer");
-      if (conv.aiEnabled && photographer && photographer.id !== viewer) {
+      const client = conv.participants.find((p) => p.role === "client");
+      if (conv.aiEnabled && photographer && client?.id === viewer) {
         const handedOff = needsHandoff(text);
         const aiReply: Message = {
           id: `m-${now}-ai`,
-          conversationId: id,
+          conversationId,
           senderId: photographer.id, // sent on the photographer's behalf
           text: handedOff
             ? HANDOFF_MESSAGE
@@ -750,7 +1336,7 @@ export const handlers = [
           sentAt: new Date(now + 1).toISOString(),
           isAI: true,
         };
-        threads[id] = [...threads[id], aiReply];
+        threads[conversationId] = [...threads[conversationId], aiReply];
         if (handedOff) conv.aiEnabled = false;
       }
     }
@@ -761,21 +1347,21 @@ export const handlers = [
   }),
 
   // Toggle the AI assistant for a single conversation (set by the photographer).
-  http.post("/api/conversations/:id/ai", async ({ params, request }) => {
+  http.post("/api/conversations/:conversation_id/ai", async ({ params, request }) => {
     await delay();
     const viewer = userIdOf(request);
     const { enabled } = (await request.json()) as { enabled: boolean };
-    const conv = conversations.find((c) => c.id === params.id);
+    const conv = conversations.find((c) => c.id === params.conversation_id);
     if (!conv) return HttpResponse.json(null);
     conv.aiEnabled = enabled;
     saveConversations();
     return HttpResponse.json(conversationForViewer(conv, viewer));
   }),
 
-  http.post("/api/conversations/:id/read", async ({ params, request }) => {
+  http.post("/api/conversations/:conversation_id/read", async ({ params, request }) => {
     await delay();
     const viewer = userIdOf(request);
-    const conv = conversations.find((c) => c.id === params.id);
+    const conv = conversations.find((c) => c.id === params.conversation_id);
     if (conv) {
       conv.unread[viewer] = 0;
       saveConversations();
@@ -809,7 +1395,28 @@ export const handlers = [
   // ── Wallet (real money) — derived from the append-only wallet ledger ────────
   http.get("/api/me/wallet", async ({ request }) => {
     await delay();
-    return HttpResponse.json({ balance: walletBalanceOf(userIdOf(request)) });
+    const userId = userIdOf(request);
+    const ledger = walletTransactionsOf(userId);
+    const sumOf = (type: string) =>
+      ledger.filter((t) => t.type === type).reduce((s, t) => s + t.amount, 0);
+    const month = todayISO().slice(0, 7);
+    // Money the platform still holds for shoots this photographer worked on.
+    const held = bookings
+      .filter((b) => b.status === "held")
+      .map((b) => payoutRecipients(b).find((r) => r.payeeId === userId)?.amount ?? 0)
+      .filter((amount) => amount > 0);
+    const summary: WalletSummary = {
+      balance: walletBalanceOf(userId),
+      frozenBalance: held.reduce((s, a) => s + a, 0),
+      pendingPayout: held.reduce((s, a) => s + a, 0),
+      pendingPayoutCount: held.length,
+      receivedThisMonth: ledger
+        .filter((t) => t.type === "payout" && t.createdAt.slice(0, 7) === month)
+        .reduce((s, t) => s + t.amount, 0),
+      withdrawnTotal: -sumOf("withdraw"),
+      refundedTotal: sumOf("refund"),
+    };
+    return HttpResponse.json(summary);
   }),
 
   http.get("/api/me/wallet/transactions", async ({ request }) => {
@@ -867,17 +1474,17 @@ export const handlers = [
   }),
 
   // A booking's gallery — readable by the client who booked it or the photographer.
-  http.get("/api/bookings/:id/gallery", async ({ params }) => {
+  http.get("/api/bookings/:booking_id/gallery", async ({ params }) => {
     await delay();
-    return HttpResponse.json(galleryOf(params.id as string));
+    return HttpResponse.json(galleryOf(params.booking_id as string));
   }),
 
   // Photographer delivers / adds photos to their booking's gallery.
-  http.post("/api/me/bookings/:id/gallery", async ({ params, request }) => {
+  http.post("/api/me/bookings/:booking_id/gallery", async ({ params, request }) => {
     await delay();
     const userId = userIdOf(request) || "me";
     const booking = bookings.find(
-      (b) => b.id === params.id && b.photographerId === userId
+      (b) => b.id === params.booking_id && b.photographerId === userId
     );
     if (!booking) {
       return HttpResponse.json(

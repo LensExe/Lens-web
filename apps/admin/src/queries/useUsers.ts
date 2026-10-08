@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getUsers, setUserStatus } from "@/services/users";
+import { queueKey } from "@/queries/useStats";
 import type { UserStatus } from "@/types";
 
 // Layer 2 — Query hooks.
@@ -21,6 +22,7 @@ export function useSetUserStatus() {
       setUserStatus(id, status),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: userKeys.all });
+      qc.invalidateQueries({ queryKey: queueKey });
     },
   });
 }

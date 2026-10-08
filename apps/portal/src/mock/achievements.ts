@@ -16,7 +16,7 @@ export const seedAchievements: Record<string, AchievementSeed> = {
     badges: ["fast-reply", "punctual", "loyal"],
   },
   p1: {
-    stats: { completedSessions: 34, fiveStarPct: 95, returningClients: 10, cancelRate: 3 },
+    stats: { completedSessions: 68, fiveStarPct: 95, returningClients: 18, cancelRate: 3 },
     badges: ["top-rated", "punctual"],
   },
   p2: {
@@ -24,8 +24,24 @@ export const seedAchievements: Record<string, AchievementSeed> = {
     badges: ["wedding", "top-rated", "loyal", "punctual"],
   },
   p3: {
-    stats: { completedSessions: 12, fiveStarPct: 88, returningClients: 4, cancelRate: 6 },
+    stats: { completedSessions: 42, fiveStarPct: 93, returningClients: 12, cancelRate: 4 },
     badges: ["fast-reply"],
+  },
+  p4: {
+    stats: { completedSessions: 20, fiveStarPct: 91, returningClients: 5, cancelRate: 5 },
+    badges: ["fast-reply", "punctual"],
+  },
+  p5: {
+    stats: { completedSessions: 14, fiveStarPct: 88, returningClients: 4, cancelRate: 6 },
+    badges: ["fast-reply", "top-rated"],
+  },
+  p7: {
+    stats: { completedSessions: 30, fiveStarPct: 94, returningClients: 9, cancelRate: 3 },
+    badges: ["wedding", "loyal"],
+  },
+  p10: {
+    stats: { completedSessions: 11, fiveStarPct: 90, returningClients: 3, cancelRate: 5 },
+    badges: ["top-rated"],
   },
   p12: {
     stats: { completedSessions: 96, fiveStarPct: 97, returningClients: 20, cancelRate: 2 },

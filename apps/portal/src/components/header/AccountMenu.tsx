@@ -1,13 +1,6 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  CalendarCheck,
-  LayoutDashboard,
-  LogOut,
-  MessageSquare,
-  Star,
-  Wallet,
-} from "lucide-react";
+import { Eye, LayoutDashboard, LogOut, Settings, Wallet } from "lucide-react";
 import {
   Avatar,
   AvatarFallback,
@@ -18,60 +11,32 @@ import {
   cn,
   formatPrice,
 } from "@lens/ui";
-import { clearSession, currentUser, hasRole } from "@/lib/session";
-import { formatCoins } from "@/lib/wallet";
-import { useCoinSummary, useWalletSummary } from "@/queries/useWallet";
-import type { UserRole } from "@/types";
+import { clearSession, currentUser } from "@/lib/session";
+import { useWalletSummary } from "@/queries/useWallet";
+import { useMyProfile } from "@/queries/useProfile";
 
 const LANDING_URL = import.meta.env.VITE_LANDING_URL ?? "http://localhost:5173";
 
-type MenuItem = {
-  to: string;
-  label: string;
-  icon: typeof LayoutDashboard;
-  /** Roles allowed to see this menu item. */
-  allow: UserRole[];
-};
+type MenuItem = { to: string; label: string; icon: typeof LayoutDashboard };
 
-// A single role-aware workspace entry (photographers land in their studio
-// dashboard, clients in their own area) — no more "two separate apps" split.
-const workspaceHome = currentUser.role === "photographer" ? "/dashboard" : "/client";
-
-const menu: MenuItem[] = [
-  { to: workspaceHome, label: "Bảng điều khiển", icon: LayoutDashboard, allow: ["client", "photographer"] },
-  { to: "/client/bookings", label: "Lịch đặt của tôi", icon: CalendarCheck, allow: ["client", "photographer"] },
-  { to: "/client/reviews", label: "Đánh giá của tôi", icon: Star, allow: ["client", "photographer"] },
-  { to: "/messages", label: "Tin nhắn", icon: MessageSquare, allow: ["client", "photographer"] },
-  { to: "/wallet", label: "Ví của tôi", icon: Wallet, allow: ["client", "photographer"] },
+// Account things only. Clients reach their pages from the top navigation and
+// messages from the header icon; photographers get a way back into the studio
+// (and to their public profile) from anywhere.
+const ACCOUNT_ITEMS: MenuItem[] = [
+  { to: "/wallet", label: "Ví của tôi", icon: Wallet },
+  { to: "/settings", label: "Cài đặt", icon: Settings },
 ];
+const menuFor = (): MenuItem[] =>
+  currentUser.role === "photographer"
+    ? [
+        { to: "/dashboard", label: "Bảng điều khiển", icon: LayoutDashboard },
+        { to: `/photographers/${currentUser.id}`, label: "Xem hồ sơ công khai", icon: Eye },
+        ...ACCOUNT_ITEMS,
+      ]
+    : ACCOUNT_ITEMS;
 
 const itemClass =
   "flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-foreground/80 transition-colors hover:bg-muted hover:text-foreground";
-
-/** One balance tile in the dropdown header — links to the wallet. */
-function BalanceTile({
-  label,
-  value,
-  hint,
-  onNavigate,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  onNavigate: () => void;
-}) {
-  return (
-    <Link
-      to="/wallet"
-      onClick={onNavigate}
-      className="flex flex-col gap-0.5 rounded-xl border border-border bg-background px-3 py-2 transition-colors hover:bg-muted"
-    >
-      <span className="text-[11px] text-muted-foreground">{label}</span>
-      <span className="truncate text-sm font-semibold">{value}</span>
-      {hint && <span className="truncate text-[11px] text-amber-600 dark:text-amber-400">{hint}</span>}
-    </Link>
-  );
-}
 
 export function AccountMenu() {
   const [open, setOpen] = useState(false);
@@ -92,8 +57,10 @@ export function AccountMenu() {
     closeTimer.current = setTimeout(() => setOpen(false), 120);
   };
 
+  const { data: profile } = useMyProfile();
+  const name = profile?.name ?? currentUser.name;
+  const avatarSrc = profile?.avatar ?? currentUser.avatar;
   const { data: wallet } = useWalletSummary();
-  const { data: coins } = useCoinSummary();
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -105,7 +72,7 @@ export function AccountMenu() {
           className="rounded-full outline-none ring-offset-2 ring-offset-background transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring"
         >
           <Avatar className="size-9">
-            <AvatarImage src={currentUser.avatar} alt={currentUser.name} />
+            <AvatarImage src={avatarSrc} alt={name} />
             <AvatarFallback>{currentUser.initials}</AvatarFallback>
           </Avatar>
         </button>
@@ -120,40 +87,41 @@ export function AccountMenu() {
         {/* User header */}
         <div className="flex items-center gap-3 bg-muted/50 p-4">
           <Avatar className="size-10">
-            <AvatarImage src={currentUser.avatar} alt={currentUser.name} />
+            <AvatarImage src={avatarSrc} alt={name} />
             <AvatarFallback>{currentUser.initials}</AvatarFallback>
           </Avatar>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{currentUser.name}</p>
+            <p className="truncate text-sm font-semibold">{name}</p>
             <p className="truncate text-xs text-muted-foreground">{currentUser.email}</p>
           </div>
         </div>
 
-        {/* Balances — wallet + Lens Xu, both link to /wallet */}
-        <div className="grid grid-cols-2 gap-2 border-b border-border p-3">
-          <BalanceTile
-            label="Số dư ví"
-            value={wallet ? formatPrice(wallet.balance) : "…"}
-            onNavigate={() => setOpen(false)}
-          />
-          <BalanceTile
-            label="Lens Xu"
-            value={coins ? formatCoins(coins.balance) : "…"}
-            hint={coins && coins.expiringSoon > 0 ? `Sắp hết hạn ${formatCoins(coins.expiringSoon)}` : undefined}
-            onNavigate={() => setOpen(false)}
-          />
-        </div>
+        {/* Balances — one block linking to the wallet; full values, never cut */}
+        <Link
+          to="/wallet"
+          onClick={() => setOpen(false)}
+          className="block border-b border-border px-4 py-3 transition-colors hover:bg-muted/60"
+        >
+          <dl className="space-y-1.5 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <dt className="text-muted-foreground">Ví tiền</dt>
+              <dd className="font-semibold tabular-nums">{wallet ? formatPrice(wallet.balance) : "…"}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <dt className="text-muted-foreground">Đang giữ</dt>
+              <dd className="font-semibold tabular-nums">{wallet ? formatPrice(wallet.frozenBalance) : "…"}</dd>
+            </div>
+          </dl>
+        </Link>
 
         {/* Navigation */}
         <div className="p-1.5">
-          {menu
-            .filter((m) => hasRole(m.allow, currentUser.role))
-            .map((m) => (
-              <Link key={m.to} to={m.to} onClick={() => setOpen(false)} className={itemClass}>
-                <m.icon className="size-4 text-muted-foreground" />
-                {m.label}
-              </Link>
-            ))}
+          {menuFor().map((m) => (
+            <Link key={m.to} to={m.to} onClick={() => setOpen(false)} className={itemClass}>
+              <m.icon className="size-4 text-muted-foreground" />
+              {m.label}
+            </Link>
+          ))}
         </div>
 
         {/* Logout */}

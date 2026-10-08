@@ -15,7 +15,19 @@ const COIN_DB_KEY = "lens.coins.v1";
 function load<T>(key: string, seed: T[]): T[] {
   try {
     const raw = localStorage.getItem(key);
-    if (raw) return JSON.parse(raw) as T[];
+    if (raw) {
+      const stored = JSON.parse(raw) as T[];
+      const storedIds = new Set(
+        stored
+          .map((item) => (item as { id?: string }).id)
+          .filter((id): id is string => Boolean(id))
+      );
+      const additions = seed.filter((item) => {
+        const id = (item as { id?: string }).id;
+        return !id || !storedIds.has(id);
+      });
+      return [...stored, ...additions.map((item) => ({ ...item }))];
+    }
   } catch {
     /* storage blocked — fall back to a fresh seed */
   }
@@ -78,7 +90,10 @@ export function coinSummaryOf(userId: string): CoinSummary {
     balance,
     upcoming.reduce((s, e) => s + e.amount, 0)
   );
-  return { balance, expiringSoon, nextExpiryAt: upcoming[0]?.at };
+  const mine = coinLedger.filter((t) => t.userId === userId);
+  const earnedTotal = mine.filter((t) => t.type === "earn").reduce((s, t) => s + t.amount, 0);
+  const redeemedTotal = -mine.filter((t) => t.type === "redeem").reduce((s, t) => s + t.amount, 0);
+  return { balance, expiringSoon, nextExpiryAt: upcoming[0]?.at, earnedTotal, redeemedTotal };
 }
 
 // ── The seam: every money/points movement goes through here ──────────────────

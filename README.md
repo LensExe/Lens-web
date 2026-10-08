@@ -73,9 +73,10 @@ Sau đó export trong `packages/ui/src/index.ts` để các app dùng được.
 
 ## Deploy
 
-Mỗi app deploy độc lập (`dist/` riêng), tới host bất kỳ (Vercel / VPS / cloud — trộn thoải mái).
-1 repo → CI theo từng app: `git push` chỉ build lại app nào thay đổi.
-File cấu hình deploy (`vercel.json` / GitHub Actions / nginx) sẽ thêm khi triển khai thật.
+Mỗi app deploy độc lập (`dist/` riêng). GitHub Actions build ba Docker image
+cho landing/portal/admin khi có push vào `main`; image dùng Caddy để phục vụ SPA.
+Caddy public bên ngoài có thể reverse proxy các domain vào ba port frontend.
+Hướng dẫn Portainer nằm ở `deploy/portainer/README.md`.
 
 ## Cấu trúc mỗi app
 

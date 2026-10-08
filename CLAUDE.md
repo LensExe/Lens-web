@@ -111,7 +111,7 @@ export async function getPhotographers() {
 - **Landing** — public marketing homepage + **auth** only. On login, check role and redirect to the right app via env URLs (`VITE_PORTAL_URL`, `VITE_ADMIN_URL`). UI phase has no real auth — the login screen picks a role and redirects. Landing's browse/discovery CTAs link out to the portal.
 - **Portal** — has TWO zones:
   - **Public (no login):** browse photographers (`/photographers`) + photographer profile (`/photographers/:id`) under `PublicLayout`. This is the discovery surface (landing links here).
-  - **Signed-in app:** Client (`/client/*`) and Photographer (`/dashboard/*`) + `/messages` under `PortalLayout` (sidebar).
+  - **Signed-in app:** Client (`/client/*`) uses a top navigation in the same header as the public pages; Photographer (`/dashboard/*`) uses a sidebar studio; `/messages` is full-screen. (`PortalLayout` switches `ClientShell` / `StudioShell` by role.)
 - **Admin** — approve photographers, manage users, monitor bookings, reports.
 
 > Note: browse/profile live in **portal** (as public routes), not landing. Landing keeps a small photographer mock only for the homepage "featured" showcase; portal owns the full browse data + filters.
@@ -153,7 +153,7 @@ When I say "tiếp" / "next", continue with the next sensible block.
 4. **Goal-driven.** For non-trivial tasks, give a brief plan with verification checks, let me review, then execute. Plan before each build block. Always follow `DESIGN.md` + shadcn for consistency.
 
 ## 10. Deployment
-Each app deploys **independently** (its own `dist/`), to any host (Vercel / VPS / cloud — mix freely). Apps talk only via URLs in env vars. One repo → per-app CI: `git push` rebuilds only the apps that changed. Keep builds portable (standard Vite output). Config files (`vercel.json` / GitHub Actions / nginx) to be added when we actually deploy.
+Each app deploys **independently** (its own `dist/`). Apps talk only via URLs in env vars. The GitHub Actions workflow builds all three frontend Docker images on pushes to `main`; Caddy inside each image serves the SPA, while a public-facing Caddy can reverse proxy the domains to their published ports. Keep builds portable (standard Vite output).
 
 ## 11. Testing
 No test setup in the UI phase (correctness judged visually). Add **Vitest** in Phase 2 when there's real logic (booking rules, payments).

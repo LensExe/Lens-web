@@ -4,6 +4,126 @@
 /* Scan the shared UI package so its Tailwind classes are generated here. */
 @source "../../../packages/ui/src";
 
+/* Portal design system: one neutral canvas, quiet surfaces and consistent
+   controls across discovery, client, studio, messaging and account pages. */
+.portal-theme {
+  --portal-surface-shadow:
+    0 1px 2px rgb(24 24 27 / 0.035), 0 12px 28px -24px rgb(24 24 27 / 0.24);
+  --portal-surface-border: color-mix(in oklab, var(--border) 82%, transparent);
+  min-height: 100dvh;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.portal-theme .portal-page-container {
+  width: 100%;
+  max-width: 1480px;
+  margin-inline: auto;
+  padding-inline: clamp(1rem, 2.4vw, 2.25rem);
+  padding-block: clamp(1.5rem, 2.2vw, 2rem);
+}
+
+.portal-theme .portal-frame-container {
+  width: 100%;
+  max-width: 1480px;
+  margin-inline: auto;
+  padding-inline: clamp(1rem, 2.4vw, 2.25rem);
+}
+
+.portal-theme .portal-page-header {
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.portal-theme .portal-page-header p {
+  max-width: 44rem;
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.portal-theme .portal-page-header h1,
+.portal-theme .portal-page-container > header:not(.portal-page-header) h1,
+.portal-theme .portal-frame-container > h1 {
+  font-size: clamp(1.5rem, 2.4vw, 1.9rem);
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+}
+
+.portal-theme .portal-page-container > header:not(.portal-page-header) > p {
+  max-width: 48rem;
+  margin-top: 0.35rem;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--muted-foreground);
+}
+
+.portal-theme [data-slot="button"]:not([data-size^="icon"]) {
+  border-radius: 9999px;
+  font-weight: 550;
+}
+
+.portal-theme :where([data-slot="textarea"], [data-slot="select-trigger"]),
+.portal-theme [data-slot="input"]:not([class*="bg-transparent"]) {
+  border-radius: 0.875rem;
+  background-color: var(--card);
+}
+
+.portal-theme [data-slot="card"],
+.portal-theme [class*="bg-card"][class*="border-border"] {
+  border-color: var(--portal-surface-border);
+  border-radius: 1.25rem;
+  box-shadow: var(--portal-surface-shadow);
+}
+
+.portal-theme .portal-stat-card {
+  min-height: 9.5rem;
+  padding: 1.125rem;
+}
+
+.portal-theme [data-slot="status-tabs"] {
+  width: fit-content;
+  max-width: 100%;
+  gap: 0.25rem;
+  border: 0;
+  border-radius: 9999px;
+  background: color-mix(in oklab, var(--muted) 72%, transparent);
+  padding: 0.25rem;
+}
+
+.portal-theme [data-slot="status-tabs"] [role="tab"] {
+  min-height: 2.25rem;
+  border-radius: 9999px;
+  padding: 0.45rem 0.8rem;
+}
+
+.portal-theme [data-slot="status-tabs"] [role="tab"][aria-selected="true"] {
+  background: var(--card);
+  box-shadow: 0 1px 3px rgb(24 24 27 / 0.1);
+}
+
+.portal-theme [data-slot="status-tab-indicator"] {
+  display: none;
+}
+
+.portal-theme :where(button, a, input, textarea, select):focus-visible {
+  outline-color: var(--ember);
+}
+
+@media (max-width: 640px) {
+  .portal-theme .portal-page-container {
+    padding: 1.25rem 1rem 1.75rem;
+  }
+
+  .portal-theme .portal-frame-container {
+    padding-inline: 1rem;
+  }
+
+  .portal-theme [data-slot="status-tabs"] {
+    width: 100%;
+  }
+}
+
 /* Lightweight scroll-reveal — toggled by useScrollReveal (IntersectionObserver).
    Transform/opacity only; fully visible under reduced motion. */
 @media (prefers-reduced-motion: no-preference) {

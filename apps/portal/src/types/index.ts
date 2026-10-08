@@ -28,7 +28,8 @@ export interface Photographer {
   experienceYears: number;
   featured: boolean;
   portfolio: string[];
-  /** Upcoming dates the photographer is free, as ISO `yyyy-MM-dd` strings. */
+  /** Upcoming dates with at least one free slot, as ISO `yyyy-MM-dd` strings.
+   *  Computed by the API from the photographer's work schedule + bookings. */
   availableDates: string[];
   /** Service packages this photographer offers. Empty/absent → default tiers. */
   packages?: PhotographerPackage[];
@@ -41,11 +42,64 @@ export interface Photographer {
 export interface PhotographerPackage {
   id: string;
   name: string;
-  /** Short description, e.g. "2 giờ chụp". */
-  duration: string;
+  /** General description (what's included, the vibe…) — free text. */
+  description: string;
   /** Price for this package (VND). */
   price: number;
+  /** Edited photos delivered — a booking only completes once this many arrive. */
+  photoCount: number;
+  /** Shooting time, in hours. */
+  durationHours: number;
+  /** Days after the shoot within which the photos are delivered. */
+  /** Not stored by the backend booking-plan endpoint yet. */
+  deliveryDays?: number;
 }
+
+/** A half-hour precision interval used by working hours and busy exceptions. */
+export interface TimeRange {
+  start: string;
+  end: string;
+}
+
+/**
+ * A photographer's working hours. `weekly[d]` lists one or more working
+ * windows for weekday `d` (0 = Sunday, like `Date.getDay()`). An empty list is
+ * a day off. `busy` carves date-specific exceptions out of that template.
+ */
+export interface WorkSchedule {
+  weekly: TimeRange[][];
+  busy: BusyBlock[];
+}
+
+export interface BusyBlock {
+  date: string;
+  /** Empty ranges means the photographer is busy all day. */
+  ranges: TimeRange[];
+}
+
+/** 30-minute start points: free = bookable · busy = blocked · booked = held by a client. */
+export type SlotStatus = "free" | "busy" | "booked";
+
+/** One day of a photographer's public availability (only slots they work). */
+export interface DayAvailability {
+  date: string;
+  slots: { time: string; status: SlotStatus }[];
+}
+
+/** A photographer's payouts (after platform fee) per month, oldest → newest. */
+export interface EarningsSummary {
+  months: { label: string; amount: number }[];
+  thisMonth: number;
+  lastMonth: number;
+  /** % change this month vs last; null when last month had nothing. */
+  changePct: number | null;
+}
+
+/** The package terms frozen onto a booking when it's made (later edits don't change it). */
+export type PackageTerms = Pick<
+  PhotographerPackage,
+  "name" | "photoCount" | "durationHours" | "deliveryDays"
+>;
 
 // ── Career Achievement (ranks + badges) ─────────────────────────────────────
 export type RankId = "newbie" | "bronze" | "silver" | "gold" | "diamond";
@@ -66,9 +120,12 @@ export interface AchievementStats {
 export interface PhotographerAchievements {
   photographerId: string;
   rank: RankId;
-  stats: AchievementStats;
+  rankName?: string;
+  /** Aggregate performance metrics are not returned by lens-backend yet. */
+  stats?: AchievementStats;
   /** Ids of specialty badges this photographer has earned. */
   badges: string[];
+  badgeCatalog?: { id: string; name: string; description: string }[];
   /** Platform commission for this rank (a rank perk — lower is better). */
   commissionRate: number;
 }
@@ -79,11 +136,12 @@ export type StoragePlanTier = "free" | "pro" | "studio";
 export interface GalleryPhoto {
   id: string;
   url: string;
+  originalUrl?: string;
   name: string;
   sizeBytes: number;
 }
 
-/** Photos a photographer delivered for one shoot, with retention metadata. */
+/** Photos attached to a booking's backend delivery gallery. */
 export interface ShootGallery {
   bookingId: string;
   photographerId: string;
@@ -91,26 +149,26 @@ export interface ShootGallery {
   style: string;
   photos: GalleryPhoto[];
   sizeBytes: number;
-  /** ISO datetime the photos were delivered. */
-  deliveredAt: string;
-  /** ISO datetime the gallery auto-deletes; null = long-term (while subscribed). */
-  expiresAt: string | null;
-  planTier: StoragePlanTier;
-  /** True when a downgrade put this gallery over quota — access locked, not deleted. */
-  locked: boolean;
+  /** ISO datetime the photographer published the gallery to the customer. */
+  publishedAt?: string | null;
+  /** Legacy mock fields retained only for the unused MSW fixtures. */
+  deliveredAt?: string;
+  expiresAt?: string | null;
+  planTier?: StoragePlanTier;
+  locked?: boolean;
 }
 
-/** A photographer's storage plan + usage (derived). */
+/** Legacy mock response shape; no production route consumes this endpoint. */
 export interface StorageSummary {
   plan: StoragePlanTier;
   usedBytes: number;
   galleryCount: number;
   quotaBytesPerShoot: number;
-  /** Days photos are kept; null = long-term while subscribed. */
   retentionDays: number | null;
 }
 
 export type UserRole = "client" | "photographer" | "admin";
+export type PortalRole = Exclude<UserRole, "admin">;
 
 export interface User {
   id: string;
@@ -121,14 +179,40 @@ export interface User {
   city: string;
 }
 
-// Escrow lifecycle: the client pays in full once the photographer confirms; the
-// platform HOLDS the money, then RELEASES it to the photographer after the
-// client confirms the photos were delivered.
+// ── Authentication (UI phase — mock backend) ────────────────────────────────
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+  role: PortalRole;
+}
+
+export interface LoginInput {
+  email: string;
+  password: string;
+}
+
+export interface SignupInput {
+  name: string;
+  email: string;
+  password: string;
+  role: PortalRole;
+}
+
+export interface DemoAccount {
+  email: string;
+  password: string;
+  role: PortalRole;
+}
+
+// UI lifecycle mapped from backend booking and payment states.
 export type BookingStatus =
-  | "pending" // client requested, awaiting photographer
-  | "confirmed" // photographer accepted, awaiting payment
-  | "held" // client paid in full, platform holds the money in escrow
-  | "released" // client confirmed delivery, money released to photographer (done)
+  | "awaiting_deposit" // request created; customer has not paid the deposit yet
+  | "pending" // deposit paid; waiting for photographer confirmation
+  | "confirmed" // deposit paid; remaining payment due before the shoot
+  | "held" // shoot active or complete; any paid amount remains in escrow
+  | "released" // customer confirmed delivery and backend completed the booking
   | "cancelled";
 
 export interface Booking {
@@ -137,12 +221,31 @@ export interface Booking {
   clientName: string;
   photographerId: string;
   photographerName: string;
-  style: PhotoStyle;
+  style: PhotoStyle | "";
   /** ISO date string. */
   date: string;
   location: string;
   price: number;
   status: BookingStatus;
+  packageId?: string;
+  /** Snapshot of the chosen package's terms (photo count gates completion). */
+  packageSnapshot?: PackageTerms;
+  /** Original backend status, used for exact shoot and delivery actions. */
+  backendStatus?: import("./bookings").BookingStatus;
+  /** Backend timestamp set when the photographer publishes the delivery gallery. */
+  galleryPublishedAt?: string | null;
+  /** Total amount confirmed paid by the backend. */
+  paidAmount?: number;
+  /** "HH:mm" start time. */
+  timeSlot?: string;
+  contactPhone?: string;
+  note?: string;
+  /** Deposit that holds the slot (VND), part of `price`. */
+  depositAmount: number;
+  /** ISO datetime the deposit was paid. */
+  depositPaidAt?: string;
+  /** ISO datetime after which an unpaid booking is released. */
+  depositDeadline?: string;
   /** Lens Xu applied at checkout (reduces the cash paid). Set on pay. */
   coinsRedeemed?: number;
   /** Lens Xu cashback credited when the shoot completed. Set on release. */
@@ -162,13 +265,18 @@ export interface BookingCollaborator {
   status: "invited" | "accepted" | "declined";
 }
 
-/** Mock payment methods offered at the payment step (UI phase only). */
-export type PaymentMethod = "bank" | "card" | "momo";
+/** Payment methods currently accepted by lens-backend. */
+export type PaymentMethod = "gateway" | "wallet";
 
-/** Payload sent when a client pays in full for a confirmed booking. */
+/** Payload sent when a client pays the deposit for a new booking. */
+export interface DepositInput {
+  method: PaymentMethod;
+}
+
+/** Payload sent when a client pays the remainder of a confirmed booking. */
 export interface PaymentInput {
   method: PaymentMethod;
-  /** Lens Xu to apply, reducing the cash charged. Capped server-side. */
+  /** Legacy field used only by disabled MSW handlers; lens-backend ignores it. */
   coinsToRedeem?: number;
 }
 
@@ -182,10 +290,11 @@ export interface BookingInput {
   date: string;
   timeSlot: string;
   location: string;
-  contactName: string;
-  contactPhone: string;
-  note?: string;
   price: number;
+  /** Legacy mock-only fields; the backend booking DTO does not store these. */
+  contactName?: string;
+  contactPhone?: string;
+  note?: string;
 }
 
 export interface Review {
@@ -197,6 +306,25 @@ export interface Review {
   comment: string;
   /** ISO date string. */
   date: string;
+}
+
+/** A review submitted by the signed-in client for one completed booking. */
+export interface BookingReview {
+  id: string;
+  bookingId: string;
+  clientId: string;
+  photographerId: string;
+  rating: number;
+  comment: string;
+  /** ISO datetime string. */
+  createdAt: string;
+}
+
+export interface BookingReviewInput {
+  bookingId: string;
+  photographerId: string;
+  rating: number;
+  comment: string;
 }
 
 // ── Money & rewards ──────────────────────────────────────────────────────────
@@ -213,7 +341,7 @@ export interface WalletTransaction {
   userId: string;
   /** payout = earnings released to a photographer; refund = money back to a
    *  client; withdraw = cash-out request; topup = money added. */
-  type: "payout" | "refund" | "withdraw" | "topup";
+  type: "payout" | "refund" | "withdraw" | "topup" | "booking";
   /** Signed VND: credits (+) increase balance, debits (−) decrease it. */
   amount: number;
   status: "completed" | "pending";
@@ -240,9 +368,16 @@ export interface CoinTransaction {
   note: string;
 }
 
-/** Real-money wallet summary (derived from the wallet ledger). */
+/** Real-money wallet summary (derived from the wallet ledger + bookings). */
 export interface WalletSummary {
   balance: number;
+  frozenBalance: number;
+  /** Legacy fields from the disabled mock API. */
+  pendingPayout?: number;
+  pendingPayoutCount?: number;
+  receivedThisMonth?: number;
+  withdrawnTotal?: number;
+  refundedTotal?: number;
 }
 
 /** Lens Xu summary (derived from the coin ledger). */
@@ -252,6 +387,9 @@ export interface CoinSummary {
   expiringSoon: number;
   /** ISO date of the soonest upcoming expiry, if any. */
   nextExpiryAt?: string;
+  /** All-time coins earned as cashback / spent on bookings. */
+  earnedTotal: number;
+  redeemedTotal: number;
 }
 
 export interface Message {
@@ -291,7 +429,8 @@ export interface AssistantConfig {
 
 export interface Conversation {
   id: string;
-  /** The other participant in the thread. */
+  /** The other participant in the thread (their user / photographer id). */
+  participantId: string;
   participantName: string;
   participantAvatar: string;
   /** Their role, shown as a subtle label in the thread. */
@@ -302,6 +441,50 @@ export interface Conversation {
   lastMessageAt: string;
   /** Unread messages from the other participant. */
   unreadCount: number;
-  /** Whether the photographer's AI assistant is answering this thread. */
+  /** Whether the photographer's AI assistant is answering this thread. Only a
+   *  client ↔ photographer thread can have one. */
   aiEnabled?: boolean;
+}
+
+// ── Account profile & settings (both roles) ──────────────────────────────────
+export type Gender = "male" | "female" | "other";
+
+/** Which notifications the user wants to receive. */
+export interface NotificationPrefs {
+  bookingUpdates: boolean;
+  messages: boolean;
+  promotions: boolean;
+  emailDigest: boolean;
+}
+
+/** The signed-in user's personal info — also used to pre-fill booking forms. */
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+  phone: string;
+  /** ISO `yyyy-MM-dd`, empty = not set. */
+  birthday: string;
+  gender: Gender | "";
+  /** Default city + address for bookings. */
+  city: string;
+  addressDetail: string;
+  notifications: NotificationPrefs;
+}
+
+/** Editable profile fields (email + id are fixed). */
+export type ProfileInput = Partial<Omit<UserProfile, "id" | "email" | "avatar">>;
+
+export interface ChangePasswordInput {
+  currentPassword: string;
+  newPassword: string;
+}
+
+/** Rating overview for a photographer's reviews tab (computed by the backend). */
+export interface ReviewSummary {
+  average: number;
+  total: number;
+  /** Review counts per star, 5 → 1. */
+  breakdown: { stars: number; count: number }[];
 }

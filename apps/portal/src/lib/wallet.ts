@@ -36,48 +36,24 @@ export function formatCoins(amount: number): string {
   return `${new Intl.NumberFormat("vi-VN").format(amount)} ${COIN_LABEL}`;
 }
 
-/** VN label + tinted pill per coin transaction type. */
-export const COIN_TX_META: Record<
-  CoinTransaction["type"],
-  { label: string; className: string }
-> = {
-  earn: {
-    label: "Hoàn xu",
-    className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
-  },
-  redeem: {
-    label: "Dùng xu",
-    className: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
-  },
-  expire: {
-    label: "Hết hạn",
-    className: "bg-muted text-muted-foreground",
-  },
-  adjust: {
-    label: "Điều chỉnh",
-    className: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
-  },
+/** Short coin amount for tight spots, e.g. `64.000 xu`. */
+export function formatXu(amount: number): string {
+  return `${new Intl.NumberFormat("vi-VN").format(amount)} xu`;
+}
+
+/** VN label per coin transaction type (neutral — the ± amount shows direction). */
+export const COIN_TX_LABEL: Record<CoinTransaction["type"], string> = {
+  earn: "Hoàn xu",
+  redeem: "Dùng xu",
+  expire: "Hết hạn",
+  adjust: "Điều chỉnh",
 };
 
-/** VN label + tinted pill per wallet transaction type. */
-export const WALLET_TX_META: Record<
-  WalletTransaction["type"],
-  { label: string; className: string }
-> = {
-  payout: {
-    label: "Giải ngân",
-    className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
-  },
-  refund: {
-    label: "Hoàn tiền",
-    className: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400",
-  },
-  withdraw: {
-    label: "Rút tiền",
-    className: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
-  },
-  topup: {
-    label: "Nạp tiền",
-    className: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
-  },
+/** VN label per wallet transaction type. */
+export const WALLET_TX_LABEL: Record<WalletTransaction["type"], string> = {
+  payout: "Giải ngân",
+  refund: "Hoàn tiền",
+  withdraw: "Rút tiền",
+  topup: "Nạp tiền",
+  booking: "Thanh toán lịch chụp",
 };

@@ -34,13 +34,14 @@ const C_CHI: ConvParticipant = { id: "c-chi", name: "Phạm Mai Chi", avatar: av
 const C_EM: ConvParticipant = { id: "c-em", name: "Hoàng Thị Em", avatar: av("thiem-av"), role: "client" };
 const P2: ConvParticipant = { id: "p2", name: "Trần Quốc Bảo", avatar: av("quocbao-av"), role: "photographer" };
 
-// AI is ON by default for every conversation (it hands off + turns itself off
-// when a message needs a human — see handlers.ts needsHandoff).
+// AI is ON by default for every client ↔ photographer conversation (it hands
+// off + turns itself off when a message needs a human — see handlers.ts
+// needsHandoff).
 export const seedConversations: ConversationSeed[] = [
   // ── Photographer "me"'s inbox (with her clients + one where she's the client) ──
   { id: "c1", participants: [ME, C_ANH], unread: { me: 2 }, aiEnabled: true },
   { id: "c2", participants: [ME, C_CHI], unread: {}, aiEnabled: true },
-  { id: "c3", participants: [ME, P2], unread: {}, aiEnabled: true }, // me asks p2 as a client
+  { id: "c3", participants: [ME, P2], unread: {}, aiEnabled: false }, // two photographers — no assistant
   { id: "c4", participants: [ME, C_EM], unread: {}, aiEnabled: true },
   // ── Cross-role thread: both demo users can log in and see it ──────────────────
   { id: "c5", participants: [UK, ME], unread: { me: 1 }, aiEnabled: true }, // AI-testable

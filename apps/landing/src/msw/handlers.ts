@@ -1,6 +1,10 @@
 import { http, HttpResponse } from "msw";
 import { delay } from "@lens/ui";
 import { mockPhotographers } from "@/mock/photographers";
+import { mockStyles } from "@/mock/styles";
+import type {
+  StyleCategory,
+} from "@/types";
 
 // Mock backend for landing. Handlers play the role of the server: they read the
 // mock data ("database seed") and answer the HTTP requests the services make.
@@ -24,4 +28,16 @@ export const handlers = [
     const found = mockPhotographers.find((p) => p.id === params.id);
     return HttpResponse.json(found ?? null);
   }),
+
+  // GET /api/styles → every style + how many photographers offer it.
+  http.get("/api/styles", async () => {
+    await delay();
+    const data: StyleCategory[] = mockStyles.map((s) => ({
+      ...s,
+      photographerCount: mockPhotographers.filter((p) => p.styles.includes(s.label))
+        .length,
+    }));
+    return HttpResponse.json(data);
+  }),
+
 ];

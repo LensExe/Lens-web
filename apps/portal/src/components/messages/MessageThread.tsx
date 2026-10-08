@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Bot, Send, Sparkles } from "lucide-react";
+import { ArrowLeft, Bot, Info, Send, Sparkles } from "lucide-react";
 import {
   Avatar,
   AvatarFallback,
@@ -29,14 +29,19 @@ interface MessageThreadProps {
   conversation: Conversation;
   /** Shown on mobile to return to the conversation list. */
   onBack: () => void;
+  /** Opens the contact/bookings panel where it isn't shown alongside (< xl). */
+  onShowInfo: () => void;
 }
 
-export function MessageThread({ conversation, onBack }: MessageThreadProps) {
+export function MessageThread({ conversation, onBack, onShowInfo }: MessageThreadProps) {
   const { data: messages = [], isLoading } = useMessages(conversation.id);
   const { mutate: send, isPending } = useSendMessage(conversation.id);
   const toggleAI = useToggleConversationAI(conversation.id);
   const isPhotographer = currentUser.role === "photographer";
-  const aiOn = !!conversation.aiEnabled;
+  // The assistant only exists between a client and a photographer; the
+  // photographer controls it, the client is told when it's answering.
+  const clientThread = currentUser.role !== conversation.participantRole;
+  const aiOn = clientThread && !!conversation.aiEnabled;
   const [draft, setDraft] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -75,17 +80,28 @@ export function MessageThread({ conversation, onBack }: MessageThreadProps) {
             {ROLE_LABEL[conversation.participantRole]}
           </p>
         </div>
-        {isPhotographer && (
+        {isPhotographer && clientThread && (
           <label className="ml-auto flex shrink-0 cursor-pointer items-center gap-2 text-xs text-muted-foreground">
             <Sparkles className="size-4 text-ember" />
             <span className="hidden sm:inline">Trợ lý AI</span>
             <Switch
-              checked={aiOn}
+              checked={!!conversation.aiEnabled}
               onCheckedChange={(v) => toggleAI.mutate(v)}
               aria-label="Bật trợ lý AI cho hội thoại"
             />
           </label>
         )}
+        <button
+          type="button"
+          onClick={onShowInfo}
+          aria-label="Thông tin hội thoại"
+          className={cn(
+            "flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground xl:hidden",
+            !(isPhotographer && clientThread) && "ml-auto"
+          )}
+        >
+          <Info className="size-5" />
+        </button>
       </header>
 
       {/* AI disclaimer — clients must know they're talking to a bot. */}

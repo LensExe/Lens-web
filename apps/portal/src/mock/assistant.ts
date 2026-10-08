@@ -19,9 +19,24 @@ export const seedAssistantConfig: AssistantConfig = {
     },
     {
       q: "Thanh toán và đặt cọc thế nào?",
-      a: "Bạn thanh toán qua sàn Lens; tiền được giữ đến khi bạn xác nhận đã nhận đủ ảnh.",
+      a: "Bạn đặt cọc 30% trước để nhiếp ảnh gia xác nhận lịch, phần còn lại thanh toán trước buổi chụp. Tiền do sàn Lens giữ đến khi bạn nhận đủ ảnh. Huỷ trước buổi chụp từ 7 ngày được hoàn 100%, muộn hơn sẽ mất cọc.",
     },
   ],
   tone: "Thân thiện, ngắn gọn",
   enabled: true,
+};
+
+// Keep one explicitly disabled assistant in the seed as well. This lets the
+// assistant settings and admin quality screens demonstrate both toggle states.
+export const seedAssistantConfigs: Record<string, AssistantConfig> = {
+  me: seedAssistantConfig,
+  p2: {
+    photographerId: "p2",
+    services: "Gói ảnh cưới từ 3.2tr, nhận chụp tại TP. Hồ Chí Minh và các tỉnh lân cận.",
+    style: "Ảnh cưới phóng sự, cảm xúc tự nhiên.",
+    area: "TP. Hồ Chí Minh và khu vực lân cận",
+    faqs: [],
+    tone: "Thân thiện, ngắn gọn",
+    enabled: false,
+  },
 };

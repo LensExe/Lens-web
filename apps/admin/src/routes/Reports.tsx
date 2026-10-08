@@ -1,101 +1,48 @@
-import { CalendarCheck, TrendingUp, Wallet } from "lucide-react";
-import { Skeleton, formatPrice } from "@lens/ui";
-import { StatCard } from "@/components/StatCard";
+import { Flag } from "lucide-react";
+import { PageContainer, PageHeader, Skeleton } from "@lens/ui";
 import { useReports } from "@/queries/useReports";
-import { formatCount } from "@/lib/format";
-import type { Breakdown } from "@/types";
+import { formatDate } from "@/lib/format";
 
-function BreakdownList({ title, items }: { title: string; items: Breakdown[] }) {
-  const max = Math.max(...items.map((i) => i.count), 1);
-  return (
-    <div className="rounded-2xl border border-border bg-card p-5">
-      <h3 className="mb-4 font-semibold">{title}</h3>
-      <ul className="space-y-3">
-        {items.map((item) => (
-          <li key={item.label}>
-            <div className="mb-1 flex items-center justify-between text-sm">
-              <span>{item.label}</span>
-              <span className="text-muted-foreground">{formatCount(item.count)}</span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-foreground"
-                style={{ width: `${(item.count / max) * 100}%` }}
-              />
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
+const statusLabel: Record<string, string> = {
+  open: "Mới gửi",
+  resolved: "Đã xử lý",
+  rejected: "Không vi phạm",
+  escalated: "Chuyển cấp xử lý",
+};
 
 export function Reports() {
-  const { data, isLoading } = useReports();
-
-  if (isLoading || !data) {
-    return (
-      <div className="mx-auto max-w-[1080px] px-6 py-8 md:py-10">
-        <Skeleton className="h-9 w-56" />
-        <div className="mt-7 grid gap-4 sm:grid-cols-3">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-32 rounded-2xl" />
-          ))}
-        </div>
-        <Skeleton className="mt-8 h-72 rounded-2xl" />
-      </div>
-    );
-  }
-
-  const totalBookings = data.monthly.reduce((s, m) => s + m.bookings, 0);
-  const totalRevenue = data.monthly.reduce((s, m) => s + m.revenue, 0);
-  const avgPerBooking = totalBookings ? Math.round(totalRevenue / totalBookings) : 0;
-  const maxRevenue = Math.max(...data.monthly.map((m) => m.revenue), 1);
+  const { data = [], isLoading, isError } = useReports();
 
   return (
-    <div className="mx-auto max-w-[1080px] px-6 py-8 md:py-10">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-          Báo cáo &amp; thống kê
-        </h1>
-        <p className="mt-1 text-muted-foreground">
-          Hiệu suất nền tảng trong 6 tháng gần nhất.
-        </p>
-      </header>
-
-      <div className="mt-7 grid gap-4 sm:grid-cols-3">
-        <StatCard icon={CalendarCheck} value={formatCount(totalBookings)} label="Lượt đặt lịch" />
-        <StatCard icon={Wallet} value={formatPrice(totalRevenue)} label="Tổng doanh thu" />
-        <StatCard icon={TrendingUp} value={formatPrice(avgPerBooking)} label="Trung bình / buổi" />
+    <PageContainer className="max-w-[1480px] py-6 md:py-8 lg:py-10">
+      <PageHeader title="Báo cáo vi phạm" description="Danh sách báo cáo người dùng gửi lên Lens từ backend." />
+      <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-900 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-200">
+        Backend chưa có API thống kê doanh thu theo tháng, lượt đặt theo phong cách/khu vực hoặc hoạt động gần đây. Trang này hiển thị hàng đợi moderation `/admin/reports`.
       </div>
-
-      {/* Monthly revenue bar chart */}
-      <section className="mt-8 rounded-2xl border border-border bg-card p-5 md:p-6">
-        <h2 className="font-semibold">Doanh thu theo tháng</h2>
-        <div className="mt-6 flex gap-3 sm:gap-6">
-          {data.monthly.map((m) => (
-            <div key={m.month} className="flex flex-1 flex-col items-center">
-              <span className="mb-2 text-xs font-medium text-muted-foreground">
-                {Math.round(m.revenue / 1_000_000)}tr
-              </span>
-              <div className="flex h-44 w-full items-end">
-                <div
-                  className="w-full rounded-t-lg bg-foreground transition-all"
-                  style={{ height: `${(m.revenue / maxRevenue) * 100}%` }}
-                  title={formatPrice(m.revenue)}
-                />
+      {isError && <p role="alert" className="mb-5 rounded-xl border border-destructive/30 p-4 text-sm text-destructive">Không tải được báo cáo từ backend.</p>}
+      {isLoading ? (
+        <div className="space-y-3">{[0, 1, 2].map((key) => <Skeleton key={key} className="h-28 rounded-2xl" />)}</div>
+      ) : data.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">Backend không có báo cáo vi phạm nào.</div>
+      ) : (
+        <div className="space-y-3">
+          {data.map((report) => (
+            <article key={report.id} className="rounded-2xl border border-border bg-card p-5">
+              <div className="flex flex-wrap items-start gap-3">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted"><Flag className="size-4" /></span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="font-semibold">{report.targetType || "Đối tượng"} · {report.targetId || "—"}</h2>
+                    <span className="rounded-full bg-muted px-2.5 py-1 text-xs">{statusLabel[report.status] ?? report.status}</span>
+                  </div>
+                  <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{report.reason || "Không có mô tả"}</p>
+                  <p className="mt-3 text-xs text-muted-foreground">{formatDate(report.createdAt)} · Mã {report.id}</p>
+                </div>
               </div>
-              <span className="mt-2 text-xs text-muted-foreground">{m.month}</span>
-            </div>
+            </article>
           ))}
         </div>
-      </section>
-
-      {/* Breakdowns */}
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <BreakdownList title="Theo phong cách chụp" items={data.byStyle} />
-        <BreakdownList title="Theo khu vực" items={data.byCity} />
-      </div>
-    </div>
+      )}
+    </PageContainer>
   );
 }

@@ -1,10 +1,11 @@
 import { avatar } from "@lens/ui";
 import type { Review } from "@/types";
+import { mockPhotographers } from "@/mock/photographers";
 
 const img = (seed: string) => avatar(seed);
 
 // Mock reviews. Imported ONLY by the service layer.
-export const mockReviews: Review[] = [
+const curatedReviews: Review[] = [
   {
     id: "r1",
     photographerId: "p1",
@@ -41,4 +42,31 @@ export const mockReviews: Review[] = [
     comment: "Phong cách đường phố ấn tượng, giao ảnh đúng hẹn.",
     date: "2026-02-25",
   },
+];
+
+const REVIEWERS = ["Nguyễn Mai Phương", "Phạm Thu Hà", "Đặng Mỹ Linh", "Bùi Quang Huy"];
+const COMMENTS = [
+  "Buổi chụp thoải mái, ảnh đẹp và giao đúng hẹn. Mình rất hài lòng.",
+  "Tư vấn góc chụp tận tình, màu ảnh đúng phong cách mình yêu thích.",
+  "Chuyên nghiệp từ lúc trao đổi đến khi nhận ảnh, chắc chắn sẽ quay lại.",
+  "Bắt được nhiều khoảnh khắc tự nhiên, bộ ảnh đẹp hơn mong đợi.",
+];
+
+// Every photographer has at least one review so profile/detail states never
+// fall into an accidental empty state. Curated reviews above keep the landing
+// page's original testimonials; the rest are deterministic fallback rows.
+const coveredIds = new Set(curatedReviews.map((review) => review.photographerId));
+export const mockReviews: Review[] = [
+  ...curatedReviews,
+  ...mockPhotographers
+    .filter((photographer) => !coveredIds.has(photographer.id))
+    .map((photographer, index) => ({
+      id: `${photographer.id}-r1`,
+      photographerId: photographer.id,
+      authorName: REVIEWERS[index % REVIEWERS.length],
+      authorAvatar: img(`landing-reviewer-${index}`),
+      rating: index % 4 === 0 ? 4 : 5,
+      comment: COMMENTS[index % COMMENTS.length],
+      date: `2026-0${Math.min(9, (index % 8) + 2)}-${String((index % 20) + 1).padStart(2, "0")}`,
+    })),
 ];

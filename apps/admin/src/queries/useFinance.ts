@@ -4,6 +4,7 @@ import {
   getWithdrawals,
   setWithdrawalStatus,
 } from "@/services/finance";
+import { queueKey } from "@/queries/useStats";
 import type { WithdrawalStatus } from "@/types";
 
 // Layer 2 — Query hooks.
@@ -34,6 +35,7 @@ export function useSetWithdrawalStatus() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: financeKeys.withdrawals });
       qc.invalidateQueries({ queryKey: financeKeys.summary });
+      qc.invalidateQueries({ queryKey: queueKey });
     },
   });
 }

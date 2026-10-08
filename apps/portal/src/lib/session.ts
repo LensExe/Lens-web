@@ -1,119 +1,88 @@
 import { avatar } from "@lens/ui";
-import type { UserRole } from "@/types";
+import { setBackendTokens } from "@/lib/backend-api";
+import type { AuthUser, PortalRole, UserRole } from "@/types";
 
 export interface SessionUser {
-  /** Stable id sent to the mock backend so data is scoped to this user. */
   id: string;
   name: string;
   email: string;
   avatar: string;
-  /** Initials shown when the avatar image fails to load. */
   initials: string;
-  role: UserRole;
+  role: PortalRole;
 }
 
-// UI phase — no real auth yet. The landing login redirects here with `?role=`,
-// which we persist so the portal shows the matching demo account. LATER
-// (Phase 2): replace with the authenticated session from Supabase.
-const STORAGE_KEY = "lens.session.role";
+export interface SessionTokens {
+  accessToken: string;
+  refreshToken: string;
+}
 
-type PortalRole = "client" | "photographer";
-
-// One demo identity per role the portal can sign in as. Emails match the
-// credentials autofilled on the landing login form.
-const DEMO_USERS: Record<PortalRole, SessionUser> = {
-  client: {
-    id: "u-khachhang",
-    name: "Trần Khách Hàng",
-    email: "khachhang@lens.vn",
-    avatar: avatar("client-av"),
-    initials: "KH",
-    role: "client",
-  },
-  photographer: {
-    // Matches her id in the photographer roster + dashboard (mock).
-    id: "me",
-    name: "Lý Gia Hân",
-    email: "nhiepanhgia@lens.vn",
-    avatar: avatar("giahan-av"),
-    initials: "GH",
-    role: "photographer",
-  },
-};
-
-const DEFAULT_ROLE: PortalRole = "photographer";
+const STORAGE_KEY = "lens.session.v1";
+const LEGACY_ROLE_KEY = "lens.session.role";
 
 const isPortalRole = (v: unknown): v is PortalRole =>
   v === "client" || v === "photographer";
 
-// localStorage can throw (private mode / blocked storage). Never let that crash
-// the app — fall back to in-memory defaults if it's unavailable.
-function safeGetRole(): string | null {
+function safeGetSession(): SessionUser | null {
   try {
-    return localStorage.getItem(STORAGE_KEY);
+    const value = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null") as Partial<SessionUser> | null;
+    return value && isPortalRole(value.role) && typeof value.id === "string"
+      && typeof value.name === "string" && typeof value.email === "string"
+      ? {
+          id: value.id,
+          name: value.name,
+          email: value.email,
+          avatar: typeof value.avatar === "string" && value.avatar ? value.avatar : avatar(value.id),
+          initials: typeof value.initials === "string" ? value.initials : getInitials(value.name),
+          role: value.role,
+        }
+      : null;
   } catch {
     return null;
   }
 }
-function safeSetRole(role: PortalRole) {
+
+function getInitials(name: string) {
+  return name.split(/\s+/).filter(Boolean).slice(-2)
+    .map((part) => part[0]?.toUpperCase() ?? "").join("");
+}
+
+function safeSetSession(user: SessionUser) {
   try {
-    localStorage.setItem(STORAGE_KEY, role);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+    localStorage.removeItem(LEGACY_ROLE_KEY);
   } catch {
-    /* storage blocked — role still applies for this page load */
+    /* The current tab can still continue if storage is blocked. */
   }
 }
 
-// Read `#role=` from the URL hash (set by the landing login redirect). The hash
-// never reaches the server, so it's a clean handoff channel between origins.
-function readRoleFromHash(): PortalRole | null {
-  const hash = window.location.hash.replace(/^#/, "");
-  if (!hash) return null;
-  const role = new URLSearchParams(hash).get("role");
-  return isPortalRole(role) ? role : null;
+/** The signed-in user, or `null` for a guest. */
+export const sessionUser: SessionUser | null = safeGetSession();
+export const isSignedIn = sessionUser !== null;
+export const currentUser = sessionUser as SessionUser;
+
+export function saveSession(user: AuthUser, tokens: SessionTokens) {
+  setBackendTokens(tokens);
+  safeSetSession({ ...user, initials: getInitials(user.name) });
 }
 
-// Resolve the signed-in role for this page load:
-// 1) #role= from the landing login redirect → persist + strip it from the URL
-// 2) previously persisted role (so a reload keeps you signed in)
-// 3) default
-function resolveRole(): PortalRole {
-  const fromHash = readRoleFromHash();
-  if (fromHash) {
-    safeSetRole(fromHash);
-    // Strip the hash from the address bar so refreshes stay clean.
-    try {
-      window.history.replaceState(
-        {},
-        "",
-        window.location.pathname + window.location.search
-      );
-    } catch {
-      /* ignore */
-    }
-    return fromHash;
-  }
-  const saved = safeGetRole();
-  return isPortalRole(saved) ? saved : DEFAULT_ROLE;
-}
-
-export const currentUser: SessionUser = DEMO_USERS[resolveRole()];
-
-/** Clear the signed-in session — called by "Đăng xuất" before going to landing. */
 export function clearSession() {
   try {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(LEGACY_ROLE_KEY);
   } catch {
     /* ignore */
   }
+  setBackendTokens(null);
 }
 
-/**
- * Whether the given role may access a nav item / route allowed for `allow`.
- * A photographer is ALSO a customer, so photographers see everything clients
- * see (the client area) plus their own photographer area. Clients see only the
- * client area. So the client area lists ["client","photographer"], the
- * photographer area only ["photographer"], and Messages both.
- */
-export function hasRole(allow: UserRole[], role: UserRole = currentUser.role) {
-  return allow.includes(role);
+export function hasRole(allow: UserRole[], role: UserRole | undefined = sessionUser?.role) {
+  return !!role && allow.includes(role);
+}
+
+export function mapBackendRole(value: unknown): PortalRole | null {
+  if (typeof value !== "string") return null;
+  const role = value.trim().toLowerCase();
+  if (role === "customer" || role === "client") return "client";
+  if (role === "photographer") return "photographer";
+  return null;
 }

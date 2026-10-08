@@ -28,7 +28,7 @@ export function PhotographerCard({ photographer }: PhotographerCardProps) {
   return (
     <a
       href={portalProfile(photographer.id)}
-      className="focus-ring group block overflow-hidden rounded-[28px] border border-border bg-card transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_-18px_rgba(0,0,0,0.25)]"
+      className="focus-ring group block overflow-hidden rounded-[28px] border border-border bg-card transition-transform duration-300 hover:-translate-y-1"
     >
       {/* Cover */}
       <div className="relative overflow-hidden">
@@ -76,7 +76,11 @@ export function PhotographerCard({ photographer }: PhotographerCardProps) {
         <div className="mt-4 flex items-end justify-between border-t border-border/60 pt-3">
           <div>
             <p className="text-[11px] text-muted-foreground">Từ</p>
-            <p className="font-semibold">{formatPrice(photographer.pricePerSession)}</p>
+            <p className="font-semibold">
+              {photographer.pricePerSession != null
+                ? formatPrice(photographer.pricePerSession)
+                : "Liên hệ"}
+            </p>
           </div>
           <span className="text-xs text-muted-foreground">/ buổi</span>
         </div>

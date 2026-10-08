@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { portalBrowse } from "@/lib/links";
 import { ArrowRight, CalendarCheck, Images, Search } from "lucide-react";
 import { Button } from "@lens/ui";
 import { useReveal } from "@lens/ui";
@@ -21,12 +21,11 @@ const steps = [
     icon: CalendarCheck,
     title: "Đặt lịch & chụp",
     description:
-      "Chọn ngày trống trên lịch, xác nhận và sẵn sàng cho buổi chụp của bạn.",
+      "Chọn ngày trống, đặt cọc để giữ lịch và sẵn sàng cho buổi chụp của bạn.",
   },
 ];
 
 export function HowItWorks() {
-  const navigate = useNavigate();
   const scope = useRef<HTMLElement>(null);
   useReveal(scope);
 
@@ -34,7 +33,7 @@ export function HowItWorks() {
     <section
       id="cach-hoat-dong"
       ref={scope}
-      className="scroll-mt-20 bg-muted/30 px-5 py-20 lg:py-28"
+      className="scroll-mt-20 bg-muted/30 px-5 py-16 md:py-20 lg:py-24"
     >
       <div className="mx-auto grid max-w-[1200px] gap-12 lg:grid-cols-[0.8fr_1fr] lg:gap-16">
         {/* Sticky heading */}
@@ -45,12 +44,11 @@ export function HowItWorks() {
           <p className="mt-3 max-w-sm text-muted-foreground">
             Từ lúc tìm kiếm đến khi cầm máy, mọi thứ gọn gàng trên một nền tảng.
           </p>
-          <Button
-            className="mt-6 rounded-full px-6"
-            onClick={() => navigate("/photographers")}
-          >
-            Bắt đầu ngay
-            <ArrowRight className="size-4" />
+          <Button asChild className="mt-6 rounded-full px-6">
+            <a href={portalBrowse()}>
+              Bắt đầu ngay
+              <ArrowRight className="size-4" />
+            </a>
           </Button>
         </div>
 

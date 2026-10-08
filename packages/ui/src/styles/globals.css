@@ -22,6 +22,8 @@
     --color-mist: #f4f4f5;
     --color-snow: #ffffff;
     --color-ember: #ff5a00;
+    /* Secondary accent (teal): on / earned / selected states + ranked bars. */
+    --color-lagoon: var(--lagoon);
     --color-orchid-flash: #fe45e2;
 
     --color-sidebar-ring: var(--sidebar-ring);
@@ -37,6 +39,13 @@
     --color-chart-3: var(--chart-3);
     --color-chart-2: var(--chart-2);
     --color-chart-1: var(--chart-1);
+    --color-chart-muted: var(--chart-muted);
+    --color-chart-lagoon: var(--chart-lagoon);
+    --color-ordinal-5: var(--ordinal-5);
+    --color-ordinal-4: var(--ordinal-4);
+    --color-ordinal-3: var(--ordinal-3);
+    --color-ordinal-2: var(--ordinal-2);
+    --color-ordinal-1: var(--ordinal-1);
     --color-ring: var(--ring);
     --color-input: var(--input);
     --color-border: var(--border);
@@ -95,11 +104,26 @@
     --border: oklch(0.905 0 0);
     --input: oklch(0.905 0 0);
     --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
+    /* Categorical chart slots — fixed order (brand orange first), validated for
+       CVD + contrast with the dataviz validator. Light slots 3–4 sit below 3:1
+       on the card, so charts always carry visible labels/legends. */
+    --chart-1: #eb6834;
+    --chart-2: #2a78d6;
+    --chart-3: #1baf7a;
+    --chart-4: #eda100;
+    --chart-5: #4a3aa7;
+    /* Restrained charts: grey bars, the highlighted one in Ember. */
+    --chart-muted: #d4d4d8;
+    --lagoon: #0f766e;
+    /* Lagoon as a chart mark (validated: band, chroma, contrast vs card). */
+    --chart-lagoon: #0d9488;
+    /* Ordinal ramp (one hue, low → high) for ordered tiers (ranks, plans). */
+    /* Ordered categories (plan tiers, ranks): a grey ramp, light → dark. */
+    --ordinal-1: #e4e4e7;
+    --ordinal-2: #d4d4d8;
+    --ordinal-3: #a1a1aa;
+    --ordinal-4: #71717a;
+    --ordinal-5: #3f3f46;
     --radius: 0.625rem;
     --sidebar: oklch(0.988 0 0);
     --sidebar-foreground: oklch(0.16 0 0);
@@ -139,11 +163,21 @@
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
     --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
+    /* Same hues stepped for the dark surface (validated separately). */
+    --chart-1: #d95926;
+    --chart-2: #3987e5;
+    --chart-3: #199e70;
+    --chart-4: #c98500;
+    --chart-5: #9085e9;
+    --chart-muted: #52525b;
+    --lagoon: #2dd4bf;
+    --chart-lagoon: #17a898;
+    /* Ordinal ramp on dark runs dark → light (low → high). */
+    --ordinal-1: #3f3f46;
+    --ordinal-2: #52525b;
+    --ordinal-3: #71717a;
+    --ordinal-4: #a1a1aa;
+    --ordinal-5: #d4d4d8;
     --sidebar: oklch(0.205 0 0);
     --sidebar-foreground: oklch(0.985 0 0);
     --sidebar-primary: oklch(0.488 0.243 264.376);

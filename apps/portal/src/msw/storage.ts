@@ -14,7 +14,16 @@ const MB = 1024 * 1024;
 function loadGalleries(): ShootGallery[] {
   try {
     const raw = localStorage.getItem(GALLERY_DB_KEY);
-    if (raw) return JSON.parse(raw) as ShootGallery[];
+    if (raw) {
+      const stored = JSON.parse(raw) as ShootGallery[];
+      const storedIds = new Set(stored.map((gallery) => gallery.bookingId));
+      return [
+        ...stored,
+        ...seedGalleries
+          .filter((gallery) => !storedIds.has(gallery.bookingId))
+          .map((gallery) => ({ ...gallery, photos: gallery.photos.map((photo) => ({ ...photo })) })),
+      ];
+    }
   } catch {
     /* storage blocked */
   }
@@ -69,7 +78,7 @@ function reprice(g: ShootGallery, tier: StoragePlanTier): ShootGallery {
     expiresAt:
       def.retentionDays == null
         ? null
-        : addDaysISO(g.deliveredAt, def.retentionDays),
+        : addDaysISO(g.deliveredAt ?? g.publishedAt ?? new Date().toISOString(), def.retentionDays),
   };
 }
 
@@ -92,7 +101,7 @@ export function storageSummaryOf(userId: string): StorageSummary {
 export function galleriesOf(userId: string): ShootGallery[] {
   return galleries
     .filter((g) => g.photographerId === userId)
-    .sort((a, b) => b.deliveredAt.localeCompare(a.deliveredAt));
+    .sort((a, b) => (b.deliveredAt ?? b.publishedAt ?? "").localeCompare(a.deliveredAt ?? a.publishedAt ?? ""));
 }
 
 export function setPlan(userId: string, tier: StoragePlanTier): StorageSummary {
@@ -114,7 +123,7 @@ export function addPhotos(
   photographerId: string,
   clientName: string,
   style: string,
-  count = 4
+  count = 5
 ): ShootGallery {
   const tier = planOf(photographerId);
   const def = planById(tier);
@@ -154,5 +163,6 @@ export function addPhotos(
     galleries = galleries.map((x) => (x.bookingId === bookingId ? g! : x));
   }
   saveGalleries();
+  if (!g) throw new Error("Không thể tạo gallery.");
   return g;
 }

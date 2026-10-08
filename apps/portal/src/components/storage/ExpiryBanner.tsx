@@ -12,7 +12,7 @@ export function ExpiryBanner({
   /** Photographer-only: show an upgrade CTA. */
   onUpgrade?: () => void;
 }) {
-  const level = expiryLevel(gallery.expiresAt);
+  const level = expiryLevel(gallery.expiresAt ?? null);
   if (level === "none" || level === "safe") return null;
 
   const days = gallery.expiresAt ? daysUntil(gallery.expiresAt) : 0;

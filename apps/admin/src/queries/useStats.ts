@@ -1,17 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { getOverviewStats, getRecentActivity } from "@/services/stats";
+import { getOverviewStats } from "@/services/stats";
 
-// Layer 2 — Query hooks.
+export const queueKey = ["admin", "queue"] as const;
+
 export function useOverviewStats() {
   return useQuery({
-    queryKey: ["stats", "overview"],
+    queryKey: ["admin", "dashboard"],
     queryFn: getOverviewStats,
-  });
-}
-
-export function useRecentActivity() {
-  return useQuery({
-    queryKey: ["stats", "activity"],
-    queryFn: getRecentActivity,
   });
 }

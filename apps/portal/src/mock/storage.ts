@@ -26,6 +26,7 @@ const inFive = build("g-in5", 12, 118); // ~1.38 GB
 const bkThree = build("g-tkh3", 10, 112); // ~1.09 GB — expiring soon
 const bkFour = build("g-tkh4", 16, 200); // ~3.13 GB — pro plan
 const inSix = build("g-in6", 14, 205); // ~2.80 GB — locked by downgrade
+const bkStudio = build("g-tkhstudio", 18, 180); // ~3.16 GB — long-term Studio plan
 
 export const seedGalleries: ShootGallery[] = [
   // Delivered by "me" — normal, ~21 days retention left (Free plan).
@@ -78,6 +79,19 @@ export const seedGalleries: ShootGallery[] = [
     deliveredAt: isoAt(-14),
     expiresAt: isoAt(351),
     planTier: "pro",
+    locked: false,
+  },
+  // Delivered by p2 to the demo client — Studio plan keeps the gallery long-term.
+  {
+    bookingId: "bk-tkh-studio",
+    photographerId: "p2",
+    clientName: "Trần Khách Hàng",
+    style: "Cưới",
+    photos: bkStudio.photos,
+    sizeBytes: bkStudio.sizeBytes,
+    deliveredAt: isoAt(-60),
+    expiresAt: null,
+    planTier: "studio",
     locked: false,
   },
 ];
