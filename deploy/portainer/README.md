@@ -4,18 +4,20 @@ This stack runs the three frontend images published by GitHub Actions. It does
 not build from source. Each image uses Caddy to serve its static SPA on port 80;
 you can access the published host ports directly by server IP for now. A
 separate, public-facing reverse proxy such as Caddy is optional when domains
-and HTTPS are ready. Nginx is not used in the frontend images.
+and HTTPS are ready.
 
 ## Portainer setup
 
-1. Open **Stacks → Add stack → Git repository**.
-2. Use the `LensExe/Lens-web` repository.
-3. Select the `main` reference.
+1. Open **Stacks → Add stack → Repository**.
+2. Select the configured `lens-frontend` Git source (or use the
+   `LensExe/Lens-web` repository directly).
+3. Select `refs/heads/main`.
 4. Set the Compose path to `deploy/portainer/frontend-stack.yml`.
-5. Configure the GitHub Container Registry in Portainer with a token that has
-   `read:packages` permission, then select that registry for this stack.
-6. Add the stack variables below (or load them from a non-committed `.env`
-   file):
+5. Ensure Portainer has an authenticated GitHub Container Registry entry with
+   permission to pull these packages. Do not put the registry token in this
+   repository or the Compose file.
+6. The Compose file defaults to the following values, so no stack environment
+   variables are required unless you want to override them:
 
    ```dotenv
    IMAGE_REGISTRY=ghcr.io
@@ -28,22 +30,14 @@ and HTTPS are ready. Nginx is not used in the frontend images.
 
 7. Deploy the stack. The images expose port `80` internally and are published
    on the host ports above.
-8. In the stack settings, enable **GitOps updates**, choose **Polling**, set a
-   fetch interval, and enable **Re-pull image**. Portainer will monitor the
-   `main` branch and pull the images again when it detects a repository update.
 
 GitHub Actions publishes `latest` plus an immutable `sha-<commit>` tag. After
 publishing, GitHub Actions does not call Portainer or deploy containers.
-Portainer handles stack updates through GitOps polling and re-pulls the
-`latest` images. The immutable `sha-<commit>` tags remain available for a
-manual rollback by setting `IMAGE_TAG` in Portainer. No
-`PORTAINER_WEBHOOK_URL` secret is needed.
-
-Polling is not synchronized with image publishing: Portainer could notice the
-new Git commit before all three image builds finish. Choose a fetch interval
-longer than the usual image build time to reduce this risk. For a guaranteed
-ordering, an on-demand trigger after publishing (such as a Portainer webhook)
-would be needed.
+Portainer CE does not automatically redeploy when the Git repository or a
+`latest` image changes. After all three publish jobs succeed, open the stack
+and choose **Pull and redeploy** to fetch and run the new images. The immutable
+`sha-<commit>` tags remain available for a manual rollback by overriding
+`IMAGE_TAG` in the stack. No `PORTAINER_WEBHOOK_URL` secret is needed.
 
 ### Optional later: domains and HTTPS
 
