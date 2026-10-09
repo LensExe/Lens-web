@@ -2,8 +2,8 @@
 
 This stack runs the three frontend images published by GitHub Actions. It does
 not build from source. Each image uses Caddy to serve its static SPA on port 80.
-The services carry Caddy Docker Proxy labels for their domains; the gateway
-itself is deployed as a dedicated stack from the Lens-backend repository.
+Domain routing is configured separately in the Lens-backend repository's
+`deploy/Caddyfile` and `deploy/docker-compose.caddy.yml`.
 
 ## Portainer setup
 
@@ -25,13 +25,7 @@ itself is deployed as a dedicated stack from the Lens-backend repository.
    LANDING_HOST_PORT=5143
    PORTAL_HOST_PORT=5174
    ADMIN_HOST_PORT=5175
-   LANDING_DOMAIN=www.example.com
-   PORTAL_DOMAIN=app.example.com
-   ADMIN_DOMAIN=admin.example.com
    ```
-
-   The domain values are optional and default to `.localhost` hostnames until
-   you have real DNS records.
 
 7. Deploy the stack. The images expose port `80` internally and are published
    on the host ports above.
@@ -46,19 +40,17 @@ and choose **Pull and redeploy** to fetch and run the new images. The immutable
 
 ### Domain binding through Caddy
 
-The frontend services declare their own Caddy labels in
-`frontend-stack.yml`; backend and infrastructure domains are declared in their
-respective Lens-backend stacks. The single Caddy Docker Proxy gateway is
-deployed as its own Lens-backend stack from
-`deploy/portainer/caddy-stack.yml` and owns public ports `80/443`. This keeps
-the domain settings with each project without starting multiple public proxies.
+All domain-to-service routes are centralized in the Lens-backend repository's
+`deploy/Caddyfile`; its separate `deploy/docker-compose.caddy.yml` stack owns
+public ports `80/443`. FE, backend, and routed infra services only join the
+shared `lens-proxy` network; their Compose files do not contain Caddy labels.
 
 All routed containers and the gateway must join the same external Docker
 network named `lens-proxy`. Create it once on the Portainer Docker host before
 deploying the updated stacks (Portainer **Networks → Add network**, driver
 `bridge`, name `lens-proxy`; or `docker network create lens-proxy`).
 
-In the frontend stack's Portainer environment, set:
+Set FE domain variables in the dedicated Caddy stack's Portainer environment:
 
 ```dotenv
 LANDING_DOMAIN=www.example.com
@@ -74,18 +66,19 @@ automatically. The FE containers still publish their existing host ports for
 direct testing; restrict those host ports after confirming domain access.
 
 The current Lens-backend Portainer infra stack includes Keycloak and MinIO, but
-does not deploy Kong. Consequently a Kong hostname cannot route until a Kong
-service is added to a Portainer stack, joins `lens-proxy`, and receives its own
-Caddy labels. Do not expose Kong Admin API ports `8001/8002`. MinIO Console is
-also an admin interface; restrict its hostname/access where possible.
+does not deploy Kong. If Kong is in another stack, its proxy service must join
+`lens-proxy`; the Caddyfile expects `lens-kong:8000` by default and can be
+changed with `KONG_UPSTREAM` in the Caddy stack. Do not expose Kong Admin API
+ports `8001/8002`. MinIO Console is also an admin interface; restrict its
+hostname/access where possible.
 
 After choosing domains, update the related application configuration too:
 
 - Set the frontend GitHub `Deploy-FE` environment's public `VITE_*_URL` values
-  to the HTTPS domains, then rebuild/publish the images and pull/redeploy the
-  frontend stack. Use the Kong hostname for the API once Kong is deployed;
-  `BACKEND_DOMAIN` is a direct-to-backend fallback. Vite values are compiled
-  into the images; changing Caddy alone does not update them.
+  to the HTTPS domains, such as the Kong hostname for `VITE_BACKEND_API_URL`
+  and `VITE_API_URL`, then rebuild/publish the images and pull/redeploy the
+  frontend stack. Vite values are compiled into the images; changing Caddy
+  alone does not update them.
 - In the backend Portainer stack, keep the internal S3 endpoint pointed at
   MinIO (for example `http://lens-minio:9000`) and set its public S3 endpoint to
   `https://<MINIO_S3_DOMAIN>` so presigned URLs use the public hostname.
