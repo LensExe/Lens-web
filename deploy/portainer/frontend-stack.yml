@@ -4,20 +4,40 @@ services:
   landing:
     image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_OWNER:-lensexe}/lens-landing:${IMAGE_TAG:-latest}
     pull_policy: always
+    labels:
+      caddy: "${LANDING_DOMAIN:-landing.localhost}"
+      caddy.reverse_proxy: "{{upstreams 80}}"
     ports:
-      - "${LANDING_HOST_PORT:-5173}:80"
+      - "${LANDING_HOST_PORT:-5143}:80"
+    networks:
+      - lens-proxy
     restart: unless-stopped
 
   portal:
     image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_OWNER:-lensexe}/lens-portal:${IMAGE_TAG:-latest}
     pull_policy: always
+    labels:
+      caddy: "${PORTAL_DOMAIN:-portal.localhost}"
+      caddy.reverse_proxy: "{{upstreams 80}}"
     ports:
       - "${PORTAL_HOST_PORT:-5174}:80"
+    networks:
+      - lens-proxy
     restart: unless-stopped
 
   admin:
     image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_OWNER:-lensexe}/lens-admin:${IMAGE_TAG:-latest}
     pull_policy: always
+    labels:
+      caddy: "${ADMIN_DOMAIN:-admin.localhost}"
+      caddy.reverse_proxy: "{{upstreams 80}}"
     ports:
       - "${ADMIN_HOST_PORT:-5175}:80"
+    networks:
+      - lens-proxy
     restart: unless-stopped
+
+networks:
+  lens-proxy:
+    external: true
+    name: lens-proxy
