@@ -1,10 +1,9 @@
 # Portainer frontend stack
 
 This stack runs the three frontend images published by GitHub Actions. It does
-not build from source. Each image uses Caddy to serve its static SPA on port 80;
-you can access the published host ports directly by server IP for now. A
-separate, public-facing reverse proxy such as Caddy is optional when domains
-and HTTPS are ready.
+not build from source. Each image uses Caddy to serve its static SPA on port 80.
+Domain routing is configured separately in the Lens-backend repository's
+`deploy/Caddyfile` and `deploy/docker-compose.caddy.yml`.
 
 ## Portainer setup
 
@@ -23,7 +22,7 @@ and HTTPS are ready.
    IMAGE_REGISTRY=ghcr.io
    IMAGE_OWNER=lensexe
    IMAGE_TAG=latest
-   LANDING_HOST_PORT=5173
+   LANDING_HOST_PORT=5143
    PORTAL_HOST_PORT=5174
    ADMIN_HOST_PORT=5175
    ```
@@ -39,31 +38,56 @@ and choose **Pull and redeploy** to fetch and run the new images. The immutable
 `sha-<commit>` tags remain available for a manual rollback by overriding
 `IMAGE_TAG` in the stack. No `PORTAINER_WEBHOOK_URL` secret is needed.
 
-### Optional later: domains and HTTPS
+### Domain binding through Caddy
 
-When domains are ready, configure a public-facing Caddy instance to proxy each
-domain to the matching published port. If Caddy runs directly on the Docker
-host, for example:
+All domain-to-service routes are centralized in the Lens-backend repository's
+`deploy/Caddyfile`; its separate `deploy/docker-compose.caddy.yml` stack owns
+public ports `80/443`. FE, backend, and routed infra services only join the
+shared `lens-proxy` network; their Compose files do not contain Caddy labels.
 
-```caddyfile
-lens.example.com {
-    reverse_proxy 127.0.0.1:5173
-}
+All routed containers and the gateway must join the same external Docker
+network named `lens-proxy`. Create it once on the Portainer Docker host before
+deploying the updated stacks (Portainer **Networks → Add network**, driver
+`bridge`, name `lens-proxy`; or `docker network create lens-proxy`).
 
-app.example.com {
-    reverse_proxy 127.0.0.1:5174
-}
+Set FE domain variables in the dedicated Caddy stack's Portainer environment:
 
-admin.example.com {
-    reverse_proxy 127.0.0.1:5175
-}
+```dotenv
+LANDING_DOMAIN=www.example.com
+PORTAL_DOMAIN=app.example.com
+ADMIN_DOMAIN=admin.example.com
 ```
 
-If Caddy runs in a container, `127.0.0.1` refers to that Caddy container, not
-the Docker host. Use an address reachable from that container or attach the
-services to a shared Docker network and proxy by service name. Until then, use
-`http://<SERVER_IP>:5173`, `http://<SERVER_IP>:5174`, and
-`http://<SERVER_IP>:5175` directly.
+If these are omitted, the Compose file uses `.localhost` names for local/test
+deployment. Replace them with real hostnames when DNS is ready. Add an A record
+for each hostname pointing to the VPS public IP; open inbound TCP `80` and `443`
+in the VPS firewall/security group. Caddy obtains and renews HTTPS certificates
+automatically. The FE containers still publish their existing host ports for
+direct testing; restrict those host ports after confirming domain access.
+
+The current Lens-backend Portainer infra stack includes Keycloak and MinIO, but
+does not deploy Kong. If Kong is in another stack, its proxy service must join
+`lens-proxy`; the Caddyfile expects `lens-kong:8000` by default and can be
+changed with `KONG_UPSTREAM` in the Caddy stack. Do not expose Kong Admin API
+ports `8001/8002`. MinIO Console is also an admin interface; restrict its
+hostname/access where possible.
+
+After choosing domains, update the related application configuration too:
+
+- Set the frontend GitHub `Deploy-FE` environment's public `VITE_*_URL` values
+  to the HTTPS domains, such as the Kong hostname for `VITE_BACKEND_API_URL`
+  and `VITE_API_URL`, then rebuild/publish the images and pull/redeploy the
+  frontend stack. Vite values are compiled into the images; changing Caddy
+  alone does not update them.
+- In the backend Portainer stack, keep the internal S3 endpoint pointed at
+  MinIO (for example `http://lens-minio:9000`) and set its public S3 endpoint to
+  `https://<MINIO_S3_DOMAIN>` so presigned URLs use the public hostname.
+- Configure Keycloak's public hostname and proxy-header handling for
+  `KEYCLOAK_DOMAIN`, and update OAuth/Google redirect URIs and backend CORS to
+  the final HTTPS hostnames.
+
+Until DNS and Caddy are ready, the services remain available at their direct
+host ports, subject to the existing firewall rules.
 
 The `VITE_*` values are compiled into the frontend images at build time. This
 workflow reads them from GitHub Actions **Environment secrets** in the
@@ -80,7 +104,7 @@ Environment secrets**:
 VITE_BACKEND_API_URL=http://<SERVER_IP>:3000
 VITE_API_URL=http://<SERVER_IP>:3000
 VITE_API_MOCKING=disabled
-VITE_LANDING_URL=http://<SERVER_IP>:5173
+VITE_LANDING_URL=http://<SERVER_IP>:5143
 VITE_PORTAL_URL=http://<SERVER_IP>:5174
 VITE_ADMIN_URL=http://<SERVER_IP>:5175
 ```
