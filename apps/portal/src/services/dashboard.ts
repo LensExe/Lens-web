@@ -1,4 +1,4 @@
-import { bookingApi } from "@/services/backend";
+import { bookingApi, photographerApi } from "@/services/backend";
 import { getMyBookings } from "@/services/bookings";
 import {
   getMyPhotographerProfile,
@@ -38,7 +38,6 @@ export async function completeShoot(bookingId: string): Promise<Booking> {
   return updated;
 }
 
-/** The backend has no monthly earnings/report endpoint yet. */
-export async function getMyEarnings(): Promise<EarningsSummary | null> {
-  return null;
+export async function getMyEarnings(): Promise<EarningsSummary> {
+  return photographerApi.getMyEarnings();
 }
