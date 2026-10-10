@@ -8,6 +8,7 @@ export interface BookingPlanCreateDto {
   duration_minutes: number;
   photo_count: number;
   retouched_photo_count: number;
+  delivery_days?: number | null;
   features?: string[];
 }
 
@@ -23,6 +24,7 @@ export interface ApiBookingPlan {
   duration_minutes: number;
   photo_count: number;
   retouched_photo_count: number;
+  delivery_days?: number | null;
   is_active?: boolean;
   [key: string]: unknown;
 }

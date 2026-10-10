@@ -113,6 +113,23 @@ async function mapBooking(row: ApiBooking): Promise<Booking> {
     photographer?: unknown;
     booking_plan?: unknown;
   };
+  const snapshot = asRecord((row as ApiObject).package_snapshot);
+  const snapshotName = str(snapshot.name);
+  const packageSnapshot = snapshotName
+    ? {
+        name: snapshotName,
+        photoCount: num(snapshot.retouched_photo_count, num(snapshot.photo_count, plan?.retouched_photo_count ?? 1)),
+        durationHours: num(snapshot.duration_minutes, plan?.duration_minutes ?? 120) / 60,
+        deliveryDays: typeof snapshot.delivery_days === "number" ? snapshot.delivery_days : undefined,
+      }
+    : plan
+      ? {
+          name: plan.name,
+          photoCount: plan.retouched_photo_count,
+          durationHours: plan.duration_minutes / 60,
+          deliveryDays: plan.delivery_days ?? undefined,
+        }
+      : undefined;
   const customer = asRecord(nested.customer);
   const bookingPhotographer = asRecord(nested.photographer);
   const photographerName = str(
@@ -137,13 +154,7 @@ async function mapBooking(row: ApiBooking): Promise<Booking> {
     galleryPublishedAt: str((row as ApiObject).gallery_published_at) || null,
     paidAmount,
     packageId: row.booking_plan_id,
-    packageSnapshot: plan
-      ? {
-          name: plan.name,
-          photoCount: plan.retouched_photo_count,
-          durationHours: plan.duration_minutes / 60,
-        }
-      : undefined,
+    packageSnapshot,
     timeSlot: startParts?.time ?? start.toISOString().slice(11, 16),
     depositAmount: row.deposit_amount,
     depositPaidAt: paidDeposit ? str((row as ApiObject).deposit_paid_at) || undefined : undefined,
@@ -190,6 +201,7 @@ export async function createBooking(input: BookingInput): Promise<Booking> {
       name: plan.name,
       photoCount: plan.retouched_photo_count,
       durationHours: plan.duration_minutes / 60,
+      deliveryDays: plan.delivery_days ?? undefined,
     },
   };
 }

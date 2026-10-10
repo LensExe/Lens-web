@@ -109,6 +109,11 @@ export const packageSchema = z.object({
     .min(1, "Ít nhất 1 ảnh")
     .max(500, "Tối đa 500 ảnh"),
   durationHours: num("Nhập thời lượng").min(0.5, "Tối thiểu 0,5 giờ").max(12, "Tối đa 12 giờ"),
+  deliveryDays: num("Số ngày giao ảnh")
+    .int("Số ngày phải là số nguyên")
+    .min(1, "Tối thiểu 1 ngày")
+    .max(365, "Tối đa 365 ngày")
+    .optional(),
 });
 export const packagesFormSchema = z.object({
   packages: z.array(packageSchema).min(1, "Cần ít nhất một gói dịch vụ"),

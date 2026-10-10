@@ -37,6 +37,7 @@ function mapPlan(plan: ApiBookingPlan): PhotographerPackage {
     price: plan.price,
     photoCount: plan.retouched_photo_count,
     durationHours: plan.duration_minutes / 60,
+    deliveryDays: plan.delivery_days ?? undefined,
   };
 }
 

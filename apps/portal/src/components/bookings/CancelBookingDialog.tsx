@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle } from "lucide-react";
 import {
   Button,
@@ -11,9 +12,11 @@ import {
   DialogTrigger,
   Spinner,
   cn,
+  formatPrice,
   toast,
 } from "@lens/ui";
 import { useCancelBooking } from "@/queries/useBookings";
+import { bookingApi } from "@/services/backend";
 import type { Booking } from "@/types";
 
 const formatDate = (iso: string) => {
@@ -35,6 +38,11 @@ export function CancelBookingDialog({
 }) {
   const [open, setOpen] = useState(false);
   const cancel = useCancelBooking();
+  const preview = useQuery({
+    queryKey: ["bookings", booking.id, "cancellation-preview"],
+    queryFn: () => bookingApi.getCancellationPreview(booking.id),
+    enabled: open,
+  });
 
   const submit = () =>
     cancel.mutate(booking.id, {
@@ -59,7 +67,16 @@ export function CancelBookingDialog({
         <p className={cn("flex items-start gap-2 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-300")}>
           <AlertTriangle className="mt-0.5 size-4 shrink-0" />
           <span>
-            Yêu cầu huỷ sẽ được gửi lên backend. Nếu lịch đã có giao dịch, backend sẽ tạo yêu cầu hoàn tiền để quản trị viên xử lý; hiện chưa có API xem trước số tiền hoàn.
+            {preview.data ? (
+              <>
+                Số tiền đã thanh toán còn có thể yêu cầu hoàn: <b>{formatPrice(preview.data.refundable_amount_vnd)}</b>.
+                Yêu cầu hoàn tiền vẫn cần quản trị viên xử lý.
+              </>
+            ) : preview.isError ? (
+              "Chưa tải được số tiền hoàn dự kiến. Yêu cầu hoàn tiền vẫn sẽ được backend tổng hợp và gửi quản trị viên xử lý."
+            ) : (
+              "Đang tính số tiền đã thanh toán còn có thể yêu cầu hoàn…"
+            )}
           </span>
         </p>
 
