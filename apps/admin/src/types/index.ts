@@ -192,9 +192,9 @@ export interface AdminStorageRow {
   name: string;
   email?: string;
   avatar: string;
-  plan: StoragePlanTier;
+  plan: string;
   usedBytes: number;
-  quotaBytes: number;
+  quotaBytes: number | null;
   galleryCount: number;
   overQuota: boolean;
 }
@@ -202,7 +202,7 @@ export interface AdminStorageRow {
 export interface StorageOverview {
   totalUsedBytes: number;
   overQuotaCount: number;
-  planBreakdown: Record<StoragePlanTier, number>;
+  planBreakdown: Record<string, number>;
 }
 
 export interface StorageReport {

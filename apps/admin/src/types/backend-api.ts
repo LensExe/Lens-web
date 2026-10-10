@@ -25,6 +25,50 @@ export interface AdminDashboardData {
   paid_volume_vnd: number;
 }
 
+export interface AdminFinanceSummaryData {
+  walletReserve: number;
+  pendingWithdrawalTotal: number;
+  pendingCount: number;
+}
+
+export interface AdminQueueData {
+  pendingApplications: number;
+  pendingWithdrawals: number;
+  pendingWithdrawalTotal: number;
+  overQuota: number;
+  suspendedUsers: number;
+}
+
+export interface AdminStorageRowData {
+  photographerId: UUID;
+  userId: UUID;
+  name: string;
+  email: string;
+  avatar: string;
+  plan: string;
+  planCode: string;
+  usedBytes: number;
+  quotaBytes: number | null;
+  galleryCount: number;
+  overQuota: boolean;
+}
+
+export interface AdminStorageReportData {
+  overview: {
+    totalUsedBytes: number;
+    overQuotaCount: number;
+    planBreakdown: Record<string, number>;
+  };
+  rows: AdminStorageRowData[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
+export interface AdminStorageQueryDto extends PageQueryDto {
+  over_quota?: boolean;
+}
+
 export interface ApiUser {
   id: UUID;
   keycloak_id: string;

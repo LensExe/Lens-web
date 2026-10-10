@@ -2,6 +2,10 @@ import { backendGet, backendPatch, backendPost } from "@/lib/backend-api";
 import type {
   AdminUsersQueryDto,
   AdminDashboardData,
+  AdminFinanceSummaryData,
+  AdminQueueData,
+  AdminStorageQueryDto,
+  AdminStorageReportData,
   ApiObject,
   ApiPage,
   BadgeUpdateDto,
@@ -24,6 +28,14 @@ import type {
 } from "@/types/backend-api";
 
 export const getDashboard = () => backendGet<AdminDashboardData>("/admin/dashboard");
+
+export const getQueue = () => backendGet<AdminQueueData>("/admin/queue");
+
+export const getStorageReport = (query: AdminStorageQueryDto = {}) =>
+  backendGet<AdminStorageReportData>("/admin/storage", query);
+
+export const getFinanceSummary = () =>
+  backendGet<AdminFinanceSummaryData>("/admin/finance/summary");
 
 export const listUsers = (query: AdminUsersQueryDto = {}) =>
   backendGet<ApiPage<ApiObject>>("/admin/users", query);

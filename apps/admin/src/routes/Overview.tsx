@@ -2,14 +2,14 @@ import { Link } from "react-router-dom";
 import { ArrowRight, CalendarCheck, Camera, Flag, Users, Wallet } from "lucide-react";
 import { PageContainer, PageHeader, Skeleton, StatCard, formatPrice } from "@lens/ui";
 import { NAV_GROUPS } from "@/components/layout/nav";
-import { useOverviewStats } from "@/queries/useStats";
+import { useAdminQueue, useOverviewStats } from "@/queries/useStats";
 
 const SECTION_HINT: Record<string, string> = {
   "/photographers": "Hồ sơ nhiếp ảnh gia chờ duyệt",
   "/users": "Tài khoản trên nền tảng",
   "/bookings": "Lịch đặt và trạng thái thực tế",
   "/finance": "Yêu cầu rút tiền và hoàn tiền",
-  "/storage": "Chưa có API báo cáo dung lượng",
+  "/storage": "Dung lượng và quota của nhiếp ảnh gia",
   "/quality": "Cấu hình hạng và huy hiệu",
   "/reports": "Báo cáo moderation",
 };
@@ -18,6 +18,7 @@ const SECTIONS = NAV_GROUPS.flatMap((group) => group.items).filter((item) => ite
 
 export function Overview() {
   const { data, isLoading, isError } = useOverviewStats();
+  const { data: queue } = useAdminQueue();
 
   return (
     <PageContainer>
@@ -35,9 +36,23 @@ export function Overview() {
         </div>
       ) : null}
 
-      <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-900 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-200">
-        Dashboard backend hiện chỉ có số liệu tổng hợp. Chưa có API hàng đợi công việc, xu hướng theo tháng hoặc hoạt động gần đây.
-      </div>
+      <section className="mt-8">
+        <h2 className="mb-3 text-lg font-semibold">Hàng đợi cần xử lý</h2>
+        {queue ? (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <QueueCard to="/photographers" label="Hồ sơ chờ duyệt" value={queue.pendingApplications} />
+            <QueueCard to="/finance" label="Yêu cầu rút tiền" value={queue.pendingWithdrawals} hint={formatPrice(queue.pendingWithdrawalTotal)} />
+            <QueueCard to="/storage" label="Tài khoản vượt quota" value={queue.overQuota} />
+            <QueueCard to="/users" label="Tài khoản tạm khóa" value={queue.suspendedUsers} />
+          </div>
+        ) : (
+          <p className="rounded-xl border border-border p-4 text-sm text-muted-foreground">Không tải được hàng đợi quản trị.</p>
+        )}
+      </section>
+
+      <p className="mt-6 text-sm text-muted-foreground">
+        Dashboard hiện có KPI và hàng đợi. Xu hướng theo tháng, hoạt động gần đây và doanh thu tháng cần API riêng.
+      </p>
 
       <section className="mt-8">
         <h2 className="mb-3 text-lg font-semibold">Lối tắt</h2>
@@ -52,5 +67,15 @@ export function Overview() {
         </div>
       </section>
     </PageContainer>
+  );
+}
+
+function QueueCard({ to, label, value, hint }: { to: string; label: string; value: number; hint?: string }) {
+  return (
+    <Link to={to} className="rounded-2xl border border-border bg-card p-4 transition-colors hover:bg-muted/40">
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="mt-2 text-2xl font-semibold tabular-nums">{value.toLocaleString("vi-VN")}</p>
+      {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+    </Link>
   );
 }

@@ -48,10 +48,5 @@ export async function setWithdrawalStatus(id: string, status: WithdrawalStatus):
 }
 
 export async function getFinance(): Promise<FinanceSummary> {
-  const withdrawals = await getWithdrawals();
-  const pending = withdrawals.filter((request) => request.status === "pending");
-  return {
-    pendingWithdrawalTotal: pending.reduce((sum, request) => sum + request.amount, 0),
-    pendingCount: pending.length,
-  };
+  return adminApi.getFinanceSummary();
 }
