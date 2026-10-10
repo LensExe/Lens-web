@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { BadgeCheck, Camera, LogOut, Mail, Monitor, UserRound } from "lucide-react";
+import { Camera, LogOut, Mail, Monitor, UserRound } from "lucide-react";
 import { Button, Skeleton, Switch, toast } from "@lens/ui";
 import { SettingsSection } from "@/components/settings/SettingsSection";
 import { ChangePasswordDialog } from "@/components/settings/ChangePasswordDialog";
+import { EmailVerification } from "@/components/settings/EmailVerification";
 import { useMyProfile } from "@/queries/useProfile";
 import { currentUser } from "@/lib/session";
 
@@ -34,15 +35,7 @@ export function AccountSettings() {
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-muted/25 px-3 py-2.5 sm:flex-nowrap sm:px-4 sm:py-3">
             <Mail className="size-4 text-muted-foreground" />
             <span className="min-w-0 flex-1 truncate text-sm font-medium">{profile.email}</span>
-            <div className="flex w-full items-center justify-between gap-2 sm:w-auto">
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
-                <BadgeCheck className="size-3" />
-                Đã xác minh
-              </span>
-              <Button type="button" variant="outline" size="sm" className="h-7 rounded-lg text-[10px]" onClick={() => toast("Tính năng đổi email sẽ sớm khả dụng")}>
-                Thay đổi email
-              </Button>
-            </div>
+            <EmailVerification email={profile.email} />
           </div>
         )}
       </SettingsSection>

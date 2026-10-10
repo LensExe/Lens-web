@@ -186,6 +186,7 @@ export interface AuthUser {
   email: string;
   avatar: string;
   role: PortalRole;
+  emailVerified?: boolean;
 }
 
 export interface LoginInput {

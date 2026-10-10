@@ -46,6 +46,25 @@ export function setBackendTokens(tokens: StoredTokens | null): void {
   }
 }
 
+/** Read Keycloak's email verification claim from an access token. */
+export function isEmailVerifiedToken(token: string): boolean {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return false;
+    const normalized = payload.replaceAll("-", "+").replaceAll("_", "/");
+    const claims = JSON.parse(atob(normalized)) as { email_verified?: boolean };
+    return claims.email_verified === true;
+  } catch {
+    return false;
+  }
+}
+
+/** Read the current access token's email verification claim. */
+export function getCurrentEmailVerificationStatus(): boolean {
+  const token = inMemoryTokens?.accessToken ?? readTokens()?.accessToken;
+  return token ? isEmailVerifiedToken(token) : false;
+}
+
 backendApi.interceptors.request.use((config) => {
   const token = inMemoryTokens?.accessToken ?? readTokens()?.accessToken;
   if (token) config.headers.set("Authorization", `Bearer ${token}`);

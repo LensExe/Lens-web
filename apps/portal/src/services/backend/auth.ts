@@ -42,9 +42,11 @@ export const verifyForgotPasswordOtp = (body: AuthOtpDto) =>
 export const resetPassword = (body: AuthResetPasswordDto) =>
   backendPost<ApiObject, AuthResetPasswordDto>("/auth/forgot-password/reset", body);
 
+/** POST /api/v1/auth/email/send-otp; the backend sends to the authenticated user's email. */
 export const sendEmailVerificationOtp = () =>
   backendPost<ApiObject>("/auth/email/send-otp");
 
+/** POST /api/v1/auth/email/verify with the target email and six-digit OTP. */
 export const verifyEmail = (body: AuthOtpDto) =>
   backendPost<ApiObject, AuthOtpDto>("/auth/email/verify", body);
 

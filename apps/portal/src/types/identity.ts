@@ -7,6 +7,12 @@ export interface UpdateMyIdentityDto {
   phone_number?: string;
   gender?: "male" | "female" | "other";
   dob?: string;
+  notification_preferences?: {
+    booking_updates: boolean;
+    messages: boolean;
+    promotions: boolean;
+    email_digest: boolean;
+  };
 }
 
 export interface ApiUser {
