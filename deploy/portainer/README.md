@@ -101,13 +101,23 @@ Configure these secrets under **GitHub → Settings → Environments → Deploy-
 Environment secrets**:
 
 ```dotenv
-VITE_BACKEND_API_URL=http://<SERVER_IP>:3000
-VITE_API_URL=http://<SERVER_IP>:3000
+VITE_BACKEND_API_URL=https://<API_GATEWAY_DOMAIN>
+VITE_API_URL=https://<API_GATEWAY_DOMAIN>/api/v1
 VITE_API_MOCKING=disabled
 VITE_LANDING_URL=http://<SERVER_IP>:5143
 VITE_PORTAL_URL=http://<SERVER_IP>:5174
 VITE_ADMIN_URL=http://<SERVER_IP>:5175
 ```
+
+`VITE_BACKEND_API_URL` accepts the API origin, an `/api` base, or the full
+`/api/v1` base. The FE normalizes it to `/api/v1` automatically. When Chat and
+Notification are routed through Kong, leave `VITE_CHAT_API_URL`,
+`VITE_NOTIFICATION_API_URL`, and `VITE_NOTIFICATION_SOCKET_URL` unset; the FE
+uses the same gateway host for `/api/v1/chat`, `/api/v1/notifications`, and
+Socket.IO namespace `/notification`. Set those optional variables only when a
+service is exposed at a separate public URL. The FE origin must be allowed by
+the gateway CORS configuration. Direct calls to the Core Backend port do not
+route the Chat or Notification paths.
 
 `VITE_API_URL` can be omitted to use `VITE_BACKEND_API_URL`. The workflow
 requires the backend and three frontend URLs, then builds each app image with

@@ -16,9 +16,6 @@ export function Reports() {
   return (
     <PageContainer className="max-w-[1480px] py-6 md:py-8 lg:py-10">
       <PageHeader title="Báo cáo vi phạm" description="Danh sách báo cáo người dùng gửi lên Lens từ backend." />
-      <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-900 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-200">
-        Backend chưa có API thống kê doanh thu theo tháng, lượt đặt theo phong cách/khu vực hoặc hoạt động gần đây. Trang này hiển thị hàng đợi moderation `/admin/reports`.
-      </div>
       {isError && <p role="alert" className="mb-5 rounded-xl border border-destructive/30 p-4 text-sm text-destructive">Không tải được báo cáo từ backend.</p>}
       {isLoading ? (
         <div className="space-y-3">{[0, 1, 2].map((key) => <Skeleton key={key} className="h-28 rounded-2xl" />)}</div>

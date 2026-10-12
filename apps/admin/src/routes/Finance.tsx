@@ -302,7 +302,7 @@ export function Finance() {
           badge="Ví hoạt động"
           value={finance?.walletReserve === undefined ? "Chưa có API" : formatPrice(finance.walletReserve)}
           label="Quỹ ví nhiếp ảnh gia"
-          hint="Backend chưa có báo cáo tổng số dư ví của toàn hệ thống"
+          hint="Tổng số dư khả dụng và đang giữ trong ví người dùng"
         />
         <FinanceMetricCard
           icon={Coins}

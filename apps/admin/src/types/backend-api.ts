@@ -25,6 +25,20 @@ export interface AdminDashboardData {
   paid_volume_vnd: number;
 }
 
+export interface AdminDashboardAnalyticsData {
+  monthly: Array<{ month: string; bookings: number; paid_volume_vnd: number }>;
+  booking_by_style: Array<{ style: string; bookings: number }>;
+  booking_by_location: Array<{ location: string; bookings: number }>;
+  recent_activity: Array<{
+    id: UUID;
+    kind: "booking" | "report";
+    title: string;
+    detail: string;
+    status: string;
+    created_at: string;
+  }>;
+}
+
 export interface AdminFinanceSummaryData {
   walletReserve: number;
   pendingWithdrawalTotal: number;
