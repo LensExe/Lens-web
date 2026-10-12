@@ -2,9 +2,18 @@ import axios, { type AxiosRequestConfig, type InternalAxiosRequestConfig } from 
 import type { ApiEnvelope } from "@/types/common";
 import { portalLogin } from "@/lib/links";
 
-/** Set VITE_BACKEND_API_URL to the backend origin (without an `/api` suffix). */
+/** Accept an API origin, `/api`, or the full `/api/v1` base path. */
+export function normalizeBackendBaseURL(value?: string): string {
+  const base = value?.trim().replace(/\/+$/, "") ?? "";
+  if (!base) return "/api/v1";
+  if (/\/api\/v1$/i.test(base)) return base;
+  if (/\/api$/i.test(base)) return `${base}/v1`;
+  return `${base}/api/v1`;
+}
+
+export const backendBaseURL = normalizeBackendBaseURL(import.meta.env.VITE_BACKEND_API_URL);
 export const backendApi = axios.create({
-  baseURL: import.meta.env.VITE_BACKEND_API_URL,
+  baseURL: backendBaseURL,
   headers: { "Content-Type": "application/json" },
 });
 
@@ -44,6 +53,55 @@ export function setBackendTokens(tokens: StoredTokens | null): void {
   } catch {
     /* The current tab can still continue with the in-memory access token. */
   }
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("lens:access-token-changed"));
+}
+
+export function getBackendAccessToken(): string | null {
+  return inMemoryTokens?.accessToken ?? readTokens()?.accessToken ?? null;
+}
+
+export function getBackendSubject(): string | null {
+  const token = getBackendAccessToken();
+  try {
+    const payload = token?.split(".")[1];
+    if (!payload) return null;
+    const normalized = payload.replaceAll("-", "+").replaceAll("_", "/");
+    const claims = JSON.parse(atob(normalized)) as { sub?: unknown };
+    return typeof claims.sub === "string" ? claims.sub : null;
+  } catch {
+    return null;
+  }
+}
+
+export function getBackendAccessTokenExpiry(token = getBackendAccessToken()): number | null {
+  try {
+    const payload = token?.split(".")[1];
+    if (!payload) return null;
+    const normalized = payload.replaceAll("-", "+").replaceAll("_", "/");
+    const claims = JSON.parse(atob(normalized)) as { exp?: unknown };
+    return typeof claims.exp === "number" ? claims.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Read Keycloak's email verification claim from an access token. */
+export function isEmailVerifiedToken(token: string): boolean {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return false;
+    const normalized = payload.replaceAll("-", "+").replaceAll("_", "/");
+    const claims = JSON.parse(atob(normalized)) as { email_verified?: boolean };
+    return claims.email_verified === true;
+  } catch {
+    return false;
+  }
+}
+
+/** Read the current access token's email verification claim. */
+export function getCurrentEmailVerificationStatus(): boolean {
+  const token = inMemoryTokens?.accessToken ?? readTokens()?.accessToken;
+  return token ? isEmailVerifiedToken(token) : false;
 }
 
 backendApi.interceptors.request.use((config) => {
@@ -82,6 +140,10 @@ function expireSessionAndRedirect(): void {
   window.location.replace(portalLogin(window.location.href));
 }
 
+export function expireBackendSession(): void {
+  expireSessionAndRedirect();
+}
+
 function hasStoredPortalSession(): boolean {
   try {
     return localStorage.getItem("lens.session.v1") !== null;
@@ -90,19 +152,11 @@ function hasStoredPortalSession(): boolean {
   }
 }
 
-backendApi.interceptors.response.use(undefined, async (error: unknown) => {
-  if (!axios.isAxiosError(error) || error.response?.status !== 401) throw error;
-  const config = error.config as RetriableConfig | undefined;
+/** Refresh and rotate the stored Keycloak token pair once for concurrent callers. */
+export function refreshBackendAccessToken(): Promise<string | null> {
   const tokens = inMemoryTokens ?? readTokens();
-  if (!config || isPublicAuthRequest(config.url)) throw error;
+  if (!tokens?.refreshToken) return Promise.resolve(null);
 
-  const hadAccessToken = String(config.headers.get("Authorization") ?? "").startsWith("Bearer ");
-  if (config._lensRetried || !tokens?.refreshToken) {
-    if (hadAccessToken || hasStoredPortalSession()) expireSessionAndRedirect();
-    throw error;
-  }
-
-  config._lensRetried = true;
   refreshPromise ??= axios
     .post<ApiResponse<{ access_token: string; refresh_token: string }>>(
       `${backendApi.defaults.baseURL ?? ""}/auth/refresh`,
@@ -118,14 +172,43 @@ backendApi.interceptors.response.use(undefined, async (error: unknown) => {
       setBackendTokens(next);
       return next.accessToken;
     })
-    .catch(() => {
-      return null;
+    .catch((error: unknown) => {
+      if (axios.isAxiosError(error) && (error.response?.status === 400 || error.response?.status === 401)) {
+        return null;
+      }
+      throw error;
     })
     .finally(() => {
       refreshPromise = null;
     });
 
-  const accessToken = await refreshPromise;
+  return refreshPromise;
+}
+
+backendApi.interceptors.response.use(undefined, async (error: unknown) => {
+  if (!axios.isAxiosError(error) || error.response?.status !== 401) throw error;
+  const config = error.config as RetriableConfig | undefined;
+  const tokens = inMemoryTokens ?? readTokens();
+  if (!config || isPublicAuthRequest(config.url)) throw error;
+
+  const hadAccessToken = String(config.headers.get("Authorization") ?? "").startsWith("Bearer ");
+  // A retried 401 can mean missing audience/role or an endpoint permission
+  // issue. The refresh already succeeded, so keep the session and surface that
+  // service error instead of sending the user through login again.
+  if (config._lensRetried) throw error;
+  if (!tokens?.refreshToken) {
+    if (hadAccessToken || hasStoredPortalSession()) expireSessionAndRedirect();
+    throw error;
+  }
+
+  config._lensRetried = true;
+  let accessToken: string | null;
+  try {
+    accessToken = await refreshBackendAccessToken();
+  } catch {
+    // A network outage or 5xx from Core/Keycloak must not erase a valid session.
+    throw error;
+  }
   if (!accessToken) {
     expireSessionAndRedirect();
     throw error;

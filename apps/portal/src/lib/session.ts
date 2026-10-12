@@ -1,5 +1,8 @@
 import { avatar } from "@lens/ui";
-import { setBackendTokens } from "@/lib/backend-api";
+import {
+  getCurrentEmailVerificationStatus,
+  setBackendTokens,
+} from "@/lib/backend-api";
 import type { AuthUser, PortalRole, UserRole } from "@/types";
 
 export interface SessionUser {
@@ -9,6 +12,7 @@ export interface SessionUser {
   avatar: string;
   initials: string;
   role: PortalRole;
+  emailVerified: boolean;
 }
 
 export interface SessionTokens {
@@ -34,6 +38,9 @@ function safeGetSession(): SessionUser | null {
           avatar: typeof value.avatar === "string" && value.avatar ? value.avatar : avatar(value.id),
           initials: typeof value.initials === "string" ? value.initials : getInitials(value.name),
           role: value.role,
+          emailVerified: typeof value.emailVerified === "boolean"
+            ? value.emailVerified
+            : getCurrentEmailVerificationStatus(),
         }
       : null;
   } catch {
@@ -62,7 +69,18 @@ export const currentUser = sessionUser as SessionUser;
 
 export function saveSession(user: AuthUser, tokens: SessionTokens) {
   setBackendTokens(tokens);
-  safeSetSession({ ...user, initials: getInitials(user.name) });
+  safeSetSession({
+    ...user,
+    emailVerified: user.emailVerified ?? false,
+    initials: getInitials(user.name),
+  });
+}
+
+/** Persist a verification result returned by the authenticated email OTP endpoint. */
+export function setCurrentUserEmailVerified(emailVerified: boolean) {
+  if (!sessionUser) return;
+  sessionUser.emailVerified = emailVerified;
+  safeSetSession(sessionUser);
 }
 
 export function clearSession() {

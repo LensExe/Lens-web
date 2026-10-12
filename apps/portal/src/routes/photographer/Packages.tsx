@@ -44,6 +44,7 @@ const blankPackage = (): PackagesFormValues["packages"][number] => ({
   price: 200_000,
   photoCount: 20,
   durationHours: 1,
+  deliveryDays: 7,
 });
 
 // Mounts only once the profile is loaded, so the form starts from real data.
@@ -113,7 +114,7 @@ function PackagesEditor({ profile }: { profile: Photographer }) {
           <div className="min-w-0 text-sm">
             <p className="font-semibold">Điều khoản gói dịch vụ</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Backend lưu giá, thời lượng và số ảnh đã chỉnh sửa. Hạn giao ảnh chưa có trường dữ liệu trong API.
+              Hạn giao ảnh được lưu cùng gói và giữ nguyên theo booking sau khi khách đặt.
             </p>
           </div>
         </div>
@@ -222,6 +223,18 @@ function PackagesEditor({ profile }: { profile: Photographer }) {
                       {...register(`packages.${i}.durationHours`, { valueAsNumber: true })}
                     />
                   </FormField>
+                  <FormField label="Hạn giao ảnh (ngày)" htmlFor={`delivery-days-${i}`} error={err?.deliveryDays?.message} hint="Tính từ ngày chụp">
+                    <Input
+                      id={`delivery-days-${i}`}
+                      type="number"
+                      min={1}
+                      max={365}
+                      className={INPUT}
+                      {...register(`packages.${i}.deliveryDays`, {
+                        setValueAs: (value) => value === "" ? undefined : Number(value),
+                      })}
+                    />
+                  </FormField>
                 </div>
 
                 {/* What the client will see */}
@@ -241,7 +254,7 @@ function PackagesEditor({ profile }: { profile: Photographer }) {
                         <Clock3 className="size-3.5" /> {String(current.durationHours).replace(".", ",")} giờ
                       </span>
                       <span className="inline-flex items-center gap-1 rounded-md bg-background px-2 py-1">
-                        <Send className="size-3.5" /> Backend chưa lưu hạn giao
+                        <Send className="size-3.5" /> {current.deliveryDays ? `Giao trong ${current.deliveryDays} ngày` : "Chưa cấu hình hạn giao"}
                       </span>
                     </div>
                     <p className="mt-2 text-xs leading-relaxed text-muted-foreground">

@@ -1,4 +1,5 @@
 import { avatar } from "@lens/ui";
+import { isEmailVerifiedToken } from "@/lib/backend-api";
 import { authApi, type AuthSession } from "@/services/backend";
 import { mapBackendRole } from "@/lib/session";
 import type { AuthUser, LoginInput, SignupInput } from "@/types";
@@ -48,6 +49,7 @@ function toPortalAuthResult(session: AuthSession): PortalAuthResult {
       email: raw.email,
       avatar: raw.avatar_url || avatar(raw.id),
       role,
+      emailVerified: isEmailVerifiedToken(session.access_token),
     },
     accessToken: session.access_token,
     refreshToken: session.refresh_token,

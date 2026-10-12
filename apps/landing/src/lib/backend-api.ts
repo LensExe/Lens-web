@@ -1,9 +1,17 @@
 import axios, { type AxiosRequestConfig } from "axios";
 import type { ApiEnvelope } from "@/types/backend-api";
 
-/** Set VITE_BACKEND_API_URL to the backend origin (without an `/api` suffix). */
+/** Accept an API origin, `/api`, or the full `/api/v1` base path. */
+export function normalizeBackendBaseURL(value?: string): string {
+  const base = value?.trim().replace(/\/+$/, "") ?? "";
+  if (!base) return "/api/v1";
+  if (/\/api\/v1$/i.test(base)) return base;
+  if (/\/api$/i.test(base)) return `${base}/v1`;
+  return `${base}/api/v1`;
+}
+
 const client = axios.create({
-  baseURL: import.meta.env.VITE_BACKEND_API_URL,
+  baseURL: normalizeBackendBaseURL(import.meta.env.VITE_BACKEND_API_URL),
   headers: { "Content-Type": "application/json" },
 });
 

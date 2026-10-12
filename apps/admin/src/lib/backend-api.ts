@@ -1,9 +1,17 @@
 import axios, { type AxiosRequestConfig, type InternalAxiosRequestConfig } from "axios";
 import type { ApiEnvelope } from "@/types/backend-api";
 
-/** Set VITE_BACKEND_API_URL to the backend origin (without an `/api` suffix). */
+/** Accept an API origin, `/api`, or the full `/api/v1` base path. */
+function normalizeBackendBaseURL(value?: string): string {
+  const base = value?.trim().replace(/\/+$/, "") ?? "";
+  if (!base) return "/api/v1";
+  if (/\/api\/v1$/i.test(base)) return base;
+  if (/\/api$/i.test(base)) return `${base}/v1`;
+  return `${base}/api/v1`;
+}
+
 export const backendApi = axios.create({
-  baseURL: import.meta.env.VITE_BACKEND_API_URL,
+  baseURL: normalizeBackendBaseURL(import.meta.env.VITE_BACKEND_API_URL),
   headers: { "Content-Type": "application/json" },
 });
 
@@ -82,18 +90,10 @@ function hasStoredAdminSession(): boolean {
   }
 }
 
-backendApi.interceptors.response.use(undefined, async (error: unknown) => {
-  if (!axios.isAxiosError(error) || error.response?.status !== 401) throw error;
-  const config = error.config as RetriableConfig | undefined;
-  if (!config || isPublicAuthRequest(config.url)) throw error;
+/** Refresh and rotate the stored Keycloak token pair once for concurrent callers. */
+export function refreshBackendAccessToken(): Promise<string | null> {
+  if (!refreshToken) return Promise.resolve(null);
 
-  const hasAccessToken = String(config.headers.get("Authorization") ?? "").startsWith("Bearer ");
-  if (config._lensRetried || !refreshToken) {
-    if (hasAccessToken || hasStoredAdminSession()) expireSessionAndRedirect();
-    throw error;
-  }
-
-  config._lensRetried = true;
   refreshPromise ??= axios
     .post<ApiResponse<{ access_token: string; refresh_token: string }>>(
       `${backendApi.defaults.baseURL ?? ""}/auth/refresh`,
@@ -110,14 +110,41 @@ backendApi.interceptors.response.use(undefined, async (error: unknown) => {
       setBackendTokens(next);
       return next.accessToken;
     })
-    .catch(() => {
-      return null;
+    .catch((error: unknown) => {
+      if (axios.isAxiosError(error) && (error.response?.status === 400 || error.response?.status === 401)) {
+        return null;
+      }
+      throw error;
     })
     .finally(() => {
       refreshPromise = null;
     });
 
-  const nextAccessToken = await refreshPromise;
+  return refreshPromise;
+}
+
+backendApi.interceptors.response.use(undefined, async (error: unknown) => {
+  if (!axios.isAxiosError(error) || error.response?.status !== 401) throw error;
+  const config = error.config as RetriableConfig | undefined;
+  if (!config || isPublicAuthRequest(config.url)) throw error;
+
+  const hasAccessToken = String(config.headers.get("Authorization") ?? "").startsWith("Bearer ");
+  // A second 401 after refresh is an authorization/configuration failure, not
+  // proof that the refresh token expired. Leave the admin session intact.
+  if (config._lensRetried) throw error;
+  if (!refreshToken) {
+    if (hasAccessToken || hasStoredAdminSession()) expireSessionAndRedirect();
+    throw error;
+  }
+
+  config._lensRetried = true;
+  let nextAccessToken: string | null;
+  try {
+    nextAccessToken = await refreshBackendAccessToken();
+  } catch {
+    // Preserve the session if Core/Keycloak is temporarily unavailable.
+    throw error;
+  }
   if (!nextAccessToken) {
     expireSessionAndRedirect();
     throw error;

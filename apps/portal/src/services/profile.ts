@@ -10,6 +10,9 @@ export async function getMyProfile(): Promise<UserProfile> {
     currentUser.role === "photographer" ? photographerApi.getMyPhotographerProfile().catch(() => null) : Promise.resolve(null),
   ]);
   const workProfile = (customer ?? photographer ?? {}) as Record<string, unknown>;
+  const preferences = user.notification_preferences && typeof user.notification_preferences === "object"
+    ? user.notification_preferences as Record<string, unknown>
+    : {};
   return {
     id: user.id,
     name: user.fullname,
@@ -20,8 +23,12 @@ export async function getMyProfile(): Promise<UserProfile> {
     gender: user.gender ?? "",
     city: typeof workProfile.location === "string" ? workProfile.location : "",
     addressDetail: "",
-    // Notification preferences are not exposed by lens-backend yet.
-    notifications: { bookingUpdates: false, messages: false, promotions: false, emailDigest: false },
+    notifications: {
+      bookingUpdates: preferences.booking_updates !== false,
+      messages: preferences.messages !== false,
+      promotions: preferences.promotions === true,
+      emailDigest: preferences.email_digest === true,
+    },
   };
 }
 
@@ -31,6 +38,14 @@ export async function updateMyProfile(input: ProfileInput): Promise<UserProfile>
     ...(input.phone !== undefined && input.phone && { phone_number: input.phone }),
     ...(input.birthday !== undefined && input.birthday && { dob: input.birthday }),
     ...(input.gender !== undefined && input.gender && { gender: input.gender }),
+    ...(input.notifications && {
+      notification_preferences: {
+        booking_updates: input.notifications.bookingUpdates,
+        messages: input.notifications.messages,
+        promotions: input.notifications.promotions,
+        email_digest: input.notifications.emailDigest,
+      },
+    }),
   };
   if (Object.keys(identityPatch).length) await identityApi.updateMe(identityPatch);
 

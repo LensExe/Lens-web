@@ -1,5 +1,6 @@
 import { backendGet, backendPatch, backendPost } from "@/lib/backend-api";
 import type { ApiObject, ApiPage, PageQueryDto } from "@/types/common";
+import type { EarningsSummary } from "@/types";
 import type {
   ApiPhotographer,
   PhotographerCreateDto,
@@ -17,6 +18,8 @@ export const getPhotographer = (photographerId: string) =>
   backendGet<ApiPhotographer>(`/photographers/${encodeURIComponent(photographerId)}`);
 export const getMyPhotographerProfile = () =>
   backendGet<ApiObject>("/photographers/me");
+export const getMyEarnings = () =>
+  backendGet<EarningsSummary>("/photographers/me/earnings");
 export const createPhotographerProfile = (body: PhotographerCreateDto) =>
   backendPost<ApiObject, PhotographerCreateDto>("/photographers/profile", body);
 export const updateMyPhotographerProfile = (body: PhotographerUpdateDto) =>

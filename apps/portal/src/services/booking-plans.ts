@@ -12,6 +12,7 @@ function fromApi(plan: ApiBookingPlan): PhotographerPackage {
     price: plan.price,
     photoCount: plan.retouched_photo_count,
     durationHours: plan.duration_minutes / 60,
+    deliveryDays: plan.delivery_days ?? undefined,
   };
 }
 
@@ -24,6 +25,7 @@ function toApi(plan: PhotographerPackage): BookingPlanCreateDto {
     duration_minutes: Math.round(plan.durationHours * 60),
     photo_count: photoCount,
     retouched_photo_count: photoCount,
+    delivery_days: plan.deliveryDays ?? null,
   };
 }
 

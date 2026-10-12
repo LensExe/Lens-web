@@ -11,6 +11,7 @@ import { Finance } from "@/routes/Finance";
 import { Bookings } from "@/routes/Bookings";
 import { Storage } from "@/routes/Storage";
 import { Quality } from "@/routes/Quality";
+import { Notifications } from "@/routes/Notifications";
 import { Placeholder } from "@/components/Placeholder";
 
 function App() {
@@ -32,6 +33,7 @@ function App() {
         <Route path="users" element={<Users />} />
         <Route path="finance" element={<Finance />} />
         <Route path="bookings" element={<Bookings />} />
+        <Route path="notifications" element={<Notifications />} />
         <Route path="storage" element={<Storage />} />
         <Route path="quality" element={<Quality />} />
         <Route path="reports" element={<Reports />} />

@@ -16,6 +16,13 @@ export const createBooking = (body: BookingCreateDto) =>
 export const getBooking = (bookingId: string) =>
   backendGet<ApiBooking>(`/bookings/${encodeURIComponent(bookingId)}`);
 
+export const getCancellationPreview = (bookingId: string) =>
+  backendGet<{
+    booking_id: string;
+    refundable_amount_vnd: number;
+    refund_requires_admin_review: boolean;
+  }>(`/bookings/${encodeURIComponent(bookingId)}/cancellation-preview`);
+
 export const getBookingTimeline = (bookingId: string) =>
   backendGet<ApiItems<ApiObject>>(`/bookings/${encodeURIComponent(bookingId)}/timeline`);
 
