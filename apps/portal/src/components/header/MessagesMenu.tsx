@@ -1,18 +1,17 @@
+import { Link } from "react-router-dom";
 import { MessageSquare } from "lucide-react";
-import { Button } from "@lens/ui";
+import { Button, CountBadge } from "@lens/ui";
+import { useConversations } from "@/queries/useMessages";
 
 export function MessagesMenu() {
+  const { data: conversations = [] } = useConversations();
+  const unreadCount = conversations.reduce((sum, conversation) => sum + conversation.unreadCount, 0);
   return (
-    <Button
-      type="button"
-      variant="outline"
-      size="icon"
-      className="rounded-full"
-      disabled
-      title="Backend chưa có API tin nhắn."
-      aria-label="Tin nhắn chưa được backend hỗ trợ"
-    >
-      <MessageSquare />
+    <Button asChild variant="outline" size="icon" className="relative rounded-full" aria-label={`Tin nhắn${unreadCount ? `, ${unreadCount} chưa đọc` : ""}`}>
+      <Link to="/messages">
+        <MessageSquare />
+        <CountBadge count={unreadCount} onIcon className="absolute -right-1 -top-1" />
+      </Link>
     </Button>
   );
 }

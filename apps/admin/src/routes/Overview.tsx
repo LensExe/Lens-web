@@ -2,7 +2,8 @@ import { Link } from "react-router-dom";
 import { ArrowRight, CalendarCheck, Camera, Flag, Users, Wallet } from "lucide-react";
 import { PageContainer, PageHeader, Skeleton, StatCard, formatPrice } from "@lens/ui";
 import { NAV_GROUPS } from "@/components/layout/nav";
-import { useAdminQueue, useOverviewStats } from "@/queries/useStats";
+import { formatDate } from "@/lib/format";
+import { useAdminQueue, useOverviewAnalytics, useOverviewStats } from "@/queries/useStats";
 
 const SECTION_HINT: Record<string, string> = {
   "/photographers": "Hồ sơ nhiếp ảnh gia chờ duyệt",
@@ -19,6 +20,9 @@ const SECTIONS = NAV_GROUPS.flatMap((group) => group.items).filter((item) => ite
 export function Overview() {
   const { data, isLoading, isError } = useOverviewStats();
   const { data: queue } = useAdminQueue();
+  const { data: analytics, isLoading: analyticsLoading, isError: analyticsError } = useOverviewAnalytics();
+  const maxBookings = Math.max(1, ...(analytics?.monthly.map((month) => month.bookings) ?? []));
+  const maxRevenue = Math.max(1, ...(analytics?.monthly.map((month) => month.paid_volume_vnd) ?? []));
 
   return (
     <PageContainer>
@@ -50,9 +54,62 @@ export function Overview() {
         )}
       </section>
 
-      <p className="mt-6 text-sm text-muted-foreground">
-        Dashboard hiện có KPI và hàng đợi. Xu hướng theo tháng, hoạt động gần đây và doanh thu tháng cần API riêng.
-      </p>
+      <section className="mt-8 grid gap-4 xl:grid-cols-2">
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <h2 className="font-semibold">Booking và thanh toán theo tháng</h2>
+          <p className="mt-1 text-sm text-muted-foreground">6 tháng gần nhất · khoản thu đã ghi nhận</p>
+          {analyticsError && <p role="alert" className="mt-4 text-sm text-destructive">Không tải được số liệu xu hướng.</p>}
+          {analyticsLoading ? <Skeleton className="mt-5 h-48 rounded-xl" /> : analytics && analytics.monthly.length > 0 ? (
+            <div className="mt-5 space-y-4">
+              {analytics.monthly.map((month) => {
+                const label = new Date(`${month.month}-01T00:00:00Z`).toLocaleDateString("vi-VN", { month: "short" });
+                return (
+                  <div key={month.month} className="grid grid-cols-[3rem_1fr] items-center gap-x-3 gap-y-1.5">
+                    <span className="row-span-2 text-xs text-muted-foreground">{label}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 min-w-1 rounded-full bg-sky-500" style={{ width: `${Math.max(1, month.bookings / maxBookings * 100)}%` }} />
+                      <span className="shrink-0 text-xs tabular-nums">{month.bookings} booking</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 min-w-1 rounded-full bg-emerald-500" style={{ width: `${Math.max(1, month.paid_volume_vnd / maxRevenue * 100)}%` }} />
+                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{formatPrice(month.paid_volume_vnd)}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : !analyticsError ? <p className="mt-5 text-sm text-muted-foreground">Chưa có dữ liệu trong khoảng thời gian này.</p> : null}
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <h2 className="font-semibold">Booking theo khu vực và phong cách</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Trong 6 tháng gần nhất</p>
+          {analyticsLoading ? <Skeleton className="mt-5 h-48 rounded-xl" /> : analytics ? (
+            <div className="mt-4 grid gap-5 sm:grid-cols-2">
+              <AnalyticsList title="Khu vực" rows={analytics.booking_by_location.map((row) => ({ label: row.location, value: row.bookings }))} />
+              <AnalyticsList title="Phong cách" rows={analytics.booking_by_style.map((row) => ({ label: row.style, value: row.bookings }))} />
+            </div>
+          ) : <p className="mt-5 text-sm text-muted-foreground">Không tải được phân bố booking.</p>}
+        </div>
+      </section>
+
+      <section className="mt-8 rounded-2xl border border-border bg-card p-5">
+        <h2 className="font-semibold">Hoạt động gần đây</h2>
+        {analyticsError && <p className="mt-3 text-sm text-destructive">Không tải được hoạt động gần đây.</p>}
+        {analyticsLoading ? <Skeleton className="mt-4 h-48 rounded-xl" /> : analytics?.recent_activity.length ? (
+          <div className="mt-3 divide-y divide-border">
+            {analytics.recent_activity.map((activity) => (
+              <div key={`${activity.kind}-${activity.id}`} className="flex flex-wrap items-start justify-between gap-2 py-3">
+                <div className="min-w-0">
+                  <p className="font-medium">{activity.kind === "report" ? "Báo cáo moderation" : "Booking mới"} · {activity.title}</p>
+                  <p className="mt-0.5 truncate text-sm text-muted-foreground">{activity.detail || "—"}</p>
+                </div>
+                <span className="shrink-0 text-xs text-muted-foreground">{formatDate(activity.created_at)} · {activity.status}</span>
+              </div>
+            ))}
+          </div>
+        ) : !analyticsError ? <p className="mt-3 text-sm text-muted-foreground">Chưa có hoạt động.</p> : null}
+      </section>
 
       <section className="mt-8">
         <h2 className="mb-3 text-lg font-semibold">Lối tắt</h2>
@@ -67,6 +124,23 @@ export function Overview() {
         </div>
       </section>
     </PageContainer>
+  );
+}
+
+function AnalyticsList({ title, rows }: { title: string; rows: Array<{ label: string; value: number }> }) {
+  return (
+    <div>
+      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
+      {rows.length ? (
+        <ul className="space-y-2">
+          {rows.map((row) => (
+            <li key={row.label} className="flex items-center justify-between gap-3 text-sm">
+              <span className="truncate">{row.label}</span><span className="shrink-0 tabular-nums text-muted-foreground">{row.value}</span>
+            </li>
+          ))}
+        </ul>
+      ) : <p className="text-sm text-muted-foreground">Chưa có dữ liệu</p>}
+    </div>
   );
 }
 

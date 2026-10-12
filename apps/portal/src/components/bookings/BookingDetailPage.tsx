@@ -130,6 +130,7 @@ function BookingSummary({
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           <MessageButton
+            bookingId={booking.id}
             participant={
               isClient
                 ? {

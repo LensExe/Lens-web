@@ -32,7 +32,7 @@ import {
 import { currentUser } from "@/lib/session";
 import type { Booking, BookingStatus } from "@/types";
 
-type BookingFilter = "all" | "payment" | "pending" | "completed";
+type BookingFilter = "all" | "payment" | "pending" | "completed" | "cancelled";
 
 const initialsOf = (name: string) =>
   name
@@ -493,6 +493,7 @@ export function CustomerOverview() {
       (a, b) => a.date.localeCompare(b.date) || (a.timeSlot ?? "").localeCompare(b.timeSlot ?? ""),
     );
   const completed = bookings.filter((booking) => booking.status === "released");
+  const cancelled = bookings.filter((booking) => booking.status === "cancelled");
   const needsPayment = bookings.filter(
     (booking) => booking.status === "awaiting_deposit" || needsRemainingPayment(booking),
   );
@@ -508,7 +509,9 @@ export function CustomerOverview() {
           )
         : filter === "pending"
           ? upcoming.filter((booking) => booking.status === "pending")
-          : completed;
+          : filter === "completed"
+            ? completed
+            : cancelled;
 
   const styleTags = [...new Set(bookings.map((booking) => booking.style))].slice(0, 3);
   const firstName = (profile?.name ?? currentUser.name).split(" ")[0];
@@ -615,6 +618,12 @@ export function CustomerOverview() {
                   count={completed.length}
                   onClick={() => setFilter("completed")}
                 />
+                <FilterTab
+                  active={filter === "cancelled"}
+                  label="Đã hủy"
+                  count={cancelled.length}
+                  onClick={() => setFilter("cancelled")}
+                />
               </div>
               <Link
                 to="/client/bookings"
@@ -636,7 +645,9 @@ export function CustomerOverview() {
                   <p className="mt-3 text-sm font-medium">
                     {filter === "completed"
                       ? "Chưa có buổi chụp hoàn thành"
-                      : "Chưa có buổi chụp phù hợp"}
+                      : filter === "cancelled"
+                        ? "Chưa có buổi chụp bị hủy"
+                        : "Chưa có buổi chụp phù hợp"}
                   </p>
                   <p className="mt-1 max-w-sm text-xs text-muted-foreground">
                     Tìm một nhiếp ảnh gia phù hợp để bắt đầu lưu giữ khoảnh khắc của bạn.

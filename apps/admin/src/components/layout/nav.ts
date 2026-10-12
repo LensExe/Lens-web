@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Award,
   BarChart3,
+  Bell,
   CalendarRange,
   HardDrive,
   LayoutDashboard,
@@ -37,6 +38,7 @@ export const NAV_GROUPS: AdminNavGroup[] = [
       },
       { to: "/users", label: "Người dùng", icon: Users },
       { to: "/bookings", label: "Đặt lịch & ghép thợ", icon: CalendarRange },
+      { to: "/notifications", label: "Gửi thông báo", icon: Bell },
     ],
   },
   {
