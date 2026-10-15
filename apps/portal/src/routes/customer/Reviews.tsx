@@ -342,52 +342,42 @@ function ReviewTips() {
 
 export function CustomerReviews() {
   const { data: bookings = [], isLoading: bookingsLoading } = useMyBookings();
-  const { data: submittedReviews = [], isLoading: reviewsLoading } = useMyBookingReviews();
+  const {
+    data: submittedReviews,
+    isLoading: reviewsLoading,
+    isError: reviewsError,
+    refetch: refetchReviews,
+  } = useMyBookingReviews();
   const [tab, setTab] = useState<ReviewTab>("pending");
   const [activeTarget, setActiveTarget] = useState<ReviewTarget | null>(null);
   const isLoading = bookingsLoading || reviewsLoading;
+  const reviewsUnavailable = reviewsError && !submittedReviews;
   const reviewable = bookings.filter((booking) => booking.status === "released");
 
-  // One review target per photographer. Group shoots expose a row for the lead
-  // photographer and each accepted collaborator.
-  const targets: ReviewTarget[] = reviewable.flatMap((booking) => {
-    const people: ReviewTarget["person"][] = [
-      {
-        id: booking.photographerId,
-        name: booking.photographerName,
-        avatar: undefined,
-        roleLabel: booking.collaborators?.length ? "Thợ chính" : "Nhiếp ảnh gia",
-      },
-      ...(booking.collaborators ?? [])
-        .filter((collaborator) => collaborator.status === "accepted")
-        .map((collaborator) => ({
-          id: collaborator.photographerId,
-          name: collaborator.photographerName,
-          avatar: collaborator.photographerAvatar,
-          roleLabel: "Thợ liên kết",
-        })),
-    ];
+  // The backend stores one review per booking and assigns it to the lead photographer.
+  const targets: ReviewTarget[] = reviewable.map((booking) => ({
+    key: booking.id,
+    booking,
+    person: {
+      id: booking.photographerId,
+      name: booking.photographerName,
+      roleLabel: "Nhiếp ảnh gia",
+    },
+  }));
 
-    return people.map((person) => ({
-      key: booking.id + "-" + person.id,
-      booking,
-      person,
-    }));
-  });
-
-  const reviewsByTarget = new Map(
-    submittedReviews.map((review) => [
-      review.bookingId + "-" + review.photographerId,
+  const reviewsByBooking = new Map(
+    (submittedReviews ?? []).map((review) => [
+      review.bookingId,
       review,
     ]),
   );
-  const reviewedCount = targets.filter((target) => reviewsByTarget.has(target.key)).length;
+  const reviewedCount = targets.filter((target) => reviewsByBooking.has(target.booking.id)).length;
   const pendingCount = targets.length - reviewedCount;
   const visibleTargets =
     tab === "pending"
-      ? targets.filter((target) => !reviewsByTarget.has(target.key))
-      : targets.filter((target) => reviewsByTarget.has(target.key));
-  const activeReview = activeTarget ? reviewsByTarget.get(activeTarget.key) : undefined;
+      ? targets.filter((target) => !reviewsByBooking.has(target.booking.id))
+      : targets.filter((target) => reviewsByBooking.has(target.booking.id));
+  const activeReview = activeTarget ? reviewsByBooking.get(activeTarget.booking.id) : undefined;
 
   return (
     <PageContainer>
@@ -408,7 +398,7 @@ export function CustomerReviews() {
           </>
         }
         actions={
-          !isLoading && targets.length > 0 ? (
+          !isLoading && !reviewsUnavailable && targets.length > 0 ? (
             <span className="w-fit shrink-0 rounded-full border border-ember/15 bg-ember/10 px-3 py-1.5 text-[10px] font-medium text-ember">
               {pendingCount > 0 ? pendingCount + " mục chờ đánh giá" : "Bạn đã hoàn tất đánh giá"}
             </span>
@@ -417,16 +407,18 @@ export function CustomerReviews() {
       />
 
       <div className="mx-auto w-full max-w-[1180px]">
-        <StatusTabs<ReviewTab>
-          tabs={REVIEW_TABS.map(({ value, label }) => ({
-            value,
-            label,
-            count: value === "pending" ? pendingCount : reviewedCount,
-          }))}
-          value={tab}
-          onChange={setTab}
-          className="mb-5"
-        />
+        {!reviewsUnavailable && (
+          <StatusTabs<ReviewTab>
+            tabs={REVIEW_TABS.map(({ value, label }) => ({
+              value,
+              label,
+              count: value === "pending" ? pendingCount : reviewedCount,
+            }))}
+            value={tab}
+            onChange={setTab}
+            className="mb-5"
+          />
+        )}
 
         <section className="mb-5 flex flex-col gap-3 rounded-2xl border border-amber-200/80 bg-amber-50/70 p-3.5 text-amber-900 shadow-xs dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-100 sm:flex-row sm:items-center sm:justify-between sm:px-4">
           <div className="flex items-start gap-2.5">
@@ -451,6 +443,21 @@ export function CustomerReviews() {
             {[0, 1, 2].map((item) => (
               <Skeleton key={item} className="h-[4.75rem] rounded-2xl" />
             ))}
+          </div>
+        ) : reviewsUnavailable ? (
+          <div className="rounded-2xl border border-destructive/30 bg-card p-6 text-center shadow-xs">
+            <p role="alert" className="text-sm text-destructive">
+              Không xác định được booking nào đã được đánh giá. Vui lòng tải lại danh sách.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3 rounded-xl"
+              onClick={() => void refetchReviews()}
+            >
+              Thử tải lại
+            </Button>
           </div>
         ) : visibleTargets.length === 0 ? (
           <div className="flex min-h-44 flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card px-6 py-10 text-center shadow-xs">
@@ -478,7 +485,7 @@ export function CustomerReviews() {
               <ReviewRow
                 key={target.key}
                 target={target}
-                review={reviewsByTarget.get(target.key)}
+                review={reviewsByBooking.get(target.booking.id)}
                 onReview={() => setActiveTarget(target)}
               />
             ))}

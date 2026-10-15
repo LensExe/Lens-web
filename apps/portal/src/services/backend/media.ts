@@ -1,6 +1,11 @@
 import { backendDelete, backendGet, backendPost } from "@/lib/backend-api";
-import type { ApiObject } from "@/types/common";
-import type { MediaAddGalleryItemDto, MediaCompleteDto, MediaUploadDto } from "@/types/media";
+import type { ApiItems, ApiObject } from "@/types/common";
+import type {
+  ApiDeliveryGallery,
+  MediaAddGalleryItemDto,
+  MediaCompleteDto,
+  MediaUploadDto,
+} from "@/types/media";
 
 export const requestMediaUpload = (body: MediaUploadDto) =>
   backendPost<ApiObject, MediaUploadDto>("/media/upload-url", body);
@@ -15,10 +20,13 @@ export const deleteMedia = (mediaId: string) =>
   backendDelete<{ deleted: boolean }>(`/media/${encodeURIComponent(mediaId)}`);
 
 export const getBookingGallery = (bookingId: string) =>
-  backendGet<ApiObject>(`/bookings/${encodeURIComponent(bookingId)}/gallery`);
+  backendGet<ApiDeliveryGallery>(`/bookings/${encodeURIComponent(bookingId)}/gallery`);
+
+export const listMyBookingGalleries = () =>
+  backendGet<ApiItems<ApiDeliveryGallery>>("/photographers/me/galleries");
 
 export const getBookingGalleryDownload = (bookingId: string) =>
-  backendGet<ApiObject>(`/bookings/${encodeURIComponent(bookingId)}/gallery/download`);
+  backendGet<ApiDeliveryGallery>(`/bookings/${encodeURIComponent(bookingId)}/gallery/download`);
 
 export const addBookingGalleryItem = (bookingId: string, body: MediaAddGalleryItemDto) =>
   backendPost<ApiObject, MediaAddGalleryItemDto>(`/bookings/${encodeURIComponent(bookingId)}/gallery/items`, body);

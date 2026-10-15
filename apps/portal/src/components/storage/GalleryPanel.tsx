@@ -5,7 +5,7 @@ import { DeliveryProgress } from "@/components/storage/DeliveryProgress";
 import { useGallery, usePublishGallery, useUploadPhotos } from "@/queries/useStorage";
 import { apiErrorMessage } from "@/lib/errors";
 import { formatBytes } from "@/lib/storage";
-import type { ShootGallery } from "@/types";
+import type { Booking, ShootGallery } from "@/types";
 
 function GalleryGrid({ gallery }: { gallery: ShootGallery }) {
   return (
@@ -41,23 +41,29 @@ function GalleryGrid({ gallery }: { gallery: ShootGallery }) {
 /** Displays a real booking gallery and uploads files through lens-backend media endpoints. */
 export function GalleryPanel({
   bookingId,
+  booking,
   canUpload,
   canPublish = false,
   required,
   emptyActions,
 }: {
   bookingId: string;
+  booking?: Booking;
   canUpload: boolean;
   canPublish?: boolean;
   required?: number;
   emptyActions?: ReactNode;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const { data: gallery, isLoading } = useGallery(bookingId);
-  const upload = useUploadPhotos(bookingId);
-  const publish = usePublishGallery(bookingId);
+  const { data: gallery, isLoading } = useGallery(bookingId, booking);
+  const upload = useUploadPhotos(bookingId, booking);
+  const publish = usePublishGallery(bookingId, booking);
   const published = Boolean(gallery?.publishedAt);
   const canAddPhotos = canUpload && !published;
+  const photoCount = gallery?.photos.length ?? 0;
+  const meetsPhotoRequirement = required === undefined || photoCount >= required;
+  const fullyPaid = Boolean(booking && (booking.paidAmount ?? 0) >= booking.price);
+  const publishReady = canUpload && canPublish && !published;
 
   const submitFiles = (files: FileList | null) => {
     const selected = Array.from(files ?? []);
@@ -127,14 +133,34 @@ export function GalleryPanel({
                   Thêm ảnh
                 </Button>
               )}
-              {canUpload && canPublish && !published && (
-                <Button size="sm" className="rounded-full" disabled={publish.isPending || gallery.photos.length === 0} onClick={publishGallery}>
+              {publishReady && (
+                <Button
+                  size="sm"
+                  className="rounded-full"
+                  disabled={
+                    publish.isPending ||
+                    photoCount === 0 ||
+                    !meetsPhotoRequirement ||
+                    !fullyPaid
+                  }
+                  onClick={publishGallery}
+                >
                   {publish.isPending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
                   Giao ảnh cho khách
                 </Button>
               )}
             </div>
           </div>
+          {publishReady && !meetsPhotoRequirement && required !== undefined && (
+            <p className="mb-4 rounded-xl border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+              Cần tải thêm {required - photoCount} ảnh theo gói trước khi giao cho khách.
+            </p>
+          )}
+          {publishReady && meetsPhotoRequirement && !fullyPaid && (
+            <p className="mb-4 rounded-xl border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+              Khách hàng cần thanh toán đủ booking trước khi có thể giao ảnh.
+            </p>
+          )}
           {canUpload && !published && !canPublish && (
             <p className="mb-4 rounded-xl border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
               Bạn có thể tải ảnh lên trong lúc chuẩn bị. Để giao ảnh, hãy đánh dấu buổi chụp đã hoàn tất ở chi tiết lịch đặt.

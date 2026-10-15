@@ -22,9 +22,9 @@ export const CITY_OPTIONS = [
   "Hải Phòng",
 ];
 
-// Price range (VND) for the slider filter. Booking plans currently returned by
-// the backend range from 500k to about 2.9m per session, so the default range
-// must include those real values instead of filtering every photographer out.
+// Price range (VND) for the slider filter. Photographers without an active
+// booking plan have a starting price of 0 and remain visible until this range
+// is deliberately narrowed by the customer.
 export const PRICE_MIN = 50_000;
 export const PRICE_MAX = 3_000_000;
 export const PRICE_STEP = 25_000;
@@ -130,7 +130,7 @@ export function applyFilters(list: Photographer[], f: Filters): Photographer[] {
     }
     if (f.styles.length && !f.styles.some((s) => p.styles.includes(s))) return false;
     if (f.city && p.city !== f.city) return false;
-    if (p.pricePerSession < f.priceMin || p.pricePerSession > f.priceMax) return false;
+    if (isPriceActive(f) && (p.pricePerSession < f.priceMin || p.pricePerSession > f.priceMax)) return false;
     if (f.date && !p.availableDates.includes(f.date)) return false;
     if (minRating && p.rating < minRating) return false;
     if (exp && (p.experienceYears < exp.min || p.experienceYears >= exp.max)) return false;

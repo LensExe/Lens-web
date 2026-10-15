@@ -2,6 +2,7 @@ import { bookingApi, bookingPlanApi, paymentApi, photographerApi } from "@/servi
 import type { ApiBooking } from "@/types/bookings";
 import type { ApiPayment } from "@/types/payments";
 import type { ApiBookingPlan } from "@/types/booking-plans";
+import type { ApiPhotographer } from "@/types/photographers";
 import type { ApiObject } from "@/types/common";
 import { sessionUser } from "@/lib/session";
 import { toVietnamIso, vietnamDateTimeParts } from "@/lib/vietnam-time";
@@ -79,15 +80,43 @@ export interface BookingPaymentAttempt {
 export const getPaymentStatus = (paymentId: string) => paymentApi.getPayment(paymentId);
 export const getPaymentQr = (paymentId: string) => paymentApi.getPaymentQr(paymentId);
 
+interface BookingEnrichmentCache {
+  photographers: Map<string, Promise<ApiPhotographer | null>>;
+  plans: Map<string, Promise<ApiBookingPlan[]>>;
+  paidAmounts: Map<string, Promise<number>>;
+}
+
+function createBookingEnrichmentCache(): BookingEnrichmentCache {
+  return {
+    photographers: new Map(),
+    plans: new Map(),
+    paidAmounts: new Map(),
+  };
+}
+
 async function getPlan(
   photographerId: string,
   bookingPlanId: string,
+  cache?: BookingEnrichmentCache,
 ): Promise<ApiBookingPlan | undefined> {
-  const response = await bookingPlanApi.listPhotographerBookingPlans(photographerId);
-  return response.items.find((plan) => plan.id === bookingPlanId);
+  let plans = cache?.plans.get(photographerId);
+  if (!plans) {
+    plans = bookingPlanApi.listPhotographerBookingPlans(photographerId).then((response) => response.items);
+    cache?.plans.set(photographerId, plans);
+  }
+  return (await plans).find((plan) => plan.id === bookingPlanId);
 }
 
-async function getPaidAmounts(bookingId: string) {
+function getPhotographer(photographerId: string, cache: BookingEnrichmentCache) {
+  let photographer = cache.photographers.get(photographerId);
+  if (!photographer) {
+    photographer = photographerApi.getPhotographer(photographerId).catch(() => null);
+    cache.photographers.set(photographerId, photographer);
+  }
+  return photographer;
+}
+
+async function loadPaidAmount(bookingId: string) {
   const history = await paymentApi.getBookingPayments(bookingId);
   return history.items.reduce((sum, payment) => {
     const row = payment as ApiObject;
@@ -97,45 +126,83 @@ async function getPaidAmounts(bookingId: string) {
   }, 0);
 }
 
-async function mapBooking(row: ApiBooking): Promise<Booking> {
-  const [photographer, plan, paidAmount] = await Promise.all([
-    photographerApi.getPhotographer(row.photographer_id).catch(() => null),
-    getPlan(row.photographer_id, row.booking_plan_id).catch(() => undefined),
-    getPaidAmounts(row.id),
-  ]);
-  const paidDeposit = paidAmount >= row.deposit_amount;
-  const paidTotal = paidAmount >= row.total_amount;
-  const start = new Date(row.from);
-  const end = new Date(row.to);
-  const startParts = vietnamDateTimeParts(row.from);
+async function getPaidAmount(bookingId: string, cache?: BookingEnrichmentCache) {
+  let amount = cache?.paidAmounts.get(bookingId);
+  if (!amount) {
+    amount = loadPaidAmount(bookingId);
+    cache?.paidAmounts.set(bookingId, amount);
+  }
+  return amount;
+}
+
+async function mapBooking(
+  row: ApiBooking,
+  cache: BookingEnrichmentCache = createBookingEnrichmentCache(),
+): Promise<Booking> {
   const nested = row as ApiBooking & {
     customer?: unknown;
     photographer?: unknown;
     booking_plan?: unknown;
   };
   const snapshot = asRecord((row as ApiObject).package_snapshot);
+  const bookingPhotographer = asRecord(nested.photographer);
+  const bookingPlan = asRecord(nested.booking_plan);
+  const embeddedPaidAmount = (row as ApiObject).paid_amount;
+  const hasPaidAmount = embeddedPaidAmount !== undefined && embeddedPaidAmount !== null;
+  const photographerRequest = str(bookingPhotographer.fullname)
+    ? Promise.resolve(null)
+    : getPhotographer(row.photographer_id, cache);
+  const planRequest = str(snapshot.name) || str(bookingPlan.name)
+    ? Promise.resolve(undefined)
+    : getPlan(row.photographer_id, row.booking_plan_id, cache).catch(() => undefined);
+  const paidAmountRequest = hasPaidAmount
+    ? Promise.resolve(num(embeddedPaidAmount))
+    : getPaidAmount(row.id, cache);
+  const [photographer, plan, paidAmount] = await Promise.all([
+    photographerRequest,
+    planRequest,
+    paidAmountRequest,
+  ]);
+  const paidDeposit = paidAmount >= row.deposit_amount;
+  const paidTotal = paidAmount >= row.total_amount;
+  const start = new Date(row.from);
+  const end = new Date(row.to);
+  const startParts = vietnamDateTimeParts(row.from);
   const snapshotName = str(snapshot.name);
-  const packageSnapshot = snapshotName
+  const packageDetails = snapshotName ? snapshot : bookingPlan;
+  const packageName = str(packageDetails.name);
+  const packageSnapshot = packageName
     ? {
-        name: snapshotName,
-        photoCount: num(snapshot.retouched_photo_count, num(snapshot.photo_count, plan?.retouched_photo_count ?? 1)),
-        durationHours: num(snapshot.duration_minutes, plan?.duration_minutes ?? 120) / 60,
-        deliveryDays: typeof snapshot.delivery_days === "number" ? snapshot.delivery_days : undefined,
+        name: packageName,
+        photoCount: num(
+          packageDetails.photo_count,
+          num(
+            packageDetails.retouched_photo_count,
+            plan?.photo_count ?? plan?.retouched_photo_count ?? 1,
+          ),
+        ),
+        durationHours: num(packageDetails.duration_minutes, plan?.duration_minutes ?? 120) / 60,
+        deliveryDays:
+          typeof packageDetails.delivery_days === "number"
+            ? packageDetails.delivery_days
+            : plan?.delivery_days ?? undefined,
       }
     : plan
       ? {
           name: plan.name,
-          photoCount: plan.retouched_photo_count,
+          photoCount: plan.photo_count,
           durationHours: plan.duration_minutes / 60,
           deliveryDays: plan.delivery_days ?? undefined,
         }
       : undefined;
   const customer = asRecord(nested.customer);
-  const bookingPhotographer = asRecord(nested.photographer);
   const photographerName = str(
-    photographer?.fullname || bookingPhotographer.fullname,
+    bookingPhotographer.fullname || photographer?.fullname,
     "Nhiếp ảnh gia",
   );
+  const photographerStyles = Array.isArray(bookingPhotographer.styles)
+    ? bookingPhotographer.styles
+    : photographer?.styles ?? [];
   return {
     id: row.id,
     clientId: row.customer_id ?? "",
@@ -145,13 +212,14 @@ async function mapBooking(row: ApiBooking): Promise<Booking> {
     ),
     photographerId: row.photographer_id,
     photographerName,
-    style: photographer?.styles?.map((style) => STYLE_LABELS[style]).find(Boolean) ?? "",
+    style: photographerStyles.map((style) => STYLE_LABELS[str(style)]).find(Boolean) ?? "",
     date: startParts?.date ?? row.from.slice(0, 10),
     location: row.location,
     price: row.total_amount,
     status: mapStatus(row.status, paidDeposit, paidTotal),
     backendStatus: row.status,
     galleryPublishedAt: str((row as ApiObject).gallery_published_at) || null,
+    galleryPhotoCount: num((row as ApiObject).gallery_photo_count),
     paidAmount,
     packageId: row.booking_plan_id,
     packageSnapshot,
@@ -168,6 +236,7 @@ async function mapBooking(row: ApiBooking): Promise<Booking> {
 
 export async function getMyBookings(): Promise<Booking[]> {
   const limit = 100;
+  const cache = createBookingEnrichmentCache();
   const first = await bookingApi.listMyBookings({ limit, offset: 0 });
   const extra = await Promise.all(
     Array.from(
@@ -176,7 +245,11 @@ export async function getMyBookings(): Promise<Booking[]> {
         bookingApi.listMyBookings({ limit, offset: first.items.length + index * limit }),
     ),
   );
-  return Promise.all([first.items, ...extra.map((page) => page.items)].flat().map(mapBooking));
+  return Promise.all(
+    [first.items, ...extra.map((page) => page.items)]
+      .flat()
+      .map((row) => mapBooking(row, cache)),
+  );
 }
 
 export async function createBooking(input: BookingInput): Promise<Booking> {
@@ -199,7 +272,7 @@ export async function createBooking(input: BookingInput): Promise<Booking> {
     packageId: input.packageId,
     packageSnapshot: {
       name: plan.name,
-      photoCount: plan.retouched_photo_count,
+      photoCount: plan.photo_count,
       durationHours: plan.duration_minutes / 60,
       deliveryDays: plan.delivery_days ?? undefined,
     },

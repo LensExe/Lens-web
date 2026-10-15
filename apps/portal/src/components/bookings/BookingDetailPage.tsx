@@ -302,7 +302,7 @@ export function BookingDetailPage({ mode }: { mode: "client" | "photographer" })
   const incoming = useIncomingBookings();
   const source = isClient ? clientBookings : incoming;
   const booking = (source.data ?? []).find((b) => b.id === booking_id);
-  const galleryQuery = useGallery(booking?.id ?? booking_id);
+  const galleryQuery = useGallery(booking?.id ?? booking_id, booking);
   const photographerQuery = usePhotographer(isClient ? (booking?.photographerId ?? "") : "");
 
   const confirmReceipt = useConfirmReceipt();
@@ -454,6 +454,7 @@ export function BookingDetailPage({ mode }: { mode: "client" | "photographer" })
               <div className="mt-4">
                 <GalleryPanel
                   bookingId={booking.id}
+                  booking={booking}
                   canUpload={!isClient}
                   canPublish={booking.backendStatus === "shot"}
                   required={booking.packageSnapshot?.photoCount}
@@ -546,7 +547,7 @@ function BookingActions({
     </div>
   );
 
-  const { data: gallery } = useGallery(booking.id);
+  const { data: gallery } = useGallery(booking.id, booking);
   const depositPaid = (booking.paidAmount ?? 0) >= booking.depositAmount;
   const progress = deliveryProgress(booking, gallery?.photos.length ?? 0);
   const completeShoot = useCompleteShoot();

@@ -29,6 +29,7 @@ function toPhotographer(profile: ApiPhotographer): Photographer {
   const fallbackAvatar = avatar(`photographer-${profile.id}-av`);
   const firstStyle = profile.styles[0];
   const cover =
+    profile.cover_url ??
     profile.avatar_url ??
     photo(`photographer-${profile.id}`, 800, 1000, firstStyle === "event" ? "event" : "portrait");
 
@@ -39,6 +40,7 @@ function toPhotographer(profile: ApiPhotographer): Photographer {
     cover,
     city: profile.location,
     styles: profile.styles.map((style) => STYLE_LABELS[style]),
+    pricePerSession: Number(profile.starting_price) || 0,
     rating: profile.rating?.average_rating ?? 0,
     reviewCount: profile.rating?.total_feedbacks ?? 0,
     bio: profile.description,

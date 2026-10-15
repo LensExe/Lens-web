@@ -109,7 +109,7 @@ function mapMessage(message: ChatMessage): Message {
 }
 
 async function getPeer(peerId: string): Promise<ChatPeer> {
-  return backendGet<ChatPeer>(`/chat/participants/${encodeURIComponent(peerId)}`);
+  return backendGet<ChatPeer>(`/users/chat-peers/${encodeURIComponent(peerId)}`);
 }
 
 async function latestMessage(channel: ChatChannel): Promise<ChatMessage | undefined> {

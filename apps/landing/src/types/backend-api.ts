@@ -38,6 +38,8 @@ export interface ApiPhotographer {
   location: string;
   is_available: boolean;
   description: string;
+  starting_price?: number;
+  cover_url?: string | null;
   rating?: {
     average_rating: number;
     total_feedbacks: number;

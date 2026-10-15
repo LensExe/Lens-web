@@ -9,6 +9,8 @@ import type {
 
 export const createBookingReview = (bookingId: string, body: ReviewCreateDto) =>
   backendPost<ApiReview, ReviewCreateDto>(`/bookings/${encodeURIComponent(bookingId)}/reviews`, body);
+export const listMyReviews = (query: PageQueryDto = {}) =>
+  backendGet<ApiPage<ApiReview>>("/customers/me/reviews", query);
 export const getPhotographerRatingSummary = (photographerId: string) =>
   backendGet<ApiObject>(`/photographers/${encodeURIComponent(photographerId)}/rating-summary`);
 export const listPhotographerReviews = (photographerId: string, query: PageQueryDto = {}) =>

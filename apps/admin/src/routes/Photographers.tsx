@@ -127,7 +127,7 @@ export function Photographers() {
         header: ({ column }) => <ColumnHeader column={column} title="Nhiếp ảnh gia" />,
         cell: ({ row }) => {
           const app = row.original;
-          return <UserCell name={app.name} avatar={app.avatar} sub={app.styles.join(" · ") + " · " + app.portfolio.length + " ảnh"} />;
+          return <UserCell name={app.name} avatar={app.avatar} sub={app.styles.join(" · ") + " · " + (app.portfolioCount ?? app.portfolio.length) + " ảnh"} />;
         },
         meta: { headerClassName: "min-w-64", cellClassName: "min-w-64" },
       },

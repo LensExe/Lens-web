@@ -10,7 +10,7 @@ function fromApi(plan: ApiBookingPlan): PhotographerPackage {
     name: plan.name,
     description: text(plan.description),
     price: plan.price,
-    photoCount: plan.retouched_photo_count,
+    photoCount: plan.photo_count,
     durationHours: plan.duration_minutes / 60,
     deliveryDays: plan.delivery_days ?? undefined,
   };

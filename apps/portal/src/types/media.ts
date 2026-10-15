@@ -1,4 +1,4 @@
-import type { UUID } from "./common";
+import type { ISODateTime, UUID } from "./common";
 
 /** Media upload and gallery DTOs. */
 export interface MediaUploadDto {
@@ -9,3 +9,25 @@ export interface MediaUploadDto {
 
 export interface MediaCompleteDto { media_id: UUID }
 export interface MediaAddGalleryItemDto { media_id: UUID }
+
+export interface ApiDeliveryGalleryItem {
+  id: UUID;
+  media_id: UUID;
+  file_size: number;
+  content_type: string;
+  thumbnail_url?: string;
+  download_url?: string;
+  width?: number | null;
+  height?: number | null;
+}
+
+export interface ApiDeliveryGallery {
+  id: UUID;
+  booking_id: UUID;
+  title?: string;
+  media_ids: UUID[];
+  published_at: ISODateTime | null;
+  expires_in: number | null;
+  items: ApiDeliveryGalleryItem[];
+  [key: string]: unknown;
+}

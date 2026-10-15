@@ -341,7 +341,7 @@ function ProfileView({ profile, onEdit }: { profile: Photographer; onEdit: () =>
         actions={
           <>
             <Button asChild variant="outline" className="rounded-full">
-              <Link to={`/photographers/${currentUser.id}`}>
+              <Link to={`/photographers/${profile.id}`}>
                 <ExternalLink className="size-4" />
                 Xem hồ sơ công khai
               </Link>
@@ -474,7 +474,7 @@ function ProfileView({ profile, onEdit }: { profile: Photographer; onEdit: () =>
             </p>
           </div>
           <Link
-            to={`/photographers/${currentUser.id}`}
+            to={`/photographers/${profile.id}`}
             className="inline-flex items-center gap-1.5 self-start text-xs font-medium text-muted-foreground transition-colors hover:text-ember sm:self-auto"
           >
             Xem tất cả trên hồ sơ <ArrowUpRight className="size-3.5" />

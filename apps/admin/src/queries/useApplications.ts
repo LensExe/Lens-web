@@ -1,11 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { decideApplication, getApplications } from "@/services/applications";
+import {
+  decideApplication,
+  getApplicationPortfolio,
+  getApplications,
+} from "@/services/applications";
 import { queueKey } from "@/queries/useStats";
-import type { ApplicationDecision } from "@/types";
+import type { ApplicationDecision, PhotographerApplication } from "@/types";
 
 // Layer 2 — Query hooks.
 export const applicationKeys = {
   all: ["applications"] as const,
+  portfolio: (id: string) => ["applications", id, "portfolio"] as const,
 };
 
 export function useApplications() {
@@ -15,13 +20,27 @@ export function useApplications() {
   });
 }
 
+export function useApplicationPortfolio(id: string) {
+  return useQuery({
+    queryKey: applicationKeys.portfolio(id),
+    queryFn: () => getApplicationPortfolio(id),
+    enabled: !!id,
+  });
+}
+
 export function useDecideApplication() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, decision }: { id: string; decision: ApplicationDecision }) =>
-      decideApplication(id, decision),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: applicationKeys.all });
+    mutationFn: ({ application, decision }: {
+      application: PhotographerApplication;
+      decision: ApplicationDecision;
+    }) => decideApplication(application, decision),
+    onSuccess: (updated) => {
+      qc.setQueryData<PhotographerApplication[]>(applicationKeys.all, (current) =>
+        current?.map((application) =>
+          application.id === updated.id ? updated : application,
+        ),
+      );
       qc.invalidateQueries({ queryKey: queueKey });
     },
   });

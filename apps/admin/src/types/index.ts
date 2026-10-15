@@ -15,6 +15,8 @@ export interface PhotographerApplication {
   pricePerSession: number;
   /** Portfolio shots submitted for review (image URLs). */
   portfolio: string[];
+  /** Number of portfolio images, available in the lightweight list response. */
+  portfolioCount?: number;
   bio: string;
   /** ISO date string the application was submitted. */
   submittedAt: string;

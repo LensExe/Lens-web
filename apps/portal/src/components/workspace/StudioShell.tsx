@@ -7,7 +7,7 @@ import { PageFallback } from "@/components/workspace/PageFallback";
 import { SidebarNav } from "@/components/workspace/SidebarNav";
 import { SidebarUserCard } from "@/components/workspace/SidebarUserCard";
 import { STUDIO_NAV, studioTitleFor } from "@/components/workspace/nav";
-import { currentUser } from "@/lib/session";
+import { useMyProfile } from "@/queries/useProfile";
 
 function Brand() {
   return (
@@ -27,6 +27,7 @@ function Brand() {
 export function StudioShell() {
   const [navOpen, setNavOpen] = useState(false);
   const { pathname } = useLocation();
+  const { data: profile } = useMyProfile();
   return (
     <div className="flex min-h-dvh">
       {/* Desktop sidebar — full height, stays put while the page scrolls */}
@@ -56,12 +57,14 @@ export function StudioShell() {
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
-            <Button asChild variant="outline" className="hidden rounded-full lg:inline-flex">
-              <Link to={`/photographers/${currentUser.id}`}>
-                <Eye className="size-4" />
-                Xem hồ sơ công khai
-              </Link>
-            </Button>
+            {profile?.photographerId && (
+              <Button asChild variant="outline" className="hidden rounded-full lg:inline-flex">
+                <Link to={`/photographers/${profile.photographerId}`}>
+                  <Eye className="size-4" />
+                  Xem hồ sơ công khai
+                </Link>
+              </Button>
+            )}
             <HeaderActions />
           </div>
         </header>

@@ -75,6 +75,23 @@ export function PhotographerCard({ photographer }: PhotographerCardProps) {
           ))}
         </div>
 
+        {photographer.startingPlan && (
+          <p
+            className="mb-2 truncate text-xs text-white/80"
+            title={photographer.startingPlan.name}
+          >
+            <span className="text-white/60">Gói thấp nhất:</span> {photographer.startingPlan.name}
+            {photographer.startingPlan.durationHours > 0 && (
+              <span className="text-white/60">
+                {" · "}
+                {Number.isInteger(photographer.startingPlan.durationHours)
+                  ? `${photographer.startingPlan.durationHours} giờ`
+                  : `${photographer.startingPlan.durationHours.toLocaleString("vi-VN")} giờ`}
+              </span>
+            )}
+          </p>
+        )}
+
         <div className="flex items-end justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <Avatar className="size-9 shrink-0 ring-2 ring-white/40">
@@ -90,9 +107,11 @@ export function PhotographerCard({ photographer }: PhotographerCardProps) {
             </div>
           </div>
           <div className="shrink-0 text-right">
-            <p className="text-[10px] uppercase tracking-wide text-white/60">Từ</p>
-            <p className="text-sm font-semibold leading-tight">
-              {formatPrice(photographer.pricePerSession)}
+            <p className="text-[10px] uppercase tracking-wide text-white/60">
+              {photographer.pricePerSession > 0 ? "Từ" : "Giá"}
+            </p>
+            <p className="whitespace-nowrap text-sm font-semibold leading-tight">
+              {photographer.pricePerSession > 0 ? formatPrice(photographer.pricePerSession) : "Chưa có gói"}
             </p>
           </div>
         </div>

@@ -14,7 +14,6 @@ import {
 import { Avatar, AvatarFallback, Button, TONE_CHIP, cn, formatPrice, toast } from "@lens/ui";
 import { bookingStatusMeta, deliveryProgress } from "@/lib/booking";
 import { useCompleteShoot, useUpdateBookingStatus } from "@/queries/useDashboard";
-import { useGallery } from "@/queries/useStorage";
 import { addMinutesToTime } from "@/lib/schedule";
 import type { Booking } from "@/types";
 
@@ -45,9 +44,8 @@ export function RequestCard({
   const status = bookingStatusMeta(booking);
   const { mutate, isPending } = useUpdateBookingStatus();
   const completeShoot = useCompleteShoot();
-  const { data: gallery } = useGallery(booking.id);
   const isActionable = booking.status === "pending";
-  const progress = deliveryProgress(booking, gallery?.photos.length ?? 0);
+  const progress = deliveryProgress(booking, booking.galleryPhotoCount ?? 0);
   const backendStatus = booking.backendStatus;
 
   const decide = (next: "confirmed" | "cancelled") =>

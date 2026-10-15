@@ -11,11 +11,18 @@ import {
 import { syncReadCursor } from "@/services/messages";
 import { notificationSocketNamespace } from "@/services/notifications";
 import { notificationKeys } from "@/queries/useNotifications";
+import { bookingKeys } from "@/queries/useBookings";
+import { dashboardKeys } from "@/queries/useDashboard";
 import { messageKeys } from "@/queries/useMessages";
 
 interface ChatRealtimeEvent {
   event?: string;
   payload?: { channel_id?: string; user_id?: string; last_read_seq?: number };
+}
+
+interface NotificationRealtimeEvent {
+  type?: string;
+  data?: Record<string, unknown> | null;
 }
 
 export function useNotificationRealtime() {
@@ -45,13 +52,32 @@ export function useNotificationRealtime() {
       path: "/api/v1/socket.io",
       auth: { token },
     });
-    socket.on("notification", () => {
+    let conversationsRefreshTimer: number | undefined;
+    const threadRefreshTimers = new Map<string, number>();
+    socket.on("notification", (event: NotificationRealtimeEvent) => {
       void queryClient.invalidateQueries({ queryKey: notificationKeys.inbox });
+      if (event.type === "payment_success" && typeof event.data?.booking_id === "string") {
+        void queryClient.invalidateQueries({ queryKey: bookingKeys.mine });
+        void queryClient.invalidateQueries({ queryKey: dashboardKeys.incoming });
+      }
     });
     socket.on("chat.event", (event: ChatRealtimeEvent) => {
-      void queryClient.invalidateQueries({ queryKey: messageKeys.conversations });
+      if (conversationsRefreshTimer !== undefined) {
+        window.clearTimeout(conversationsRefreshTimer);
+      }
+      conversationsRefreshTimer = window.setTimeout(() => {
+        void queryClient.invalidateQueries({ queryKey: messageKeys.conversations });
+        conversationsRefreshTimer = undefined;
+      }, 750);
       const channelId = event.payload?.channel_id;
-      if (channelId) void queryClient.invalidateQueries({ queryKey: messageKeys.thread(channelId) });
+      if (channelId) {
+        const previousTimer = threadRefreshTimers.get(channelId);
+        if (previousTimer !== undefined) window.clearTimeout(previousTimer);
+        threadRefreshTimers.set(channelId, window.setTimeout(() => {
+          void queryClient.invalidateQueries({ queryKey: messageKeys.thread(channelId) });
+          threadRefreshTimers.delete(channelId);
+        }, 300));
+      }
       if (
         event.event === "READ_CURSOR" &&
         channelId &&
@@ -63,6 +89,8 @@ export function useNotificationRealtime() {
     });
     return () => {
       if (refreshTimer !== undefined) window.clearTimeout(refreshTimer);
+      if (conversationsRefreshTimer !== undefined) window.clearTimeout(conversationsRefreshTimer);
+      for (const timer of threadRefreshTimers.values()) window.clearTimeout(timer);
       socket.disconnect();
     };
   }, [queryClient, token]);

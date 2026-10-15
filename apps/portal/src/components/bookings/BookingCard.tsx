@@ -10,7 +10,6 @@ import {
 } from "@/lib/booking";
 import { useConfirmReceipt } from "@/queries/useBookings";
 import { CancelBookingDialog } from "@/components/bookings/CancelBookingDialog";
-import { useGallery } from "@/queries/useStorage";
 import type { Booking } from "@/types";
 
 const initialsOf = (name: string) =>
@@ -27,8 +26,7 @@ const formatDate = (iso: string) => {
 
 function BookingAction({ booking }: { booking: Booking }) {
   const confirmReceipt = useConfirmReceipt();
-  const { data: gallery } = useGallery(booking.id);
-  const delivered = gallery?.photos.length ?? 0;
+  const delivered = booking.galleryPhotoCount ?? 0;
   const progress = deliveryProgress(booking, delivered);
 
   const release = () =>

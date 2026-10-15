@@ -1,4 +1,5 @@
 import type { PageQueryDto, PhotographyStyle, UUID } from "./common";
+import type { ApiBookingPlan } from "./booking-plans";
 
 /** Photographer search, profile, and availability DTOs. */
 export interface PhotographerSearchQueryDto extends PageQueryDto {
@@ -45,6 +46,12 @@ export interface ApiPhotographer {
     total_bookings: number;
     return_customers: number;
   };
+  /** Lowest price among active plans, projected by the list/profile API. */
+  starting_price?: number;
+  /** Cheapest active booking plan, projected with the photographer list. */
+  starting_plan?: ApiBookingPlan | null;
+  /** First portfolio cover, signed in a single photographer-list projection. */
+  cover_url?: string | null;
   rank?: { code: string; name: string };
   badges?: Array<{ code: string; name: string; earned_at: string }>;
   [key: string]: unknown;

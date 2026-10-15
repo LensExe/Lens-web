@@ -37,7 +37,32 @@ export async function getReviewSummary(photographerId: string): Promise<ReviewSu
 }
 
 export async function getMyBookingReviews(): Promise<BookingReview[]> {
-  throw new Error("Backend chưa có endpoint liệt kê đánh giá của khách hàng (GET /customers/me/reviews).");
+  const reviews: BookingReview[] = [];
+  const limit = 100;
+  let offset = 0;
+
+  while (true) {
+    const page = await reviewApi.listMyReviews({ limit, offset });
+    reviews.push(
+      ...page.items.map((row) => {
+        const record = row as ApiReview & ApiObject;
+        return {
+          id: row.id,
+          bookingId: text(record.booking_id),
+          clientId: text(record.customer_id),
+          photographerId: text(record.photographer_id),
+          rating: row.rating,
+          comment: row.comment ?? "",
+          createdAt: text(record.created_at),
+        };
+      }),
+    );
+
+    offset += page.items.length;
+    if (page.items.length === 0 || offset >= page.total) break;
+  }
+
+  return reviews;
 }
 
 export async function submitBookingReview(input: BookingReviewInput): Promise<BookingReview> {
