@@ -39,30 +39,36 @@ function makeGallery(booking: Booking, payload: ApiObject, downloadPayload?: Api
   };
 }
 
-async function galleryForBooking(booking: Booking): Promise<ShootGallery | null> {
-  try {
-    const payload = await mediaApi.getBookingGallery(booking.id);
-    const download = await mediaApi.getBookingGalleryDownload(booking.id).catch(() => undefined);
-    return makeGallery(booking, payload, download);
-  } catch (error) {
+export async function getMyGalleries(): Promise<ShootGallery[]> {
+  const [bookings, response] = await Promise.all([
+    getMyBookings(),
+    mediaApi.listMyBookingGalleries(),
+  ]);
+  const galleryByBooking = new Map(
+    array(response.items).map((item) => {
+      const row = apiRecord(item);
+      return [string(row.booking_id), row] as const;
+    }),
+  );
+  return bookings.flatMap((booking) => {
+    const payload = galleryByBooking.get(booking.id);
+    if (!payload) return [];
+    const gallery = makeGallery(booking, payload);
+    return gallery.photos.length > 0 ? [gallery] : [];
+  });
+}
+
+export async function getGallery(
+  bookingId: string,
+  knownBooking?: Booking,
+): Promise<ShootGallery | null> {
+  const payloadPromise = mediaApi.getBookingGallery(bookingId).catch((error: unknown) => {
     if (isNotFoundOrForbidden(error)) return null;
     throw error;
-  }
-}
-
-export async function getMyGalleries(): Promise<ShootGallery[]> {
-  const bookings = await getMyBookings();
-  const galleries = await Promise.all(bookings.map(galleryForBooking));
-  return galleries.filter((gallery): gallery is ShootGallery => !!gallery && gallery.photos.length > 0);
-}
-
-export async function getGallery(bookingId: string): Promise<ShootGallery | null> {
+  });
   const [bookings, payload] = await Promise.all([
-    getMyBookings(),
-    mediaApi.getBookingGallery(bookingId).catch((error: unknown) => {
-      if (isNotFoundOrForbidden(error)) return null;
-      throw error;
-    }),
+    knownBooking ? Promise.resolve([knownBooking]) : getMyBookings(),
+    payloadPromise,
   ]);
   if (!payload) return null;
   const booking = bookings.find((item) => item.id === bookingId);
@@ -71,17 +77,24 @@ export async function getGallery(bookingId: string): Promise<ShootGallery | null
   return makeGallery(booking, payload, download);
 }
 
-export async function uploadPhotos(bookingId: string, files: File[]): Promise<ShootGallery | null> {
-  if (files.length === 0) return getGallery(bookingId);
+export async function uploadPhotos(
+  bookingId: string,
+  files: File[],
+  knownBooking?: Booking,
+): Promise<ShootGallery | null> {
+  if (files.length === 0) return getGallery(bookingId, knownBooking);
   await mediaApi.createBookingGallery(bookingId);
   for (const file of files) {
     const mediaId = await uploadImageFile(file, "private");
     await mediaApi.addBookingGalleryItem(bookingId, { media_id: mediaId });
   }
-  return getGallery(bookingId);
+  return getGallery(bookingId, knownBooking);
 }
 
-export async function publishGallery(bookingId: string): Promise<ShootGallery | null> {
+export async function publishGallery(
+  bookingId: string,
+  knownBooking?: Booking,
+): Promise<ShootGallery | null> {
   await mediaApi.publishBookingGallery(bookingId);
-  return getGallery(bookingId);
+  return getGallery(bookingId, knownBooking);
 }

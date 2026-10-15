@@ -16,10 +16,11 @@ export const messageKeys = {
   thread: (id: string) => ["messages", id] as const,
 };
 
-export function useConversations() {
+export function useConversations(enabled = true) {
   return useQuery({
     queryKey: messageKeys.conversations,
     queryFn: getConversations,
+    enabled,
   });
 }
 

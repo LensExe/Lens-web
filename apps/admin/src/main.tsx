@@ -2,19 +2,33 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
 import { ThemeProvider, TooltipProvider, Toaster } from "@lens/ui";
 import "./index.css";
 import App from "./App.tsx";
 import { RouteError } from "./components/RouteError";
+
+function retryQuery(failureCount: number, error: unknown) {
+  if ((error as { code?: string } | null)?.code === "ERR_HTML_RESPONSE") return false;
+  if (
+    isAxiosError(error) &&
+    error.response &&
+    error.response.status >= 400 &&
+    error.response.status < 500
+  ) {
+    return false;
+  }
+  return failureCount < 3;
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 60_000,
       refetchOnWindowFocus: false,
-      // An HTML-instead-of-JSON response will not fix itself — fail fast.
-      retry: (count, error) =>
-        (error as { code?: string }).code !== "ERR_HTML_RESPONSE" && count < 3,
+      // Retrying a client error (especially 429) repeats a request that will
+      // not succeed without a user or server-side state change.
+      retry: retryQuery,
     },
   },
 });

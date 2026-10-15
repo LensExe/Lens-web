@@ -38,5 +38,31 @@ export interface ApiBooking {
   location: string;
   deposit_amount: number;
   total_amount: number;
+  paid_amount?: number;
+  gallery_published_at?: ISODateTime | null;
+  gallery_photo_count?: number;
+  package_snapshot?: {
+    name: string;
+    photo_count?: number;
+    retouched_photo_count?: number;
+    duration_minutes?: number;
+    delivery_days?: number | null;
+  } | null;
+  photographer?: {
+    fullname?: string;
+    avatar_url?: string | null;
+    styles?: string[];
+  };
+  customer?: {
+    fullname?: string;
+    avatar_url?: string | null;
+  };
+  booking_plan?: {
+    name?: string;
+    photo_count?: number;
+    retouched_photo_count?: number;
+    duration_minutes?: number;
+    delivery_days?: number | null;
+  };
   [key: string]: unknown;
 }

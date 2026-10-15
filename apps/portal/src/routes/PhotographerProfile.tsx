@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, BadgeCheck, MapPin } from "lucide-react";
 import {
   Avatar,
@@ -17,6 +17,7 @@ import { useAchievements } from "@/queries/useAchievements";
 import { useScrollReveal } from "@/lib/useScrollReveal";
 import { experienceLabel } from "@/lib/photographer-filters";
 import { sessionUser } from "@/lib/session";
+import { useMyProfile } from "@/queries/useProfile";
 import { RankBadge } from "@/components/achievements/RankBadge";
 import { RankLadderInfo } from "@/components/achievements/RankLadderInfo";
 import { BookButton } from "@/components/profile/BookButton";
@@ -63,8 +64,15 @@ function ProfileSkeleton() {
 export function PhotographerProfile() {
   const { photographer_id = "" } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { data: photographer, isLoading, isError } = usePhotographer(photographer_id);
-  const { data: achievements } = useAchievements(photographer_id);
+  const ownProfileQuery = useMyProfile();
+  // Resolve legacy self-links that used the user ID instead of photographers.id.
+  const isOwnUserIdRoute =
+    sessionUser?.role === "photographer" && photographer_id === sessionUser.id;
+  const resolvedPhotographerId = isOwnUserIdRoute
+    ? ownProfileQuery.data?.photographerId ?? ""
+    : photographer_id;
+  const { data: photographer, isLoading, isError } = usePhotographer(resolvedPhotographerId);
+  const { data: achievements } = useAchievements(resolvedPhotographerId);
   const scopeRef = useRef<HTMLDivElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
   const tabsAnchorRef = useRef<HTMLDivElement>(null);
@@ -86,6 +94,13 @@ export function PhotographerProfile() {
     io.observe(el);
     return () => io.disconnect();
   }, [photographer?.id]);
+
+  if (isOwnUserIdRoute) {
+    if (resolvedPhotographerId && resolvedPhotographerId !== photographer_id) {
+      return <Navigate to={`/photographers/${resolvedPhotographerId}`} replace />;
+    }
+    if (!resolvedPhotographerId && ownProfileQuery.isLoading) return <ProfileSkeleton />;
+  }
 
   const selectTab = (next: Tab) => {
     const params = new URLSearchParams(searchParams);

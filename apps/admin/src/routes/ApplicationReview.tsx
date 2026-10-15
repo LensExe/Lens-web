@@ -33,7 +33,11 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { EmptyState } from "@/components/EmptyState";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { StatusPill } from "@/components/StatusPill";
-import { useApplications, useDecideApplication } from "@/queries/useApplications";
+import {
+  useApplicationPortfolio,
+  useApplications,
+  useDecideApplication,
+} from "@/queries/useApplications";
 import { APPROVAL_STATUS_META } from "@/lib/status";
 import { formatDate, formatRelative } from "@/lib/format";
 import type { PhotographerApplication } from "@/types";
@@ -102,6 +106,9 @@ function Review({
 }) {
   const navigate = useNavigate();
   const decide = useDecideApplication();
+  const portfolioQuery = useApplicationPortfolio(app.id);
+  const portfolio = portfolioQuery.data ?? [];
+  const portfolioCount = Math.max(app.portfolioCount ?? 0, portfolio.length);
   const [viewing, setViewing] = useState<number | null>(null);
   const [confirmApprove, setConfirmApprove] = useState(false);
   const [rejecting, setRejecting] = useState(false);
@@ -125,7 +132,7 @@ function Review({
 
   const approve = () =>
     decide.mutate(
-      { id: app.id, decision: { status: "approved" } },
+      { application: app, decision: { status: "approved" } },
       {
         onSuccess: () => {
           toast.success(`Đã duyệt hồ sơ của ${app.name}`);
@@ -141,7 +148,7 @@ function Review({
       return;
     }
     decide.mutate(
-      { id: app.id, decision: { status: "rejected", note: reason.trim() } },
+      { application: app, decision: { status: "rejected", note: reason.trim() } },
       {
         onSuccess: () => {
           toast.success(`Đã từ chối hồ sơ của ${app.name}`);
@@ -160,9 +167,9 @@ function Review({
   ];
   const checks = [
     {
-      ok: app.portfolio.length >= RECOMMENDED_PORTFOLIO,
+      ok: portfolioCount >= RECOMMENDED_PORTFOLIO,
       label: `Portfolio đạt mức đề nghị (${RECOMMENDED_PORTFOLIO} ảnh)`,
-      detail: `${app.portfolio.length} ảnh`,
+      detail: `${portfolioCount} ảnh`,
     },
     { ok: app.styles.length > 0, label: "Đã chọn phong cách chụp", detail: app.styles.join(", ") },
   ];
@@ -337,30 +344,42 @@ function Review({
         {/* Portfolio */}
         <section className="min-w-0">
           <h2 className="mb-4 text-lg font-semibold">
-            Portfolio <span className="font-normal text-muted-foreground">· {app.portfolio.length} ảnh</span>
+            Portfolio <span className="font-normal text-muted-foreground">· {portfolioCount} ảnh</span>
           </h2>
-          <div className="columns-2 gap-4 xl:columns-3 [&>*]:mb-4">
-            {app.portfolio.map((src, i) => (
-              <button
-                key={src + i}
-                type="button"
-                onClick={() => setViewing(i)}
-                aria-label={`Xem ảnh ${i + 1}`}
-                className="focus-ring group block w-full break-inside-avoid overflow-hidden rounded-2xl bg-muted"
-              >
-                <img
-                  src={src}
-                  alt=""
-                  loading="lazy"
-                  className="h-auto w-full transition-transform duration-500 group-hover:scale-[1.02]"
-                />
-              </button>
-            ))}
-          </div>
+          {portfolioQuery.isLoading ? (
+            <div className="grid grid-cols-2 gap-4 xl:grid-cols-3">
+              {Array.from({ length: 6 }, (_, index) => (
+                <Skeleton key={index} className="h-48 rounded-2xl" />
+              ))}
+            </div>
+          ) : portfolioQuery.isError ? (
+            <p className="rounded-2xl border border-destructive/30 p-5 text-sm text-destructive">
+              Không tải được portfolio của hồ sơ này.
+            </p>
+          ) : (
+            <div className="columns-2 gap-4 xl:columns-3 [&>*]:mb-4">
+              {portfolio.map((src, i) => (
+                <button
+                  key={src + i}
+                  type="button"
+                  onClick={() => setViewing(i)}
+                  aria-label={`Xem ảnh ${i + 1}`}
+                  className="focus-ring group block w-full break-inside-avoid overflow-hidden rounded-2xl bg-muted"
+                >
+                  <img
+                    src={src}
+                    alt=""
+                    loading="lazy"
+                    className="h-auto w-full transition-transform duration-500 group-hover:scale-[1.02]"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
         </section>
       </div>
 
-      <PhotoLightbox photos={app.portfolio} index={viewing} onIndexChange={setViewing} title={app.name} />
+      <PhotoLightbox photos={portfolio} index={viewing} onIndexChange={setViewing} title={app.name} />
       <ConfirmDialog
         open={confirmApprove}
         onOpenChange={setConfirmApprove}

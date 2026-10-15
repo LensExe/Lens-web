@@ -33,6 +33,8 @@ export interface Photographer {
   availableDates: string[];
   /** Service packages this photographer offers. Empty/absent → default tiers. */
   packages?: PhotographerPackage[];
+  /** Cheapest active booking plan included in the photographer list response. */
+  startingPlan?: PhotographerPackage;
   /** Career rank, attached by the API to the roster payload so browse cards can
    *  show it without a per-card achievements request. */
   rank?: RankId;
@@ -48,11 +50,15 @@ export interface PhotographerPackage {
   price: number;
   /** Edited photos delivered — a booking only completes once this many arrive. */
   photoCount: number;
+  /** Detailed retouched images included in this package. */
+  retouchedPhotoCount?: number;
   /** Shooting time, in hours. */
   durationHours: number;
   /** Days after the shoot within which the photos are delivered. */
   /** Not stored by the backend booking-plan endpoint yet. */
   deliveryDays?: number;
+  /** Additional benefits or notes included with the plan. */
+  features?: string[];
 }
 
 /** A half-hour precision interval used by working hours and busy exceptions. */
@@ -235,6 +241,8 @@ export interface Booking {
   backendStatus?: import("./bookings").BookingStatus;
   /** Backend timestamp set when the photographer publishes the delivery gallery. */
   galleryPublishedAt?: string | null;
+  /** Photo count projected into booking-list responses for card progress. */
+  galleryPhotoCount?: number;
   /** Total amount confirmed paid by the backend. */
   paidAmount?: number;
   /** "HH:mm" start time. */
@@ -469,6 +477,8 @@ export interface NotificationPrefs {
 /** The signed-in user's personal info — also used to pre-fill booking forms. */
 export interface UserProfile {
   id: string;
+  /** Photographer profile ID from `/photographers/me`, present for photographer accounts. */
+  photographerId?: string;
   name: string;
   email: string;
   avatar: string;
@@ -483,7 +493,7 @@ export interface UserProfile {
 }
 
 /** Editable profile fields (email + id are fixed). */
-export type ProfileInput = Partial<Omit<UserProfile, "id" | "email" | "avatar">>;
+export type ProfileInput = Partial<Omit<UserProfile, "id" | "photographerId" | "email" | "avatar">>;
 
 export interface ChangePasswordInput {
   currentPassword: string;

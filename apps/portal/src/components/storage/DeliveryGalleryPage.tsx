@@ -20,7 +20,7 @@ export function DeliveryGalleryPage({ mode }: { mode: "photographer" | "client" 
     (b) => b.id === booking_id,
   );
 
-  const { data: gallery } = useGallery(booking_id);
+  const { data: gallery } = useGallery(booking_id, booking);
   const confirmReceipt = useConfirmReceipt();
   // Match the backend guard (+ BookingCard/BookingDetail): the client confirms
   // only once the package's photo count has been delivered.
@@ -89,6 +89,7 @@ export function DeliveryGalleryPage({ mode }: { mode: "photographer" | "client" 
       <div className="mt-4">
         <GalleryPanel
           bookingId={booking_id}
+          booking={booking}
           canUpload={canUpload}
           canPublish={booking?.backendStatus === "shot"}
           required={booking?.packageSnapshot?.photoCount}

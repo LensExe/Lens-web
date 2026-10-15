@@ -35,9 +35,11 @@ function mapPlan(plan: ApiBookingPlan): PhotographerPackage {
     name: plan.name,
     description: text(plan.description),
     price: plan.price,
-    photoCount: plan.retouched_photo_count,
+    photoCount: plan.photo_count,
+    retouchedPhotoCount: plan.retouched_photo_count,
     durationHours: plan.duration_minutes / 60,
     deliveryDays: plan.delivery_days ?? undefined,
+    features: plan.features ?? [],
   };
 }
 
@@ -59,10 +61,22 @@ async function mapPhotographer(
     loadPlans(apiPhotographer.id),
     loadPortfolios(apiPhotographer.id),
   ]);
-  const albums = await Promise.all(portfolios.items.map((album) => portfolioApi.getPortfolio(text(asRecord(album).id))));
+  const albums = await Promise.all(portfolios.items.map((album) => {
+    const row = asRecord(album);
+    const items = Array.isArray(row.items) ? row.items : [];
+    const hasSignedItems = items.every((item) =>
+      typeof asRecord(item).download_url === "string",
+    );
+    return hasSignedItems
+      ? album
+      : portfolioApi.getPortfolio(text(row.id));
+  }));
   const portfolio = albums.flatMap((album) => {
     const items = Array.isArray(asRecord(album).items) ? asRecord(album).items as unknown[] : [];
-    return items.map((portfolioItem) => text(asRecord(portfolioItem).download_url)).filter(Boolean);
+    return items.map((portfolioItem) => {
+      const item = asRecord(portfolioItem);
+      return text(item.preview_url, text(item.download_url));
+    }).filter(Boolean);
   });
   const rating = apiPhotographer.rating;
   return {
@@ -125,12 +139,42 @@ async function allPhotographers(fetchPage: (offset: number) => Promise<{ items: 
 
 export async function getPhotographers(): Promise<Photographer[]> {
   const rows = await allPhotographers((offset) => photographerApi.searchPhotographers({ limit: 100, offset }));
-  return Promise.all(rows.map((row) => mapPhotographer(row)));
+  return rows.map((row) => mapPhotographerSummary(row));
 }
 
 export async function getFeaturedPhotographers(): Promise<Photographer[]> {
   const rows = await allPhotographers((offset) => photographerApi.listTopRatedPhotographers({ limit: 100, offset }));
-  return Promise.all(rows.map((row) => mapPhotographer(row, true)));
+  return rows.map((row) => mapPhotographerSummary(row, true));
+}
+
+function mapPhotographerSummary(apiPhotographer: ApiPhotographer, featured = false): Photographer {
+  const rating = apiPhotographer.rating;
+  const startingPlan = apiPhotographer.starting_plan
+    ? mapPlan(apiPhotographer.starting_plan)
+    : undefined;
+  return {
+    id: apiPhotographer.id,
+    name: apiPhotographer.fullname || "Nhiếp ảnh gia",
+    avatar: apiPhotographer.avatar_url || avatar(apiPhotographer.id),
+    // The list API projects a single cover image and the cheapest active plan;
+    // the full album and all-plan lists are fetched on the profile page.
+    cover: apiPhotographer.cover_url || apiPhotographer.avatar_url || avatar(apiPhotographer.id),
+    city: apiPhotographer.location,
+    styles: [...new Set(apiPhotographer.styles.map((style) => STYLE_LABELS[style]).filter((style): style is PhotoStyle => !!style))],
+    pricePerSession: startingPlan?.price ?? (Number(apiPhotographer.starting_price) || 0),
+    rating: number(rating?.average_rating),
+    reviewCount: number(rating?.total_feedbacks),
+    bio: apiPhotographer.description,
+    experienceYears: apiPhotographer.started_career_at
+      ? Math.max(0, new Date().getFullYear() - apiPhotographer.started_career_at)
+      : 0,
+    featured,
+    portfolio: [],
+    availableDates: [],
+    startingPlan,
+    packages: [],
+    rank: apiPhotographer.rank?.code as Photographer["rank"],
+  };
 }
 
 export async function getAvailability(photographerId: string): Promise<DayAvailability[]> {

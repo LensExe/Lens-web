@@ -17,7 +17,7 @@ export const listTopRatedPhotographers = (query: PageQueryDto = {}) =>
 export const getPhotographer = (photographerId: string) =>
   backendGet<ApiPhotographer>(`/photographers/${encodeURIComponent(photographerId)}`);
 export const getMyPhotographerProfile = () =>
-  backendGet<ApiObject>("/photographers/me");
+  backendGet<ApiPhotographer>("/photographers/me");
 export const getMyEarnings = () =>
   backendGet<EarningsSummary>("/photographers/me/earnings");
 export const createPhotographerProfile = (body: PhotographerCreateDto) =>

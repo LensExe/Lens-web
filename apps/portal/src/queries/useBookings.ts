@@ -37,12 +37,10 @@ export function usePaymentStatus(paymentId: string) {
     queryKey: ["payments", paymentId],
     queryFn: () => getPaymentStatus(paymentId),
     enabled: !!paymentId,
-    refetchInterval: (query) => (query.state.data?.status === "pending" ? 5_000 : false),
   });
 
-  // A gateway webhook changes the payment asynchronously. Refresh the booking
-  // projection as soon as that payment settles so the next action (accept,
-  // remaining payment, or receipt confirmation) is available immediately.
+  // Refresh bookings when checkout opens after the payment has already settled.
+  // In-session payment updates arrive through the Socket.IO notification event.
   useEffect(() => {
     const status = query.data?.status;
     if (status !== "paid" && status !== "completed" && status !== "succeeded") return;
@@ -63,13 +61,12 @@ export function usePaymentQr(paymentId: string) {
     queryKey: ["payment-qr", paymentId],
     queryFn: () => getPaymentQr(paymentId),
     enabled: !!paymentId,
-    retry: 2,
     refetchInterval: (query) => {
       const payment = query.state.data;
       const pending = payment?.status === "pending";
       const hasCheckout =
         typeof payment?.qr_code === "string" || typeof payment?.checkout_url === "string";
-      return pending && !hasCheckout ? 2_000 : false;
+      return pending && !hasCheckout ? 5_000 : false;
     },
   });
 }

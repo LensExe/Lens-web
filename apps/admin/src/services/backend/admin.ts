@@ -73,8 +73,14 @@ export const listPhotographers = (query: PhotographerAdminQueryDto = {}) =>
 export const getPublicPhotographer = (id: string) =>
   backendGet<ApiObject>(`/photographers/${encodeURIComponent(id)}`);
 
-export const listPhotographerPortfolios = (id: string) =>
-  backendGet<{ items: ApiObject[] }>(`/photographers/${encodeURIComponent(id)}/portfolios`);
+export const listPhotographerPortfolios = (
+  id: string,
+  query: PhotographerAdminQueryDto = {},
+) =>
+  backendGet<ApiPage<ApiObject>>(
+    `/admin/photographers/${encodeURIComponent(id)}/portfolios`,
+    query,
+  );
 
 export const listPhotographerBookingPlans = (id: string) =>
   backendGet<{ items: ApiObject[] }>(`/photographers/${encodeURIComponent(id)}/booking-plans`);

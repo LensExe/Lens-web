@@ -26,11 +26,13 @@ const ACCOUNT_ITEMS: MenuItem[] = [
   { to: "/wallet", label: "Ví của tôi", icon: Wallet },
   { to: "/settings", label: "Cài đặt", icon: Settings },
 ];
-const menuFor = (): MenuItem[] =>
+const menuFor = (photographerId?: string): MenuItem[] =>
   currentUser.role === "photographer"
     ? [
         { to: "/dashboard", label: "Bảng điều khiển", icon: LayoutDashboard },
-        { to: `/photographers/${currentUser.id}`, label: "Xem hồ sơ công khai", icon: Eye },
+        ...(photographerId
+          ? [{ to: `/photographers/${photographerId}`, label: "Xem hồ sơ công khai", icon: Eye }]
+          : []),
         ...ACCOUNT_ITEMS,
       ]
     : ACCOUNT_ITEMS;
@@ -116,7 +118,7 @@ export function AccountMenu() {
 
         {/* Navigation */}
         <div className="p-1.5">
-          {menuFor().map((m) => (
+          {menuFor(profile?.photographerId).map((m) => (
             <Link key={m.to} to={m.to} onClick={() => setOpen(false)} className={itemClass}>
               <m.icon className="size-4 text-muted-foreground" />
               {m.label}

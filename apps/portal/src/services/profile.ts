@@ -15,6 +15,7 @@ export async function getMyProfile(): Promise<UserProfile> {
     : {};
   return {
     id: user.id,
+    photographerId: typeof photographer?.id === "string" ? photographer.id : undefined,
     name: user.fullname,
     email: user.email,
     avatar: user.avatar_url || avatar(user.id),

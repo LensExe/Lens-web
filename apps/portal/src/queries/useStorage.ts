@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getGallery, getMyGalleries, publishGallery, uploadPhotos } from "@/services/storage";
+import type { Booking } from "@/types";
 
 export const storageKeys = {
   galleries: ["storage", "galleries"] as const,
@@ -10,10 +11,10 @@ export function useMyGalleries() {
   return useQuery({ queryKey: storageKeys.galleries, queryFn: getMyGalleries });
 }
 
-export function useGallery(bookingId: string) {
+export function useGallery(bookingId: string, booking?: Booking) {
   return useQuery({
     queryKey: storageKeys.gallery(bookingId),
-    queryFn: () => getGallery(bookingId),
+    queryFn: () => getGallery(bookingId, booking),
     enabled: !!bookingId,
   });
 }
@@ -28,18 +29,18 @@ function useRefreshGallery(bookingId: string) {
   };
 }
 
-export function useUploadPhotos(bookingId: string) {
+export function useUploadPhotos(bookingId: string, booking?: Booking) {
   const refresh = useRefreshGallery(bookingId);
   return useMutation({
-    mutationFn: (files: File[]) => uploadPhotos(bookingId, files),
+    mutationFn: (files: File[]) => uploadPhotos(bookingId, files, booking),
     onSuccess: refresh,
   });
 }
 
-export function usePublishGallery(bookingId: string) {
+export function usePublishGallery(bookingId: string, booking?: Booking) {
   const refresh = useRefreshGallery(bookingId);
   return useMutation({
-    mutationFn: () => publishGallery(bookingId),
+    mutationFn: () => publishGallery(bookingId, booking),
     onSuccess: refresh,
   });
 }
