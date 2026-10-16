@@ -59,7 +59,7 @@ export function MessageThread({ conversation, onBack }: MessageThreadProps) {
   const { mutate: send, isPending } = useSendMessage(conversation.id);
   const edit = useEditMessage(conversation.id);
   const recall = useRecallMessage(conversation.id);
-  const markRead = useMarkConversationRead();
+  const { mutate: markRead } = useMarkConversationRead();
   const currentSubject = getBackendSubject();
   const lastSequence = messages.reduce((latest, message) => Math.max(latest, message.sequence ?? 0), 0);
   const [draft, setDraft] = useState("");
@@ -82,12 +82,12 @@ export function MessageThread({ conversation, onBack }: MessageThreadProps) {
 
   useEffect(() => {
     if (!isLoading && lastSequence > 0) {
-      markRead.mutate(
+      markRead(
         { conversationId: conversation.id, lastReadSeq: lastSequence },
         { onError: () => toast.error("Không cập nhật được trạng thái đã đọc.") },
       );
     }
-  }, [conversation.id, isLoading, lastSequence, markRead.mutate]);
+  }, [conversation.id, isLoading, lastSequence, markRead]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
