@@ -3,7 +3,7 @@ import { avatar, photo } from "@lens/ui";
 import { listTopRatedPhotographers } from "@/services/backend/photographers";
 import { STYLE_LABELS } from "@/lib/photography-styles";
 import type { ApiPhotographer } from "@/types/backend-api";
-import type { PhotoStyle, Photographer } from "@/types";
+import type { Photographer } from "@/types";
 
 export function toPhotographer(profile: ApiPhotographer): Photographer {
   const fallbackAvatar = avatar(`photographer-${profile.id}-av`);

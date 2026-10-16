@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Button,
   PageContainer,
@@ -14,6 +14,7 @@ import {
   useAssistantReplySuggestions,
   useUpdateAssistantConfig,
 } from "@/queries/useAssistant";
+import type { AiAssistantSettings } from "@/types";
 
 const STATUS_LABEL: Record<string, string> = {
   auto_sent: "Đã tự trả lời",
@@ -30,25 +31,66 @@ const formatDate = (value: string) =>
     timeStyle: "short",
   }).format(new Date(value));
 
+interface ToneSettingsFormProps {
+  settings: AiAssistantSettings;
+  isSaving: boolean;
+  onSave: (toneInstructions: string | null, minSimilarity: number) => void;
+}
+
+function ToneSettingsForm({ settings, isSaving, onSave }: ToneSettingsFormProps) {
+  const [tone, setTone] = useState(settings.toneInstructions ?? "");
+  const [minSimilarity, setMinSimilarity] = useState(settings.minSimilarity);
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSave(tone.trim() || null, minSimilarity);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <label className="block space-y-2">
+        <span className="text-sm font-medium">Hướng dẫn giọng điệu</span>
+        <Textarea
+          value={tone}
+          maxLength={2000}
+          onChange={(event) => setTone(event.target.value)}
+          placeholder="Ví dụ: thân thiện, ngắn gọn, xưng mình và bạn."
+          rows={3}
+        />
+      </label>
+      <label className="block space-y-2">
+        <span className="flex items-center justify-between text-sm font-medium">
+          <span>Ngưỡng khớp FAQ</span>
+          <span className="text-muted-foreground">{minSimilarity.toFixed(2)}</span>
+        </span>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value={minSimilarity}
+          onChange={(event) => setMinSimilarity(Number(event.target.value))}
+          className="w-full accent-ember"
+          aria-label="Ngưỡng khớp FAQ"
+        />
+      </label>
+      <Button type="submit" disabled={isSaving}>
+        {isSaving ? "Đang lưu…" : "Lưu cài đặt"}
+      </Button>
+    </form>
+  );
+}
+
 export function PhotographerAssistant() {
   const settingsQuery = useAssistantConfig();
   const historyQuery = useAssistantReplySuggestions();
   const update = useUpdateAssistantConfig();
   const settings = settingsQuery.data;
-  const [tone, setTone] = useState("");
-  const [minSimilarity, setMinSimilarity] = useState(0.62);
 
-  useEffect(() => {
-    if (!settings) return;
-    setTone(settings.toneInstructions ?? "");
-    setMinSimilarity(settings.minSimilarity);
-  }, [settings]);
-
-  const saveInstructions = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const saveInstructions = (toneInstructions: string | null, minSimilarity: number) => {
     update.mutate(
       {
-        toneInstructions: tone.trim() || null,
+        toneInstructions,
         minSimilarity,
       },
       {
@@ -153,37 +195,12 @@ export function PhotographerAssistant() {
         {settingsQuery.isLoading || !settings ? (
           <Skeleton className="h-28 rounded-xl" />
         ) : (
-          <form onSubmit={saveInstructions} className="space-y-4">
-            <label className="block space-y-2">
-              <span className="text-sm font-medium">Hướng dẫn giọng điệu</span>
-              <Textarea
-                value={tone}
-                maxLength={2000}
-                onChange={(event) => setTone(event.target.value)}
-                placeholder="Ví dụ: thân thiện, ngắn gọn, xưng mình và bạn."
-                rows={3}
-              />
-            </label>
-            <label className="block space-y-2">
-              <span className="flex items-center justify-between text-sm font-medium">
-                <span>Ngưỡng khớp FAQ</span>
-                <span className="text-muted-foreground">{minSimilarity.toFixed(2)}</span>
-              </span>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={minSimilarity}
-                onChange={(event) => setMinSimilarity(Number(event.target.value))}
-                className="w-full accent-ember"
-                aria-label="Ngưỡng khớp FAQ"
-              />
-            </label>
-            <Button type="submit" disabled={update.isPending}>
-              {update.isPending ? "Đang lưu…" : "Lưu cài đặt"}
-            </Button>
-          </form>
+          <ToneSettingsForm
+            key={JSON.stringify([settings.toneInstructions, settings.minSimilarity])}
+            settings={settings}
+            isSaving={update.isPending}
+            onSave={saveInstructions}
+          />
         )}
       </SettingsSection>
 
