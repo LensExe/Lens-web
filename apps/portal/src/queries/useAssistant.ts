@@ -1,15 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  createAssistantFaq,
+  deactivateAssistantFaq,
+  getAssistantFaqs,
   getAssistantConfig,
-  toggleConversationAI,
+  getAssistantReplySuggestions,
+  updateAssistantFaq,
   updateAssistantConfig,
 } from "@/services/assistant";
-import { messageKeys } from "@/queries/useMessages";
-import type { AssistantConfig } from "@/types";
+import type { AiAssistantFaqInput, AiAssistantSettings } from "@/types";
 
 // Layer 2 — Query hooks.
 export const assistantKeys = {
   config: ["assistant", "config"] as const,
+  faqs: ["assistant", "faqs"] as const,
+  suggestions: ["assistant", "suggestions"] as const,
 };
 
 export function useAssistantConfig() {
@@ -19,25 +24,57 @@ export function useAssistantConfig() {
   });
 }
 
-export function useUpdateAssistantConfig() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (patch: Partial<AssistantConfig>) =>
-      updateAssistantConfig(patch),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: assistantKeys.config });
-    },
+export function useAssistantReplySuggestions() {
+  return useQuery({
+    queryKey: assistantKeys.suggestions,
+    queryFn: getAssistantReplySuggestions,
   });
 }
 
-export function useToggleConversationAI(conversationId: string) {
+export function useAssistantFaqs() {
+  return useQuery({
+    queryKey: assistantKeys.faqs,
+    queryFn: getAssistantFaqs,
+  });
+}
+
+export function useCreateAssistantFaq() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (enabled: boolean) =>
-      toggleConversationAI(conversationId, enabled),
+    mutationFn: createAssistantFaq,
+    onSuccess: () => qc.invalidateQueries({ queryKey: assistantKeys.faqs }),
+  });
+}
+
+export function useUpdateAssistantFaq() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      patch,
+    }: {
+      id: string;
+      patch: Partial<AiAssistantFaqInput> & { isActive?: boolean };
+    }) => updateAssistantFaq(id, patch),
+    onSuccess: () => qc.invalidateQueries({ queryKey: assistantKeys.faqs }),
+  });
+}
+
+export function useDeactivateAssistantFaq() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deactivateAssistantFaq,
+    onSuccess: () => qc.invalidateQueries({ queryKey: assistantKeys.faqs }),
+  });
+}
+
+export function useUpdateAssistantConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: Partial<AiAssistantSettings>) =>
+      updateAssistantConfig(patch),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: messageKeys.conversations });
-      qc.invalidateQueries({ queryKey: messageKeys.thread(conversationId) });
+      qc.invalidateQueries({ queryKey: assistantKeys.config });
     },
   });
 }

@@ -94,6 +94,8 @@ export interface StyleCategory {
   image: string;
   /** Tall tile in the bento grid. */
   large?: boolean;
-  /** Number of photographers offering this style (computed by the backend). */
-  photographerCount: number;
+  /** Number of photographers offering this style, when provided by the endpoint. */
+  photographerCount?: number;
+  /** Highest-ranked public photographer for this style. */
+  representative?: Photographer | null;
 }

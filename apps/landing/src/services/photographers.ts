@@ -1,31 +1,11 @@
 import { api } from "@/lib/api";
 import { avatar, photo } from "@lens/ui";
 import { listTopRatedPhotographers } from "@/services/backend/photographers";
-import type { ApiPhotographer, PhotographyStyle } from "@/types/backend-api";
+import { STYLE_LABELS } from "@/lib/photography-styles";
+import type { ApiPhotographer } from "@/types/backend-api";
 import type { PhotoStyle, Photographer } from "@/types";
 
-const STYLE_LABELS: Record<PhotographyStyle, PhotoStyle> = {
-  portrait: "Chân dung",
-  vintage: "Vintage",
-  korean: "Hàn Quốc",
-  wedding: "Cưới",
-  concept: "Concept",
-  "pre-wedding": "Pre-wedding",
-  beach: "Biển",
-  lifestyle: "Lifestyle",
-  event: "Sự kiện",
-  corporate: "Công ty",
-  family: "Gia đình",
-  outdoor: "Ngoài trời",
-  kids: "Trẻ em",
-  streetwear: "Streetwear",
-  fashion: "Thời trang",
-  film: "Film",
-  maternity: "Bầu bí",
-  commercial: "Thương mại",
-};
-
-function toPhotographer(profile: ApiPhotographer): Photographer {
+export function toPhotographer(profile: ApiPhotographer): Photographer {
   const fallbackAvatar = avatar(`photographer-${profile.id}-av`);
   const firstStyle = profile.styles[0];
   const cover =

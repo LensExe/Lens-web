@@ -2,6 +2,7 @@ import { backendGet } from "@/lib/backend-api";
 import type {
   ApiItems,
   ApiPage,
+  ApiFeaturedStyle,
   ApiPhotographer,
   PhotographerSearchQueryDto,
 } from "@/types/backend-api";
@@ -14,6 +15,9 @@ export const listTopRatedPhotographers = (limit = 8) =>
 
 export const getPhotographer = (id: string) =>
   backendGet<ApiPhotographer>(`/photographers/${encodeURIComponent(id)}`);
+
+export const listFeaturedStyles = () =>
+  backendGet<ApiFeaturedStyle[]>("/photographers/styles/featured");
 
 export const listRanks = () => backendGet<ApiItems<Record<string, unknown>>>("/ranks");
 

@@ -27,6 +27,11 @@ export interface PhotographerSearchQueryDto {
   min_rating?: number;
 }
 
+export interface ApiFeaturedStyle {
+  style: PhotographyStyle;
+  representative: ApiPhotographer | null;
+}
+
 export interface ApiPhotographer {
   id: string;
   fullname: string;

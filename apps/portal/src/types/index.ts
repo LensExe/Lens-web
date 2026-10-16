@@ -419,10 +419,46 @@ export interface Message {
   isAI?: boolean;
 }
 
+export interface AiAssistantSettings {
+  enabled: boolean;
+  autoReplyEnabled: boolean;
+  toneInstructions: string | null;
+  minSimilarity: number;
+}
+
+export interface AiReplySuggestion {
+  id: string;
+  messageId: string;
+  channelId: string;
+  action: "answer" | "ask_clarification" | "handoff";
+  intent: string;
+  suggestedReply: string | null;
+  retrievalSimilarity: number | null;
+  riskFlags: string[];
+  status: string;
+  failureReason: string | null;
+  createdAt: string;
+}
+
 // ── AI Assistant (per photographer) ─────────────────────────────────────────
 export interface FAQItem {
   q: string;
   a: string;
+}
+
+export interface AiAssistantFaq {
+  id: string;
+  question: string;
+  answer: string;
+  alternatives: string[];
+  isActive: boolean;
+  updatedAt: string;
+}
+
+export interface AiAssistantFaqInput {
+  question: string;
+  answer: string;
+  alternatives: string[];
 }
 
 /** Context a photographer feeds their AI assistant. NOTE (giả định tạm): the UI
