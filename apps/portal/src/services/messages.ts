@@ -27,6 +27,7 @@ interface ChatMessage {
   revision?: number;
   created_at: string;
   recalled_at?: string | null;
+  sender_kind?: "user" | "ai";
 }
 
 interface ChatPeer {
@@ -105,6 +106,7 @@ function mapMessage(message: ChatMessage): Message {
     sequence: message.seq,
     revision: message.revision,
     isRecalled: !!message.recalled_at,
+    isAI: message.sender_kind === "ai",
   };
 }
 
@@ -136,7 +138,11 @@ function toConversation(channel: ChatChannel, peer: ChatPeer, message?: ChatMess
     participantName: peer.fullname,
     participantAvatar: peer.avatar_url || avatar(peer.profile_id),
     participantRole: peer.role === "customer" ? "client" : "photographer",
-    lastMessage: message?.recalled_at ? "Tin nhắn đã được thu hồi" : message?.content ?? "",
+    lastMessage: message?.recalled_at
+      ? "Tin nhắn đã được thu hồi"
+      : message?.sender_kind === "ai"
+        ? "Trợ lý AI: " + (message.content ?? "")
+        : message?.content ?? "",
     lastMessageAt: message?.created_at ?? channel.last_message_at ?? channel.updated_at,
     unreadCount: isUnreadFromPeer ? Math.max(1, channel.last_message_seq - readSeq) : 0,
   };

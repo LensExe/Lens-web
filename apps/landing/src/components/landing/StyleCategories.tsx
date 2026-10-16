@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowRight, ArrowUpRight, Check } from "lucide-react";
 import { useGSAP } from "@gsap/react";
 import { gsap } from "gsap";
@@ -6,35 +6,22 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Button, Skeleton, cn, useReveal } from "@lens/ui";
 import { PhotographerCard } from "@/components/shared/PhotographerCard";
 import { portalBrowseStyle } from "@/lib/links";
-import { useFeaturedPhotographers } from "@/queries/usePhotographers";
 import { useStyles } from "@/queries/useStyles";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
-// Bento grid: 2 tall tiles + 8 small ones fill 2×6 (mobile) / 4×3 (desktop)
-// exactly — no empty cell. Tile order + which are tall come from the data.
+// Bento grid keeps the featured photography styles in a flowing tile layout.
 const GRID =
   "grid auto-rows-[132px] grid-cols-2 gap-3 grid-flow-row-dense sm:auto-rows-[160px] sm:gap-4 lg:auto-rows-[178px] lg:grid-cols-4";
-const PREVIEW_LIMIT = 3;
 
 export function StyleCategories() {
   const scope = useRef<HTMLElement>(null);
   const [selectedStyleId, setSelectedStyleId] = useState<string | null>(null);
   const { data: styles, isLoading } = useStyles();
-  const { data: photographers, isLoading: isPhotographersLoading } = useFeaturedPhotographers();
 
   const selectedStyle = styles?.find((style) => style.id === selectedStyleId) ?? null;
-  const matchingPhotographers = useMemo(
-    () =>
-      selectedStyle
-        ? (photographers ?? [])
-            .filter((photographer) => photographer.styles.includes(selectedStyle.label))
-            .slice(0, PREVIEW_LIMIT)
-        : [],
-    [photographers, selectedStyle],
-  );
 
-  useReveal(scope, [styles, selectedStyle, photographers]);
+  useReveal(scope, [styles, selectedStyle]);
 
   // Gentle scroll parallax on each tile image (transform-only, gated).
   useGSAP(
@@ -119,7 +106,9 @@ export function StyleCategories() {
                   <p className={cn("font-semibold", style.large ? "text-xl" : "text-lg")}>
                     {style.label}
                   </p>
-                  <p className="text-xs text-white/75">{style.photographerCount} nhiếp ảnh gia</p>
+                  <p className="text-xs text-white/75">
+                    {style.representative ? "Có photographer nổi bật" : "Đang cập nhật"}
+                  </p>
                 </div>
               </button>
             );
@@ -141,7 +130,7 @@ export function StyleCategories() {
                   Nhiếp ảnh gia phong cách {selectedStyle.label}
                 </h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Một vài gợi ý nổi bật phù hợp với phong cách bạn chọn.
+                  Photographer nổi bật nhất phù hợp với phong cách bạn chọn.
                 </p>
               </div>
               <Button asChild variant="outline" className="rounded-full">
@@ -152,17 +141,9 @@ export function StyleCategories() {
               </Button>
             </div>
 
-            {isPhotographersLoading ? (
+            {selectedStyle.representative ? (
               <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {Array.from({ length: PREVIEW_LIMIT }, (_, i) => (
-                  <Skeleton key={i} className="h-[280px] rounded-[24px]" />
-                ))}
-              </div>
-            ) : matchingPhotographers.length > 0 ? (
-              <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {matchingPhotographers.map((photographer) => (
-                  <PhotographerCard key={photographer.id} photographer={photographer} />
-                ))}
+                <PhotographerCard photographer={selectedStyle.representative} />
               </div>
             ) : (
               <p className="mt-6 rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">

@@ -186,15 +186,22 @@ export function MessageThread({ conversation, onBack }: MessageThreadProps) {
                   className={cn(
                     "max-w-[75%] rounded-2xl px-3.5 py-2",
                     mine ? "rounded-br-md" : "rounded-bl-md",
-                    mine ? "bg-foreground text-background" : "bg-muted text-foreground"
+                    m.isAI
+                      ? "border border-ember/20 bg-ember/5 text-foreground"
+                      : mine
+                        ? "bg-foreground text-background"
+                        : "bg-muted text-foreground"
                   )}
                 >
+                  {m.isAI && (
+                    <p className="mb-1 text-[11px] font-semibold text-ember">Trợ lý AI</p>
+                  )}
                   <p className={cn("text-sm leading-relaxed", m.isRecalled && "italic opacity-75")}>{m.text}</p>
                   <div className="mt-1 flex items-center justify-between gap-3">
-                    <p className={cn("text-[11px]", mine ? "text-background/60" : "text-muted-foreground")}>
+                    <p className={cn("text-[11px]", mine && !m.isAI ? "text-background/60" : "text-muted-foreground")}>
                       {formatClock(m.sentAt)}{(m.revision ?? 1) > 1 && !m.isRecalled ? " · đã sửa" : ""}
                     </p>
-                    {mine && !m.isRecalled && (
+                    {mine && !m.isAI && !m.isRecalled && (
                       <div className="flex items-center gap-1">
                         <button
                           type="button"

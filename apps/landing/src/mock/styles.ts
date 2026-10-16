@@ -6,7 +6,7 @@ const img = (seed: string, keyword: string) => photo(seed, 600, 600, keyword);
 // Every photo style offered on Lens (DB seed). Imported ONLY by
 // src/msw/handlers.ts — the handler adds `photographerCount`. Order = bento
 // order: two `large` tiles + eight small ones fill a 4×3 (or 2×6) grid exactly.
-export const mockStyles: Omit<StyleCategory, "photographerCount">[] = [
+export const mockStyles: Omit<StyleCategory, "photographerCount" | "representative">[] = [
   { id: "portrait", label: "Chân dung", image: img("cat-portrait", "portrait"), large: true },
   { id: "wedding", label: "Cưới", image: img("cat-wedding", "wedding") },
   { id: "event", label: "Sự kiện", image: img("cat-event", "event") },
