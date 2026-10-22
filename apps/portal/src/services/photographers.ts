@@ -48,17 +48,24 @@ async function loadPlans(photographerId: string): Promise<PhotographerPackage[]>
   return response.items.map(mapPlan);
 }
 
+async function loadMyPlans(): Promise<PhotographerPackage[]> {
+  const response = await bookingPlanApi.listMyBookingPlans();
+  return response.items.map(mapPlan);
+}
+
 type PortfolioResponse = Awaited<ReturnType<typeof portfolioApi.listPhotographerPortfolios>>;
 type PortfolioLoader = (photographerId: string) => Promise<PortfolioResponse>;
+type BookingPlanLoader = (photographerId: string) => Promise<PhotographerPackage[]>;
 
 async function mapPhotographer(
   apiPhotographer: ApiPhotographer,
   featured = false,
   loadPortfolios: PortfolioLoader = (photographerId) =>
     portfolioApi.listPhotographerPortfolios(photographerId),
+  loadBookingPlans: BookingPlanLoader = loadPlans,
 ): Promise<Photographer> {
   const [packages, portfolios] = await Promise.all([
-    loadPlans(apiPhotographer.id),
+    loadBookingPlans(apiPhotographer.id),
     loadPortfolios(apiPhotographer.id),
   ]);
   const albums = await Promise.all(portfolios.items.map((album) => {
@@ -93,6 +100,7 @@ async function mapPhotographer(
     experienceYears: apiPhotographer.started_career_at
       ? Math.max(0, new Date().getFullYear() - apiPhotographer.started_career_at)
       : 0,
+    verificationStatus: apiPhotographer.verification_status as Photographer["verificationStatus"],
     featured,
     portfolio,
     availableDates: [],
@@ -110,6 +118,7 @@ export async function getMyPhotographerProfile(): Promise<Photographer> {
     { ...profile, fullname: user.fullname, avatar_url: user.avatar_url } as ApiPhotographer,
     false,
     () => portfolioApi.listMyPhotographerPortfolios(),
+    loadMyPlans,
   );
 }
 
@@ -123,6 +132,26 @@ export async function updateMyPhotographerProfile(patch: Partial<Photographer>):
   };
   if (Object.keys(profilePatch).length) await photographerApi.updateMyPhotographerProfile(profilePatch);
   if (patch.city !== undefined) await photographerApi.updateMyPhotographerLocation({ location: patch.city });
+  return getMyPhotographerProfile();
+}
+
+export async function submitMyPhotographerProfile(profile: Photographer): Promise<Photographer> {
+  const styles = profile.styles
+    .map((style) => STYLE_CODES[style])
+    .filter((style): style is PhotographyStyle => !!style);
+  const location = profile.city.trim();
+
+  if (!location) throw new Error("Vui lòng chọn khu vực hoạt động trước khi gửi duyệt.");
+  if (!styles.length) throw new Error("Vui lòng chọn ít nhất một phong cách chụp trước khi gửi duyệt.");
+
+  const description = profile.bio.trim();
+  await photographerApi.createPhotographerProfile({
+    styles,
+    location,
+    started_career_at: new Date().getFullYear() - Math.max(0, Math.round(profile.experienceYears)),
+    ...(description && { description }),
+  });
+
   return getMyPhotographerProfile();
 }
 

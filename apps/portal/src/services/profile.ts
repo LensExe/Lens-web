@@ -1,5 +1,6 @@
 import { avatar } from "@lens/ui";
 import { authApi, customerApi, identityApi, photographerApi } from "@/services/backend";
+import { uploadPublicImageFile } from "@/services/media-upload";
 import { currentUser } from "@/lib/session";
 import type { ChangePasswordInput, ProfileInput, UserProfile } from "@/types";
 
@@ -57,6 +58,12 @@ export async function updateMyProfile(input: ProfileInput): Promise<UserProfile>
       await photographerApi.updateMyPhotographerLocation({ location: input.city });
     }
   }
+  return getMyProfile();
+}
+
+export async function updateMyAvatar(file: File): Promise<UserProfile> {
+  const avatarUrl = await uploadPublicImageFile(file);
+  await identityApi.updateMe({ avatar_url: avatarUrl });
   return getMyProfile();
 }
 

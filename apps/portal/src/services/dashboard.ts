@@ -2,11 +2,12 @@ import { bookingApi, photographerApi } from "@/services/backend";
 import { getMyBookings } from "@/services/bookings";
 import {
   getMyPhotographerProfile,
+  submitMyPhotographerProfile,
   updateMyPhotographerProfile,
 } from "@/services/photographers";
 import type { Booking, BookingStatus, EarningsSummary } from "@/types";
 
-export { getMyPhotographerProfile, updateMyPhotographerProfile };
+export { getMyPhotographerProfile, submitMyPhotographerProfile, updateMyPhotographerProfile };
 
 export const getIncomingBookings = getMyBookings;
 

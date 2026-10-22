@@ -17,6 +17,7 @@ export interface StatusMeta {
 }
 
 export const APPROVAL_STATUS_META: Record<ApprovalStatus, StatusMeta> = {
+  unverified: { label: "Chưa gửi duyệt", className: TONE_CHIP.neutral },
   pending: { label: "Chờ duyệt", className: TONE_CHIP.amber },
   approved: { label: "Đã duyệt", className: TONE_CHIP.emerald },
   rejected: { label: "Từ chối", className: TONE_CHIP.rose },

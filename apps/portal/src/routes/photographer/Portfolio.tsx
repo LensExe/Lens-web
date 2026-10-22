@@ -13,6 +13,7 @@ import {
   MapPin,
   Pencil,
   Plus,
+  Send,
   ShieldCheck,
   Star,
   Upload,
@@ -37,7 +38,9 @@ import {
   PageHeader,
 } from "@lens/ui";
 import {
+  useCreatePhotographerPortfolio,
   useMyPhotographerProfile,
+  useSubmitPhotographerApplication,
   useUploadPortfolioImages,
   useUpdateMyPhotographerProfile,
 } from "@/queries/useDashboard";
@@ -322,8 +325,25 @@ function ProfileEditor({ profile, onClose }: { profile: Photographer; onClose: (
   );
 }
 
-function ProfileView({ profile, onEdit }: { profile: Photographer; onEdit: () => void }) {
+function ProfileView({
+  profile,
+  onEdit,
+  onCreatePortfolio,
+  creatingPortfolio,
+  onSubmitApplication,
+  submittingApplication,
+}: {
+  profile: Photographer;
+  onEdit: () => void;
+  onCreatePortfolio: () => void;
+  creatingPortfolio: boolean;
+  onSubmitApplication: () => void;
+  submittingApplication: boolean;
+}) {
   const packageCount = profile.packages?.length ?? 0;
+  const canSubmitApplication =
+    profile.verificationStatus === "unverified" || profile.verificationStatus === "rejected";
+  const applicationReady = profile.city.trim().length > 0 && profile.styles.length > 0;
 
   return (
     <PageContainer className="max-w-370 py-6 md:py-8 lg:py-10">
@@ -340,6 +360,16 @@ function ProfileView({ profile, onEdit }: { profile: Photographer; onEdit: () =>
         description="Trang giới thiệu công khai và những tác phẩm tiêu biểu của bạn."
         actions={
           <>
+            {profile.verificationStatus === "pending" && (
+              <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+                <Loader2 className="size-4" /> Đang chờ admin duyệt
+              </span>
+            )}
+            {profile.verificationStatus === "verified" && (
+              <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-300">
+                <Check className="size-4" /> Hồ sơ đã được duyệt
+              </span>
+            )}
             <Button asChild variant="outline" className="rounded-full">
               <Link to={`/photographers/${profile.id}`}>
                 <ExternalLink className="size-4" />
@@ -353,6 +383,34 @@ function ProfileView({ profile, onEdit }: { profile: Photographer; onEdit: () =>
           </>
         }
       />
+
+      {canSubmitApplication && (
+        <section className="mb-4 flex flex-col gap-3 rounded-2xl border border-ember/20 bg-ember/[0.04] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div>
+            <h2 className="text-sm font-semibold">Sẵn sàng gửi portfolio cho admin duyệt?</h2>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Admin sẽ xem thông tin hồ sơ cùng các ảnh portfolio hiện có. Bạn vẫn có thể gửi khi chưa có ảnh.
+              {!applicationReady && " Hãy chọn khu vực và ít nhất một phong cách chụp trước."}
+            </p>
+          </div>
+          <Button
+            className="shrink-0 rounded-full bg-ember text-white hover:bg-ember/90"
+            disabled={!applicationReady || submittingApplication}
+            onClick={onSubmitApplication}
+          >
+            {submittingApplication ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Send className="size-4" />
+            )}
+            {submittingApplication
+              ? "Đang gửi..."
+              : profile.verificationStatus === "rejected"
+                ? "Gửi lại để duyệt"
+                : "Gửi portfolio để duyệt"}
+          </Button>
+        </section>
+      )}
 
       <section className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs sm:p-5 lg:p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center">
@@ -491,9 +549,15 @@ function ProfileView({ profile, onEdit }: { profile: Photographer; onEdit: () =>
             </p>
             <Button
               className="mt-4 rounded-full bg-ember text-white hover:bg-ember/90"
-              onClick={onEdit}
+              disabled={creatingPortfolio}
+              onClick={onCreatePortfolio}
             >
-              <Plus className="size-4" /> Thêm tác phẩm
+              {creatingPortfolio ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Plus className="size-4" />
+              )}
+              {creatingPortfolio ? "Đang tạo portfolio..." : "Tạo portfolio"}
             </Button>
           </div>
         ) : (
@@ -542,10 +606,12 @@ function ProfileView({ profile, onEdit }: { profile: Photographer; onEdit: () =>
 }
 
 export function PhotographerPortfolio() {
-  const { data: profile, isLoading } = useMyPhotographerProfile();
+  const { data: profile, isLoading, refetch } = useMyPhotographerProfile();
   const [editing, setEditing] = useState(false);
+  const createPortfolio = useCreatePhotographerPortfolio();
+  const submitApplication = useSubmitPhotographerApplication();
 
-  if (isLoading || !profile) {
+  if (isLoading) {
     return (
       <PageContainer>
         <Skeleton className="h-40 rounded-2xl" />
@@ -558,9 +624,51 @@ export function PhotographerPortfolio() {
     );
   }
 
+  if (!profile) {
+    return (
+      <PageContainer className="max-w-370 py-6 md:py-8 lg:py-10">
+        <div className="rounded-2xl border border-border bg-card p-6 text-center">
+          <h1 className="text-lg font-semibold">Chưa tải được hồ sơ năng lực</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Có lỗi khi tải dữ liệu. Bạn có thể thử tải lại trang hồ sơ.
+          </p>
+          <Button className="mt-4 rounded-full" variant="outline" onClick={() => void refetch()}>
+            Thử lại
+          </Button>
+        </div>
+      </PageContainer>
+    );
+  }
+
+  const handleCreatePortfolio = () => {
+    createPortfolio.mutate(undefined, {
+      onSuccess: () => {
+        toast.success("Portfolio đã sẵn sàng. Hãy tải ảnh tác phẩm lên.");
+        setEditing(true);
+      },
+      onError: (error) =>
+        toast.error(error instanceof Error ? error.message : "Không thể tạo portfolio"),
+    });
+  };
+
+  const handleSubmitApplication = () => {
+    submitApplication.mutate(profile, {
+      onSuccess: () => toast.success("Đã gửi hồ sơ và portfolio cho admin xét duyệt."),
+      onError: (error) =>
+        toast.error(error instanceof Error ? error.message : "Không thể gửi hồ sơ xét duyệt."),
+    });
+  };
+
   return editing ? (
     <ProfileEditor profile={profile} onClose={() => setEditing(false)} />
   ) : (
-    <ProfileView profile={profile} onEdit={() => setEditing(true)} />
+    <ProfileView
+      profile={profile}
+      onEdit={() => setEditing(true)}
+      onCreatePortfolio={handleCreatePortfolio}
+      creatingPortfolio={createPortfolio.isPending}
+      onSubmitApplication={handleSubmitApplication}
+      submittingApplication={submitApplication.isPending}
+    />
   );
 }

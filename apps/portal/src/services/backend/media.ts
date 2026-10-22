@@ -2,6 +2,7 @@ import { backendDelete, backendGet, backendPost } from "@/lib/backend-api";
 import type { ApiItems, ApiObject } from "@/types/common";
 import type {
   ApiDeliveryGallery,
+  ApiMedia,
   MediaAddGalleryItemDto,
   MediaCompleteDto,
   MediaUploadDto,
@@ -14,7 +15,7 @@ export const completeMediaUpload = (body: MediaCompleteDto) =>
   backendPost<ApiObject, MediaCompleteDto>("/media/complete-upload", body);
 
 export const getMedia = (mediaId: string) =>
-  backendGet<ApiObject>(`/media/${encodeURIComponent(mediaId)}`);
+  backendGet<ApiMedia>(`/media/${encodeURIComponent(mediaId)}`);
 
 export const deleteMedia = (mediaId: string) =>
   backendDelete<{ deleted: boolean }>(`/media/${encodeURIComponent(mediaId)}`);

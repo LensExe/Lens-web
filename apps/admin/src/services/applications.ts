@@ -2,8 +2,15 @@ import { adminApi } from "@/services/backend";
 import { allPages, record, text, number } from "@/services/normalize";
 import type { ApplicationDecision, PhotographerApplication } from "@/types";
 
-const mapStatus = (status: unknown): PhotographerApplication["status"] =>
-  status === "verified" ? "approved" : status === "rejected" ? "rejected" : "pending";
+const mapStatus = (status: unknown): PhotographerApplication["status"] => {
+  switch (status) {
+    case "pending": return "pending";
+    case "verified": return "approved";
+    case "rejected": return "rejected";
+    case "unverified":
+    default: return "unverified";
+  }
+};
 
 export async function getApplications(): Promise<PhotographerApplication[]> {
   const photographers = await allPages((query) => adminApi.listPhotographers(query));

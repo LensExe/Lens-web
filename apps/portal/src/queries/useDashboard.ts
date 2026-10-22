@@ -3,13 +3,17 @@ import {
   getIncomingBookings,
   getMyEarnings,
   getMyPhotographerProfile,
+  submitMyPhotographerProfile,
   completeShoot,
   updateBookingStatus,
   updateMyPhotographerProfile,
 } from "@/services/dashboard";
 import type { BookingStatus, Photographer } from "@/types";
 import { saveMyBookingPlans } from "@/services/booking-plans";
-import { addPortfolioImages } from "@/services/portfolio-media";
+import {
+  addPortfolioImages,
+  ensurePhotographerPortfolio,
+} from "@/services/portfolio-media";
 
 // Layer 2 — Query hooks for the photographer dashboard.
 export const dashboardKeys = {
@@ -45,6 +49,17 @@ export function useUpdateMyPhotographerProfile() {
   });
 }
 
+export function useSubmitPhotographerApplication() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: submitMyPhotographerProfile,
+    onSuccess: (profile) => {
+      qc.setQueryData(dashboardKeys.profile, profile);
+      qc.invalidateQueries({ queryKey: ["photographers"] });
+    },
+  });
+}
+
 export function useSaveMyBookingPlans() {
   const qc = useQueryClient();
   return useMutation({
@@ -66,6 +81,16 @@ export function useUploadPortfolioImages() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: dashboardKeys.profile });
       qc.invalidateQueries({ queryKey: ["photographers"] });
+    },
+  });
+}
+
+export function useCreatePhotographerPortfolio() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ensurePhotographerPortfolio,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: dashboardKeys.profile });
     },
   });
 }
