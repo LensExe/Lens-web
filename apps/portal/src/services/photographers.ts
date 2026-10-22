@@ -89,7 +89,7 @@ async function mapPhotographer(
   return {
     id: apiPhotographer.id,
     name: apiPhotographer.fullname || "Nhiếp ảnh gia",
-    avatar: apiPhotographer.avatar_url || avatar(apiPhotographer.id),
+    avatar: apiPhotographer.avatar_url?.trim() || "",
     cover: portfolio[0] || apiPhotographer.avatar_url || avatar(apiPhotographer.id),
     city: apiPhotographer.location,
     styles: [...new Set(apiPhotographer.styles.map((style) => STYLE_LABELS[style]).filter((style): style is PhotoStyle => !!style))],
@@ -115,7 +115,11 @@ export async function getMyPhotographerProfile(): Promise<Photographer> {
     photographerApi.getMyPhotographerProfile(),
   ]);
   return mapPhotographer(
-    { ...profile, fullname: user.fullname, avatar_url: user.avatar_url } as ApiPhotographer,
+    {
+      ...profile,
+      fullname: user.fullname,
+      avatar_url: user.avatar_url?.trim() || profile.avatar_url?.trim() || null,
+    } as ApiPhotographer,
     false,
     () => portfolioApi.listMyPhotographerPortfolios(),
     loadMyPlans,
@@ -184,7 +188,7 @@ function mapPhotographerSummary(apiPhotographer: ApiPhotographer, featured = fal
   return {
     id: apiPhotographer.id,
     name: apiPhotographer.fullname || "Nhiếp ảnh gia",
-    avatar: apiPhotographer.avatar_url || avatar(apiPhotographer.id),
+    avatar: apiPhotographer.avatar_url?.trim() || "",
     // The list API projects a single cover image and the cheapest active plan;
     // the full album and all-plan lists are fetched on the profile page.
     cover: apiPhotographer.cover_url || apiPhotographer.avatar_url || avatar(apiPhotographer.id),

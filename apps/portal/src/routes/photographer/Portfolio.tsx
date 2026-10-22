@@ -47,6 +47,8 @@ import {
 import { CITY_OPTIONS, STYLE_OPTIONS, experienceLabel } from "@/lib/photographer-filters";
 import { currentUser } from "@/lib/session";
 import { RankBadge } from "@/components/achievements/RankBadge";
+import { EmailVerification } from "@/components/settings/EmailVerification";
+import { useEmailVerificationStatus } from "@/queries/useAuth";
 import type { Photographer, PhotoStyle } from "@/types";
 
 /** Longest "Giới thiệu" a photographer can write (no minimum). */
@@ -198,7 +200,7 @@ function ProfileEditor({ profile, onClose }: { profile: Photographer; onClose: (
       <section className="rounded-2xl border border-border bg-card p-5 md:p-6">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
           <Avatar className="size-20 shrink-0">
-            <AvatarImage src={profile.avatar} alt={profile.name} />
+            <AvatarImage src={profile.avatar || undefined} alt={profile.name} />
             <AvatarFallback>{currentUser.initials}</AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1 space-y-4">
@@ -332,6 +334,7 @@ function ProfileView({
   creatingPortfolio,
   onSubmitApplication,
   submittingApplication,
+  emailVerified,
 }: {
   profile: Photographer;
   onEdit: () => void;
@@ -339,6 +342,7 @@ function ProfileView({
   creatingPortfolio: boolean;
   onSubmitApplication: () => void;
   submittingApplication: boolean;
+  emailVerified: boolean;
 }) {
   const packageCount = profile.packages?.length ?? 0;
   const canSubmitApplication =
@@ -387,15 +391,22 @@ function ProfileView({
       {canSubmitApplication && (
         <section className="mb-4 flex flex-col gap-3 rounded-2xl border border-ember/20 bg-ember/[0.04] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
           <div>
-            <h2 className="text-sm font-semibold">Sẵn sàng gửi portfolio cho admin duyệt?</h2>
+            <h2 className="text-sm font-semibold">
+              {emailVerified ? "Sẵn sàng gửi portfolio cho admin duyệt?" : "Xác minh email để gửi duyệt"}
+            </h2>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Admin sẽ xem thông tin hồ sơ cùng các ảnh portfolio hiện có. Bạn vẫn có thể gửi khi chưa có ảnh.
-              {!applicationReady && " Hãy chọn khu vực và ít nhất một phong cách chụp trước."}
+              {!emailVerified
+                ? "Tài khoản cần xác minh email trước khi gửi hồ sơ cho admin."
+                : "Admin sẽ xem thông tin hồ sơ cùng các ảnh portfolio hiện có. Bạn vẫn có thể gửi khi chưa có ảnh."}
+              {emailVerified && !applicationReady && " Hãy chọn khu vực và ít nhất một phong cách chụp trước."}
             </p>
+            <div className="mt-3">
+              <EmailVerification email={currentUser.email} />
+            </div>
           </div>
           <Button
             className="shrink-0 rounded-full bg-ember text-white hover:bg-ember/90"
-            disabled={!applicationReady || submittingApplication}
+            disabled={!emailVerified || !applicationReady || submittingApplication}
             onClick={onSubmitApplication}
           >
             {submittingApplication ? (
@@ -415,7 +426,7 @@ function ProfileView({
       <section className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs sm:p-5 lg:p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center">
           <Avatar className="size-19 shrink-0 ring-4 ring-muted/70">
-            <AvatarImage src={profile.avatar} alt={profile.name} />
+              <AvatarImage src={profile.avatar || undefined} alt={profile.name} />
             <AvatarFallback>{currentUser.initials}</AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
@@ -607,6 +618,7 @@ function ProfileView({
 
 export function PhotographerPortfolio() {
   const { data: profile, isLoading, refetch } = useMyPhotographerProfile();
+  const { data: emailVerified = currentUser.emailVerified } = useEmailVerificationStatus();
   const [editing, setEditing] = useState(false);
   const createPortfolio = useCreatePhotographerPortfolio();
   const submitApplication = useSubmitPhotographerApplication();
@@ -652,6 +664,10 @@ export function PhotographerPortfolio() {
   };
 
   const handleSubmitApplication = () => {
+    if (!emailVerified) {
+      toast.error("Vui lòng xác minh email trước khi gửi hồ sơ xét duyệt.");
+      return;
+    }
     submitApplication.mutate(profile, {
       onSuccess: () => toast.success("Đã gửi hồ sơ và portfolio cho admin xét duyệt."),
       onError: (error) =>
@@ -669,6 +685,7 @@ export function PhotographerPortfolio() {
       creatingPortfolio={createPortfolio.isPending}
       onSubmitApplication={handleSubmitApplication}
       submittingApplication={submitApplication.isPending}
+      emailVerified={emailVerified}
     />
   );
 }
