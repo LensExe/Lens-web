@@ -329,14 +329,29 @@ function Review({
             </section>
           ) : (
             <section
-              className={cn("rounded-3xl p-6 text-sm", app.status === "rejected" ? TONE_CHIP.rose : TONE_CHIP.emerald)}
+              className={cn(
+                "rounded-3xl p-6 text-sm",
+                app.status === "rejected"
+                  ? TONE_CHIP.rose
+                  : app.status === "unverified"
+                    ? TONE_CHIP.neutral
+                    : TONE_CHIP.emerald,
+              )}
             >
               <p className="flex items-center gap-1.5 font-semibold">
                 <MessageSquareText className="size-4" />
-                {app.status === "rejected" ? "Đã từ chối" : "Đã duyệt"}
+                {app.status === "rejected"
+                  ? "Đã từ chối"
+                  : app.status === "unverified"
+                    ? "Chưa gửi xét duyệt"
+                    : "Đã duyệt"}
                 {app.reviewedAt && <span className="font-normal opacity-80">· {formatDate(app.reviewedAt)}</span>}
               </p>
-              <p className="mt-1.5 leading-relaxed">{app.reviewNote ?? "Không có ghi chú."}</p>
+              <p className="mt-1.5 leading-relaxed">
+                {app.status === "unverified"
+                  ? "Nhiếp ảnh gia chưa hoàn tất và gửi hồ sơ đăng ký. Hồ sơ sẽ chuyển sang hàng chờ sau khi họ gửi thông tin."
+                  : app.reviewNote ?? "Không có ghi chú."}
+              </p>
             </section>
           )}
         </aside>

@@ -87,6 +87,7 @@ export function Photographers() {
 
   const countOf = (status: ApprovalStatus) => applications.filter((app) => app.status === status).length;
   const pendingCount = countOf("pending");
+  const unverifiedCount = countOf("unverified");
   const approvedCount = countOf("approved");
   const rejectedCount = countOf("rejected");
   const reviewedCount = approvedCount + rejectedCount;
@@ -245,6 +246,7 @@ export function Photographers() {
               onChange: setFilter,
               items: [
                 { value: "pending", label: "Chờ duyệt", count: pendingCount },
+                { value: "unverified", label: "Chưa gửi duyệt", count: unverifiedCount },
                 { value: "approved", label: "Đã duyệt", count: approvedCount },
                 { value: "rejected", label: "Từ chối", count: rejectedCount },
                 { value: "all", label: "Tất cả", count: applications.length },

@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Link } from "react-router-dom";
 import { Controller, useForm } from "react-hook-form";
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
@@ -16,12 +17,13 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
+  Spinner,
   toast,
   SaveBar,
 } from "@lens/ui";
 import { FormField } from "@/components/FormField";
 import { SettingsSection } from "@/components/settings/SettingsSection";
-import { useMyProfile, useUpdateProfile } from "@/queries/useProfile";
+import { useMyProfile, useUpdateAvatar, useUpdateProfile } from "@/queries/useProfile";
 import { CITY_OPTIONS } from "@/lib/photographer-filters";
 import {
   GENDER_OPTIONS,
@@ -52,6 +54,8 @@ const todayISO = () => new Date().toISOString().slice(0, 10);
 export function ProfileSettings() {
   const { data: profile, isLoading } = useMyProfile();
   const update = useUpdateProfile();
+  const updateAvatar = useUpdateAvatar();
+  const avatarInput = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -86,6 +90,18 @@ export function ProfileSettings() {
       onError: () => toast.error("Không thể lưu, vui lòng thử lại"),
     });
 
+  const onAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    updateAvatar.mutate(file, {
+      onSuccess: () => toast.success("Đã cập nhật ảnh đại diện"),
+      onError: (error) =>
+        toast.error(error instanceof Error ? error.message : "Không thể cập nhật ảnh đại diện"),
+    });
+  };
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
       {/* Identity */}
@@ -100,18 +116,25 @@ export function ProfileSettings() {
             {profile.email}
           </p>
         </div>
+        <input
+          ref={avatarInput}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="sr-only"
+          onChange={onAvatarChange}
+          aria-label="Chọn ảnh đại diện"
+        />
         <Button
           type="button"
           variant="outline"
           size="sm"
           className="h-8 shrink-0 rounded-lg px-2.5 text-[10px]"
-          disabled
-          title="Backend chưa hỗ trợ cập nhật ảnh đại diện."
-          onClick={() => toast("Tính năng đổi ảnh đại diện sẽ sớm khả dụng")}
+          disabled={updateAvatar.isPending}
+          onClick={() => avatarInput.current?.click()}
         >
-          <Camera className="size-3.5" />
-          <span className="hidden sm:inline">Đổi ảnh đại diện</span>
-          <span className="sm:hidden">Đổi ảnh</span>
+          {updateAvatar.isPending ? <Spinner /> : <Camera className="size-3.5" />}
+          <span className="hidden sm:inline">{updateAvatar.isPending ? "Đang tải ảnh" : "Đổi ảnh đại diện"}</span>
+          <span className="sm:hidden">{updateAvatar.isPending ? "Đang tải" : "Đổi ảnh"}</span>
         </Button>
       </div>
 

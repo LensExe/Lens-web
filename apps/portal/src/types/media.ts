@@ -10,6 +10,18 @@ export interface MediaUploadDto {
 export interface MediaCompleteDto { media_id: UUID }
 export interface MediaAddGalleryItemDto { media_id: UUID }
 
+export interface ApiMedia {
+  id: UUID;
+  status: "pending" | "uploaded" | "processing" | "ready" | "failed" | "deleted";
+  content_type: string;
+  file_size: number;
+  visibility: "public" | "private";
+  thumbnail_url?: string | null;
+  preview_url?: string | null;
+  download_url?: string | null;
+  expires_in?: number | null;
+}
+
 export interface ApiDeliveryGalleryItem {
   id: UUID;
   media_id: UUID;

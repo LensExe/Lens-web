@@ -26,6 +26,8 @@ export interface Photographer {
   bio: string;
   /** Số năm kinh nghiệm. */
   experienceYears: number;
+  /** Trạng thái xét duyệt hồ sơ photographer từ backend. */
+  verificationStatus?: "unverified" | "pending" | "verified" | "rejected";
   featured: boolean;
   portfolio: string[];
   /** Upcoming dates with at least one free slot, as ISO `yyyy-MM-dd` strings.

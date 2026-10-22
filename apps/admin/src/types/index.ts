@@ -1,6 +1,6 @@
 // Admin domain types for the Lens console (UI-only phase).
 
-export type ApprovalStatus = "pending" | "approved" | "rejected";
+export type ApprovalStatus = "unverified" | "pending" | "approved" | "rejected";
 
 /** A photographer's submitted profile awaiting moderation. */
 export interface PhotographerApplication {

@@ -61,6 +61,15 @@ export async function uploadImageFile(
   return mediaId;
 }
 
+/** Upload a public image and return its stable view URL. */
+export async function uploadPublicImageFile(file: File): Promise<string> {
+  const mediaId = await uploadImageFile(file, "public");
+  const media = await mediaApi.getMedia(mediaId);
+  const url = media.preview_url ?? media.download_url;
+  if (!url) throw new Error("Backend không trả về URL ảnh sau khi tải lên.");
+  return url;
+}
+
 export function apiRecord(value: unknown): ApiObject {
   return asRecord(value) as ApiObject;
 }

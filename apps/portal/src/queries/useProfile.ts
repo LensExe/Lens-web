@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { changePassword, getMyProfile, updateMyProfile } from "@/services/profile";
+import { changePassword, getMyProfile, updateMyAvatar, updateMyProfile } from "@/services/profile";
 import { isSignedIn } from "@/lib/session";
 
 // Layer 2 — Query hooks for the account profile.
@@ -22,6 +22,18 @@ export function useUpdateProfile() {
     onSuccess: (profile) => {
       qc.setQueryData(profileKeys.me, profile);
       // A photographer's name also shows on their public profile/dashboard.
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["photographers"] });
+    },
+  });
+}
+
+export function useUpdateAvatar() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: updateMyAvatar,
+    onSuccess: (profile) => {
+      qc.setQueryData(profileKeys.me, profile);
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["photographers"] });
     },
