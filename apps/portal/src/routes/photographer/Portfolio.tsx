@@ -92,16 +92,27 @@ function PortfolioImage({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  htmlFor?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="space-y-1.5">
-      <label className="text-sm font-medium">{label}</label>
+      <label htmlFor={htmlFor} className="text-sm font-medium">
+        {label}
+      </label>
       {children}
     </div>
   );
 }
 
 interface Draft {
+  name: string;
   bio: string;
   city: string;
   experienceYears: number;
@@ -115,6 +126,7 @@ function ProfileEditor({ profile, onClose }: { profile: Photographer; onClose: (
   const uploadPortfolio = useUploadPortfolioImages();
   const portfolioInput = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState<Draft>(() => ({
+    name: profile.name,
     bio: profile.bio,
     city: profile.city,
     experienceYears: profile.experienceYears,
@@ -128,6 +140,7 @@ function ProfileEditor({ profile, onClose }: { profile: Photographer; onClose: (
       styles: d.styles.includes(s) ? d.styles.filter((x) => x !== s) : [...d.styles, s],
     }));
   const valid =
+    draft.name.trim().length >= 2 &&
     draft.bio.trim().length > 0 && draft.bio.length <= BIO_MAX && draft.styles.length > 0;
 
   const uploadImages = (files: FileList | null) => {
@@ -147,7 +160,7 @@ function ProfileEditor({ profile, onClose }: { profile: Photographer; onClose: (
   const save = () => {
     if (!valid) return;
     update.mutate(
-      { ...draft, bio: draft.bio.trim() },
+      { ...draft, name: draft.name.trim(), bio: draft.bio.trim() },
       {
         onSuccess: () => {
           onClose();
@@ -204,7 +217,19 @@ function ProfileEditor({ profile, onClose }: { profile: Photographer; onClose: (
             <AvatarFallback>{currentUser.initials}</AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1 space-y-4">
-            <h2 className="text-xl font-semibold">{profile.name}</h2>
+            <Field label="Họ và tên" htmlFor="photographer-name">
+              <Input
+                id="photographer-name"
+                autoComplete="name"
+                required
+                maxLength={80}
+                value={draft.name}
+                onChange={(e) => patch({ name: e.target.value })}
+                placeholder="Nhập họ và tên"
+                aria-invalid={draft.name.trim().length < 2}
+                className="h-10 rounded-xl"
+              />
+            </Field>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Tỉnh / Thành phố">
                 <Select value={draft.city} onValueChange={(v) => patch({ city: v })}>
@@ -255,12 +280,14 @@ function ProfileEditor({ profile, onClose }: { profile: Photographer; onClose: (
               </div>
             </Field>
 
-            <Field label="Giới thiệu">
+            <Field label="Giới thiệu" htmlFor="photographer-bio">
               <textarea
+                id="photographer-bio"
                 rows={4}
                 maxLength={BIO_MAX}
                 value={draft.bio}
                 onChange={(e) => patch({ bio: e.target.value })}
+                placeholder="Giới thiệu về phong cách, thế mạnh và kinh nghiệm chụp ảnh của bạn..."
                 className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ember"
               />
               <p className="mt-1 text-right text-xs tabular-nums text-muted-foreground">

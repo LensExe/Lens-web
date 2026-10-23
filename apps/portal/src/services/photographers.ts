@@ -127,6 +127,10 @@ export async function getMyPhotographerProfile(): Promise<Photographer> {
 }
 
 export async function updateMyPhotographerProfile(patch: Partial<Photographer>): Promise<Photographer> {
+  if (patch.name !== undefined) {
+    await identityApi.updateMe({ fullname: patch.name.trim() });
+  }
+
   const profilePatch = {
     ...(patch.bio !== undefined && { description: patch.bio }),
     ...(patch.experienceYears !== undefined && {
