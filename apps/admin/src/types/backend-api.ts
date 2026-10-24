@@ -39,6 +39,67 @@ export interface AdminDashboardAnalyticsData {
   }>;
 }
 
+export type BookingLifecycleStatus =
+  | "pending"
+  | "accepted"
+  | "rejected"
+  | "cancelled"
+  | "expired"
+  | "in_progress"
+  | "shot"
+  | "completed";
+
+export interface BookingPlanSnapshotData {
+  name: string;
+  photo_count?: number;
+  retouched_photo_count?: number;
+  duration_minutes?: number;
+  delivery_days?: number | null;
+}
+
+export interface AdminBookingParticipantData {
+  fullname: string;
+  avatar_url?: string | null;
+  styles?: string[];
+  email?: string;
+  phone_number?: string | null;
+}
+
+export interface AdminBookingDetailData {
+  id: UUID;
+  customer_id: UUID;
+  photographer_id: UUID;
+  booking_plan_id: UUID;
+  package_snapshot?: BookingPlanSnapshotData | null;
+  booking_plan?: BookingPlanSnapshotData;
+  customer?: AdminBookingParticipantData;
+  photographer?: AdminBookingParticipantData;
+  location: string;
+  from: string;
+  to: string;
+  deposit_amount: number;
+  total_amount: number;
+  paid_amount: number;
+  gallery_photo_count: number;
+  status: BookingLifecycleStatus;
+  accepted_at?: string | null;
+  gallery_published_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminBookingTimelineEventData {
+  id: UUID;
+  booking_id: UUID;
+  from_status: BookingLifecycleStatus | null;
+  to_status: BookingLifecycleStatus;
+  actor_role: "customer" | "photographer" | "admin" | "system";
+  actor_user_id: UUID | null;
+  reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface AdminFinanceSummaryData {
   walletReserve: number;
   pendingWithdrawalTotal: number;

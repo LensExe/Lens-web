@@ -2,6 +2,9 @@ import { adminApi } from "@/services/backend";
 import { allPages, number, record, text } from "@/services/normalize";
 import type { AdminBooking, AdminBookingsReport, EscrowStatus } from "@/types";
 
+export const getAdminBookingDetail = adminApi.getBookingDetail;
+export const getAdminBookingTimeline = adminApi.getBookingTimeline;
+
 function mapStatus(status: unknown, paidDeposit: boolean, paidTotal: boolean): EscrowStatus {
   switch (status) {
     case "pending": return "pending";

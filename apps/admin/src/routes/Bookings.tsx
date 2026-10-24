@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { CalendarClock, CalendarX, Download, Eye, Plus, Search, ShieldCheck, UsersRound } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button, Input, PageContainer, PageHeader, StatCard, formatPrice, toast } from "@lens/ui";
 import {
   getCoreRowModel,
@@ -148,13 +149,15 @@ export function Bookings() {
         enableSorting: false,
         cell: ({ row }) => (
           <Button
+            asChild
             variant="ghost"
             size="sm"
             className="h-10 rounded-xl px-3 text-muted-foreground hover:bg-muted hover:text-foreground"
-            onClick={() => toast.info(`Chi tiết ${row.original.id.toUpperCase()} sẽ được mở trong phiên bản tiếp theo.`)}
           >
-            <Eye className="size-4" />
-            Chi tiết
+            <Link to={`/bookings/${row.original.id}`}>
+              <Eye className="size-4" />
+              Chi tiết
+            </Link>
           </Button>
         ),
         meta: ACTIONS,

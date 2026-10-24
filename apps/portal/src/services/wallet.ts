@@ -1,6 +1,11 @@
 import { paymentApi } from "@/services/backend";
 import type { ApiObject } from "@/types/common";
-import type { WalletLedgerQueryDto, WalletWithdrawalDto } from "@/types/payments";
+import type {
+  PayoutDestinationDto,
+  WalletLedgerQueryDto,
+  WalletPayoutDestinationDto,
+  WalletWithdrawalDto,
+} from "@/types/payments";
 import type { WalletSummary, WalletTransaction } from "@/types";
 
 const row = (value: unknown): ApiObject => value && typeof value === "object" ? value as ApiObject : {};
@@ -39,6 +44,16 @@ export async function getWalletTransactions(): Promise<WalletTransaction[]> {
       note: string(entry.description) || entryType,
     };
   }).filter((transaction) => transaction.amount !== 0);
+}
+
+export function getWalletPayoutDestination(): Promise<WalletPayoutDestinationDto> {
+  return paymentApi.getWalletPayoutDestination();
+}
+
+export function saveWalletPayoutDestination(
+  input: PayoutDestinationDto,
+): Promise<WalletPayoutDestinationDto> {
+  return paymentApi.saveWalletPayoutDestination(input);
 }
 
 export async function requestWithdraw(input: WalletWithdrawalDto): Promise<ApiObject> {

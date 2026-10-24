@@ -3,6 +3,8 @@ import type {
   AdminUsersQueryDto,
   AdminDashboardData,
   AdminDashboardAnalyticsData,
+  AdminBookingDetailData,
+  AdminBookingTimelineEventData,
   AdminFinanceSummaryData,
   AdminQueueData,
   AdminStorageQueryDto,
@@ -99,6 +101,14 @@ export const getCustomer = (id: string) =>
 
 export const listBookings = (query: BookingAdminQueryDto = {}) =>
   backendGet<ApiPage<ApiObject>>("/admin/bookings", query);
+
+export const getBookingDetail = (id: string) =>
+  backendGet<AdminBookingDetailData>(`/admin/bookings/${encodeURIComponent(id)}`);
+
+export const getBookingTimeline = (id: string) =>
+  backendGet<{ items: AdminBookingTimelineEventData[] }>(
+    `/bookings/${encodeURIComponent(id)}/timeline`,
+  );
 
 export const cancelBooking = (id: string, body: ReasonDto) =>
   backendPost<ApiObject, ReasonDto>(`/admin/bookings/${encodeURIComponent(id)}/cancel`, body);
