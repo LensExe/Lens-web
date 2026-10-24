@@ -13,7 +13,7 @@ export function Wallet() {
       <PageHeader
         className="mx-auto mb-6 w-full max-w-6xl"
         title={<span className="flex items-center gap-3"><span className="flex size-9 items-center justify-center rounded-xl border border-ember/15 bg-ember/10 text-ember"><WalletMinimal className="size-5" /></span>Ví của tôi</span>}
-        description="Số dư và lịch sử giao dịch lấy từ wallet API của Lens."
+        description="Theo dõi tiền vào và ra khỏi số dư khả dụng, cũng như khoản đang giữ."
       />
       <div className="mx-auto w-full max-w-6xl">
         {wallet.isError ? <p className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5 text-sm text-destructive">Không tải được số dư ví từ backend.</p>

@@ -353,8 +353,14 @@ export interface WalletTransaction {
   /** payout = earnings released to a photographer; refund = money back to a
    *  client; withdraw = cash-out request; topup = money added. */
   type: "payout" | "refund" | "withdraw" | "topup" | "booking";
-  /** Signed VND: credits (+) increase balance, debits (−) decrease it. */
+  /** Signed display amount for older consumers; use the deltas to inspect each balance. */
   amount: number;
+  /** Ledger event name, used to explain wallet holds and payouts in history. */
+  entryType?: string;
+  /** Signed movement of the available balance. */
+  availableDelta?: number;
+  /** Signed movement of the frozen balance. */
+  frozenDelta?: number;
   status: "completed" | "pending";
   bookingId?: string;
   /** ISO datetime string. */

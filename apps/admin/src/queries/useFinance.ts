@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getFinance,
   getWithdrawals,
+  processWithdrawalPayout,
   setWithdrawalStatus,
 } from "@/services/finance";
 import { queueKey } from "@/queries/useStats";
@@ -32,6 +33,18 @@ export function useSetWithdrawalStatus() {
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: WithdrawalStatus }) =>
       setWithdrawalStatus(id, status),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: financeKeys.withdrawals });
+      qc.invalidateQueries({ queryKey: financeKeys.summary });
+      qc.invalidateQueries({ queryKey: queueKey });
+    },
+  });
+}
+
+export function useProcessWithdrawalPayout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id }: { id: string }) => processWithdrawalPayout(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: financeKeys.withdrawals });
       qc.invalidateQueries({ queryKey: financeKeys.summary });

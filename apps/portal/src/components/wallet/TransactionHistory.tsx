@@ -17,8 +17,42 @@ const LABEL: Record<WalletTransaction["type"], string> = {
   topup: "Nạp tiền",
   booking: "Thanh toán booking",
 };
+const ENTRY_LABEL: Record<string, string> = {
+  topup: "Nạp tiền vào số dư khả dụng",
+  booking_payment: "Thanh toán booking",
+  booking_escrow_hold: "Tiền booking vào khoản đang giữ",
+  booking_escrow_release: "Tiền booking về số dư khả dụng",
+  refund_reserve: "Tiền hoàn booking chuyển vào khoản đang giữ",
+  refund_credit: "Tiền hoàn vào số dư khả dụng",
+  refund_debit: "Hoàn tiền từ số dư đang giữ",
+  withdrawal_reserve: "Tiền rút chuyển vào khoản đang giữ",
+  withdrawal_paid: "Rút tiền hoàn tất",
+  withdrawal_release: "Tiền rút trả về số dư khả dụng",
+};
 const dateOf = (iso: string) => new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(iso));
 const monthOf = (iso: string) => new Intl.DateTimeFormat("vi-VN", { month: "long", year: "numeric" }).format(new Date(iso));
+const signedPrice = (amount: number) => `${amount > 0 ? "+" : "−"}${formatPrice(Math.abs(amount))}`;
+
+function balanceChanges(transaction: WalletTransaction) {
+  const changes: string[] = [];
+  if (transaction.availableDelta) changes.push(`Khả dụng ${signedPrice(transaction.availableDelta)}`);
+  if (transaction.frozenDelta) changes.push(`Đang giữ ${signedPrice(transaction.frozenDelta)}`);
+  return changes.join(" · ");
+}
+
+function displayedAmount(transaction: WalletTransaction) {
+  const { entryType, amount, availableDelta = 0, frozenDelta = 0 } = transaction;
+  if (["booking_escrow_hold", "refund_reserve", "withdrawal_reserve"].includes(entryType ?? "")) {
+    return { label: `Đang giữ ${formatPrice(Math.abs(frozenDelta || amount))}`, muted: true };
+  }
+  if (["booking_escrow_release", "withdrawal_release"].includes(entryType ?? "")) {
+    return { label: `Về khả dụng ${formatPrice(Math.abs(availableDelta || amount))}`, muted: false };
+  }
+  return {
+    label: `${amount > 0 ? "+" : "−"}${formatPrice(Math.abs(amount))}`,
+    muted: false,
+  };
+}
 
 export function TransactionHistory({ money, loading }: { money: WalletTransaction[]; loading: boolean }) {
   const groups: { month: string; rows: WalletTransaction[] }[] = [];
@@ -35,8 +69,14 @@ export function TransactionHistory({ money, loading }: { money: WalletTransactio
         : groups.length === 0 ? <div className="flex flex-col items-center px-6 py-12 text-center"><span className="mb-3 flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground"><ReceiptText className="size-6" /></span><p className="font-medium">Chưa có giao dịch ví</p><p className="mt-1 max-w-xs text-sm text-muted-foreground">Lịch sử biến động ví sẽ hiển thị tại đây.</p></div>
           : groups.map((group) => <div key={group.month}><p className="bg-muted/35 px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground sm:px-5">{group.month}</p><ul className="divide-y divide-border">{group.rows.map((transaction) => {
             const Icon = ICON[transaction.type];
-            const positive = transaction.amount > 0;
-            return <li key={transaction.id} className="flex items-center gap-3 px-4 py-4 sm:px-5"><span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl", positive ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/35 dark:text-emerald-300" : "bg-muted text-muted-foreground")}><Icon className="size-4" /></span><div className="min-w-0 flex-1"><p className="text-sm font-medium">{LABEL[transaction.type]}</p><p className="mt-0.5 truncate text-xs text-muted-foreground">{transaction.note || dateOf(transaction.createdAt)}</p><p className="mt-0.5 text-[10px] text-muted-foreground">{dateOf(transaction.createdAt)}</p></div><p className={cn("shrink-0 text-sm font-semibold tabular-nums", positive && "text-emerald-700 dark:text-emerald-300")}>{positive ? "+" : "−"}{formatPrice(Math.abs(transaction.amount))}</p></li>;
+            const walletImpact = transaction.availableDelta !== undefined || transaction.frozenDelta !== undefined
+              ? (transaction.availableDelta ?? 0) + (transaction.frozenDelta ?? 0)
+              : transaction.amount;
+            const positive = walletImpact > 0;
+            const title = ENTRY_LABEL[transaction.entryType ?? ""] ?? LABEL[transaction.type];
+            const detail = balanceChanges(transaction) || transaction.note || dateOf(transaction.createdAt);
+            const amountDisplay = displayedAmount(transaction);
+            return <li key={transaction.id} className="flex items-center gap-3 px-4 py-4 sm:px-5"><span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl", positive ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/35 dark:text-emerald-300" : "bg-muted text-muted-foreground")}><Icon className="size-4" /></span><div className="min-w-0 flex-1"><p className="text-sm font-medium">{title}</p><p className="mt-0.5 truncate text-xs text-muted-foreground">{detail}</p><p className="mt-0.5 text-[10px] text-muted-foreground">{dateOf(transaction.createdAt)}</p></div><p className={cn("shrink-0 text-sm font-semibold tabular-nums", positive && !amountDisplay.muted && "text-emerald-700 dark:text-emerald-300", amountDisplay.muted && "text-muted-foreground")}>{amountDisplay.label}</p></li>;
           })}</ul></div>)}
     </section>
   );

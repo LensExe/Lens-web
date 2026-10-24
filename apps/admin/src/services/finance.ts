@@ -15,9 +15,12 @@ export async function getWithdrawals(): Promise<AdminWithdrawal[]> {
     const row = record(raw);
     if (row.request_type !== "wallet_withdrawal") return [];
     const destination = record(row.payout_destination);
+    const payoutProviderStatus = text(row.payout_provider_status).toUpperCase() || undefined;
+    const isPayoutProcessing = ["RECEIVED", "PROCESSING", "SUBMITTED", "APPROVED", "SCHEDULED", "ON_HOLD", "PARTIAL_COMPLETED", "COMPLETED"].includes(payoutProviderStatus ?? "");
     const status: WithdrawalStatus = row.status === "requested" ? "pending"
       : row.status === "completed" ? "completed"
-      : row.status === "rejected" ? "rejected" : "approved";
+      : row.status === "rejected" ? "rejected"
+      : isPayoutProcessing ? "processing" : "approved";
     const user = userById.get(text(row.user_id));
     return [{
       id: text(row.id),
@@ -30,7 +33,8 @@ export async function getWithdrawals(): Promise<AdminWithdrawal[]> {
       bankName: text(destination.bank_code) || undefined,
       bankAccount: text(destination.account_number) || undefined,
       accountHolder: text(destination.account_name) || undefined,
-      referenceCode: text(row.transaction_id) || undefined,
+      referenceCode: text(row.payout_reference) || text(row.completed_transaction_id) || text(row.transaction_id) || undefined,
+      payoutProviderStatus,
     }];
   });
 }
@@ -44,6 +48,13 @@ export async function setWithdrawalStatus(id: string, status: WithdrawalStatus):
   }
   const row = (await getWithdrawals()).find((request) => request.id === id);
   if (!row) throw new Error("Đã cập nhật yêu cầu nhưng không tìm thấy kết quả trong hàng đợi.");
+  return row;
+}
+
+export async function processWithdrawalPayout(id: string): Promise<AdminWithdrawal> {
+  await adminApi.processWithdrawalPayout(id);
+  const row = (await getWithdrawals()).find((request) => request.id === id);
+  if (!row) throw new Error("Đã gửi yêu cầu PayOS nhưng không tìm thấy kết quả trong hàng đợi.");
   return row;
 }
 

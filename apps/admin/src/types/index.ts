@@ -108,7 +108,7 @@ export interface ReportData {
 }
 
 // ── Finance & withdrawals (Feature: Ví + Lens Xu) ───────────────────────────
-export type WithdrawalStatus = "pending" | "approved" | "rejected" | "completed";
+export type WithdrawalStatus = "pending" | "approved" | "processing" | "rejected" | "completed";
 
 export interface AdminWithdrawal {
   id: string;
@@ -128,6 +128,8 @@ export interface AdminWithdrawal {
   accountHolder?: string;
   /** Mã tham chiếu / mã giao dịch */
   referenceCode?: string;
+  /** Latest status reported by PayOS for this withdrawal. */
+  payoutProviderStatus?: string;
 }
 
 export interface FinanceSummary {
