@@ -36,6 +36,7 @@ export const ROLE_META: Record<UserRole, StatusMeta> = {
 export const WITHDRAWAL_STATUS_META: Record<WithdrawalStatus, StatusMeta> = {
   pending: { label: "Chờ duyệt", className: TONE_CHIP.amber },
   approved: { label: "Đã duyệt", className: TONE_CHIP.emerald },
+  processing: { label: "Đang chuyển", className: TONE_CHIP.sky },
   rejected: { label: "Từ chối", className: TONE_CHIP.rose },
   completed: { label: "Đã chuyển tiền", className: TONE_CHIP.emerald },
 };

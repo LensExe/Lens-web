@@ -32,16 +32,24 @@ export async function getWalletTransactions(): Promise<WalletTransaction[]> {
       : entryType.startsWith("refund") ? "refund"
       : entryType === "booking_escrow_release" ? "payout"
       : "booking";
-    const delta = amount(entry.available_delta) || amount(entry.frozen_delta);
+    const availableDelta = amount(entry.available_delta);
+    const frozenDelta = amount(entry.frozen_delta);
+    const delta = availableDelta || frozenDelta;
     const status: WalletTransaction["status"] = entry.status === "pending" ? "pending" : "completed";
     return {
       id: string(entry.id) || string(entry.idempotency_key),
       userId: "",
       type,
       amount: delta,
+      entryType,
+      availableDelta,
+      frozenDelta,
       status,
       createdAt: string(entry.created_at),
-      note: string(entry.description) || entryType,
+      note: entryType === "withdrawal_reserve" ? "Tiền được chuyển từ số dư khả dụng sang khoản đang giữ"
+        : entryType === "withdrawal_paid" ? "Khoản đang giữ đã được chi trả về ngân hàng"
+        : entryType === "withdrawal_release" ? "Tiền được trả từ khoản đang giữ về số dư khả dụng"
+        : string(entry.description) || entryType,
     };
   }).filter((transaction) => transaction.amount !== 0);
 }

@@ -158,6 +158,9 @@ export const completeRefundRequest = (id: string, body: RefundCompleteDto = {}) 
     body,
   );
 
+export const processWithdrawalPayout = (id: string) =>
+  backendPost<ApiObject>(`/admin/refund-requests/${encodeURIComponent(id)}/payout`);
+
 export const extendRefundDeadline = (id: string, body: DeadlineExtensionDto) =>
   backendPost<ApiObject, DeadlineExtensionDto>(
     `/admin/refund-requests/${encodeURIComponent(id)}/extend-deadline`,

@@ -27,7 +27,7 @@ export function PayoutDestinationCard() {
   const [accountName, setAccountName] = useState("");
 
   const configured = destination.data?.is_configured === true;
-  const invalid = !bankCode.trim() || !accountNumber.trim() || !accountName.trim();
+  const invalid = !/^\d{6}$/.test(bankCode.trim()) || !accountNumber.trim() || !accountName.trim();
 
   const closeDialog = (nextOpen: boolean) => {
     setOpen(nextOpen);
@@ -123,12 +123,15 @@ export function PayoutDestinationCard() {
           <div className="space-y-3">
             <Input
               autoComplete="organization"
+              inputMode="numeric"
+              maxLength={6}
               value={bankCode}
               onChange={(event) => setBankCode(event.target.value)}
-              placeholder="Mã ngân hàng (bank code)"
-              aria-label="Mã ngân hàng"
+              placeholder="Mã BIN PayOS ngân hàng (6 số)"
+              aria-label="Mã BIN PayOS ngân hàng gồm 6 số"
               className="rounded-xl"
             />
+            <p className="text-xs text-muted-foreground">Nhập mã BIN 6 số của ngân hàng để PayOS chuyển khoản tự động.</p>
             <Input
               autoComplete="off"
               inputMode="numeric"

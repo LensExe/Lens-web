@@ -27,7 +27,7 @@ import { ACTIONS, NUM } from "@/components/data-table/columns";
 import { EmptyState } from "@/components/EmptyState";
 import { StatusPill } from "@/components/StatusPill";
 import { UserCell } from "@/components/UserCell";
-import { useFinance, useSetWithdrawalStatus, useWithdrawals } from "@/queries/useFinance";
+import { useFinance, useProcessWithdrawalPayout, useSetWithdrawalStatus, useWithdrawals } from "@/queries/useFinance";
 import { WITHDRAWAL_STATUS_META } from "@/lib/status";
 import { formatCount, formatDate, formatRelative } from "@/lib/format";
 import type { AdminWithdrawal, WithdrawalStatus } from "@/types";
@@ -98,11 +98,13 @@ export function Finance() {
   const { data: serverWithdrawals, isLoading } = useWithdrawals();
   const { data: serverFinance } = useFinance();
   const setStatus = useSetWithdrawalStatus();
+  const processPayout = useProcessWithdrawalPayout();
   const [filter, setFilter] = useState<Filter>("pending");
   const [search, setSearch] = useState("");
   const [bank, setBank] = useState("all");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [decision, setDecision] = useState<Decision | null>(null);
+  const [payoutTarget, setPayoutTarget] = useState<AdminWithdrawal | null>(null);
 
   const withdrawals = useMemo(() => serverWithdrawals ?? [], [serverWithdrawals]);
   const pendingList = useMemo(() => withdrawals.filter((withdrawal) => withdrawal.status === "pending"), [withdrawals]);
@@ -196,8 +198,30 @@ export function Finance() {
         enableSorting: false,
         cell: ({ row }) => {
           const withdrawal = row.original;
+          const busy =
+            (setStatus.isPending && setStatus.variables?.id === withdrawal.id) ||
+            (processPayout.isPending && processPayout.variables?.id === withdrawal.id);
+          const payoutStatus = withdrawal.payoutProviderStatus?.toUpperCase();
+          if (withdrawal.status === "processing" || withdrawal.status === "approved") {
+            if (payoutStatus === "REVERSED") {
+              return <span className="text-xs font-medium text-rose-700">Cần đối soát PayOS</span>;
+            }
+            const canRetry = ["FAILED", "REJECTED", "CANCELLED"].includes(payoutStatus ?? "");
+            return (
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  className="h-10 rounded-xl bg-emerald-600 px-4 text-white hover:bg-emerald-700"
+                  disabled={busy}
+                  onClick={() => setPayoutTarget(withdrawal)}
+                >
+                  <BanknoteArrowDown className="size-3.5" />
+                  {withdrawal.status === "processing" ? "Kiểm tra PayOS" : canRetry ? "Thử lại PayOS" : "Chuyển qua PayOS"}
+                </Button>
+              </div>
+            );
+          }
           if (withdrawal.status !== "pending") return <span className="text-sm text-muted-foreground">—</span>;
-          const busy = setStatus.isPending && setStatus.variables?.id === withdrawal.id;
           return (
             <div className="flex justify-end gap-2">
               <Button
@@ -255,6 +279,30 @@ export function Finance() {
       }
     );
   };
+
+  const confirmPayout = () => {
+    if (!payoutTarget) return;
+    const withdrawal = payoutTarget;
+    processPayout.mutate(
+      { id: withdrawal.id },
+      {
+        onSuccess: (updated) => {
+          if (updated.status === "completed") {
+            toast.success(`PayOS đã chuyển ${formatPrice(withdrawal.amount)} cho ${withdrawal.photographerName}`);
+          } else if (["FAILED", "REJECTED", "CANCELLED"].includes(updated.payoutProviderStatus?.toUpperCase() ?? "")) {
+            toast.error("PayOS báo lệnh chi thất bại. Tiền vẫn được giữ trong frozen; có thể thử lại.");
+          } else {
+            toast.info("PayOS đang xử lý lệnh chi. Tiền vẫn được giữ trong frozen cho đến khi xác nhận thành công.");
+          }
+          setPayoutTarget(null);
+        },
+        onError: () => toast.error("Không thể gửi hoặc kiểm tra lệnh chi PayOS."),
+      }
+    );
+  };
+
+  const checkingPayout = payoutTarget?.status === "processing";
+  const retryingPayout = ["FAILED", "REJECTED", "CANCELLED"].includes(payoutTarget?.payoutProviderStatus?.toUpperCase() ?? "");
 
   const footer = filter === "pending" && !search && bank === "all" ? (
     <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
@@ -336,6 +384,7 @@ export function Finance() {
             items: [
               { value: "pending", label: "Chờ duyệt", count: countOf("pending") },
               { value: "approved", label: "Đã duyệt", count: countOf("approved") },
+              { value: "processing", label: "Đang chuyển", count: countOf("processing") },
               { value: "rejected", label: "Từ chối", count: countOf("rejected") },
               { value: "all", label: "Tất cả", count: withdrawals.length },
             ],
@@ -373,13 +422,29 @@ export function Finance() {
         title={approving ? `Duyệt rút ${decision ? formatPrice(decision.withdrawal.amount) : ""}?` : "Từ chối yêu cầu rút tiền?"}
         description={
           approving
-            ? `Tiền sẽ được chuyển về tài khoản ${decision?.withdrawal.bankName ? `${decision.withdrawal.bankName} (STK: ${decision.withdrawal.bankAccount})` : "ngân hàng"} của ${decision?.withdrawal.photographerName} trong 1–2 ngày làm việc.`
-            : `Số tiền sẽ được giữ lại trong ví của ${decision?.withdrawal.photographerName}.`
+            ? `Yêu cầu sẽ được duyệt để chuyển về tài khoản ${decision?.withdrawal.bankName ? `${decision.withdrawal.bankName} (STK: ${decision.withdrawal.bankAccount})` : "ngân hàng"} của ${decision?.withdrawal.photographerName}. Tiền vẫn nằm trong frozen; admin sẽ tạo lệnh PayOS ở bước tiếp theo.`
+            : `Yêu cầu bị từ chối; khoản tiền đang giữ sẽ được trả lại số dư khả dụng của ${decision?.withdrawal.photographerName}.`
         }
         confirmLabel={approving ? "Duyệt rút tiền" : "Từ chối"}
         destructive={!approving}
         pending={setStatus.isPending}
         onConfirm={confirm}
+      />
+
+      <ConfirmDialog
+        open={!!payoutTarget}
+        onOpenChange={(open) => {
+          if (!open) setPayoutTarget(null);
+        }}
+        title={checkingPayout ? "Kiểm tra lệnh chi PayOS?" : retryingPayout ? "Thử lại lệnh chi PayOS?" : "Chuyển tiền qua PayOS?"}
+        description={
+          checkingPayout
+            ? `Kiểm tra trạng thái lệnh chi ${formatPrice(payoutTarget?.amount ?? 0)} của ${payoutTarget?.photographerName ?? "nhiếp ảnh gia"}. Thao tác này không tạo lệnh chi mới.`
+            : `PayOS sẽ chuyển ${formatPrice(payoutTarget?.amount ?? 0)} đến tài khoản ${payoutTarget?.bankName ?? "ngân hàng"} · ${payoutTarget?.bankAccount ?? ""} của ${payoutTarget?.photographerName ?? "nhiếp ảnh gia"}. Tiền chỉ rời frozen khi PayOS xác nhận thành công.`
+        }
+        confirmLabel={checkingPayout ? "Kiểm tra PayOS" : retryingPayout ? "Thử lại qua PayOS" : "Tạo lệnh chi"}
+        pending={processPayout.isPending}
+        onConfirm={confirmPayout}
       />
     </PageContainer>
   );
