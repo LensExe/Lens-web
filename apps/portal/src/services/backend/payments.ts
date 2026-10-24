@@ -1,14 +1,16 @@
-import { backendGet, backendPost } from "@/lib/backend-api";
+import { backendGet, backendPost, backendPut } from "@/lib/backend-api";
 import type { ApiItems, ApiObject, ApiPage } from "@/types/common";
 import type {
   ApiPayment,
   ApiPaymentHistory,
   ApiWebhookResult,
   DepositPaymentDto,
+  PayoutDestinationDto,
   PaymentRefundDto,
   PaymentWebhookDto,
   SePayWebhookDto,
   WalletLedgerQueryDto,
+  WalletPayoutDestinationDto,
   WalletTopUpDto,
   WalletWithdrawalDto,
 } from "@/types/payments";
@@ -17,6 +19,15 @@ export const getWallet = () => backendGet<ApiObject>("/wallet");
 
 export const getWalletLedger = (query: WalletLedgerQueryDto = {}) =>
   backendGet<ApiPage<ApiObject>>("/wallet/ledger", query);
+
+export const getWalletPayoutDestination = () =>
+  backendGet<WalletPayoutDestinationDto>("/wallet/payout-destination");
+
+export const saveWalletPayoutDestination = (body: PayoutDestinationDto) =>
+  backendPut<WalletPayoutDestinationDto, PayoutDestinationDto>(
+    "/wallet/payout-destination",
+    body,
+  );
 
 export const createWalletTopUp = (body: WalletTopUpDto) =>
   backendPost<ApiObject, WalletTopUpDto>("/wallet/topups", body);

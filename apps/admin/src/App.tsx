@@ -9,6 +9,7 @@ import { Users } from "@/routes/Users";
 import { Reports } from "@/routes/Reports";
 import { Finance } from "@/routes/Finance";
 import { Bookings } from "@/routes/Bookings";
+import { BookingDetail } from "@/routes/BookingDetail";
 import { Storage } from "@/routes/Storage";
 import { Quality } from "@/routes/Quality";
 import { Notifications } from "@/routes/Notifications";
@@ -33,6 +34,7 @@ function App() {
         <Route path="users" element={<Users />} />
         <Route path="finance" element={<Finance />} />
         <Route path="bookings" element={<Bookings />} />
+        <Route path="bookings/:id" element={<BookingDetail />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="storage" element={<Storage />} />
         <Route path="quality" element={<Quality />} />

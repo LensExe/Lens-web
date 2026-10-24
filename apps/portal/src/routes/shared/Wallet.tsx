@@ -1,5 +1,6 @@
 import { ArrowDownLeft, WalletMinimal } from "lucide-react";
 import { PageContainer, PageHeader, Skeleton } from "@lens/ui";
+import { PayoutDestinationCard } from "@/components/wallet/PayoutDestinationCard";
 import { TransactionHistory } from "@/components/wallet/TransactionHistory";
 import { WalletSummaryCard } from "@/components/wallet/WalletSummaryCard";
 import { useWalletSummary, useWalletTransactions } from "@/queries/useWallet";
@@ -18,6 +19,9 @@ export function Wallet() {
         {wallet.isError ? <p className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5 text-sm text-destructive">Không tải được số dư ví từ backend.</p>
           : wallet.isLoading || !wallet.data ? <Skeleton className="h-56 rounded-2xl" />
             : <WalletSummaryCard wallet={wallet.data} />}
+      </div>
+      <div className="mx-auto mt-5 w-full max-w-6xl">
+        <PayoutDestinationCard />
       </div>
       <div className="mx-auto mt-9 w-full max-w-6xl">
         <div className="mb-3 flex items-center gap-2"><span className="flex size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground"><ArrowDownLeft className="size-4" /></span><div><h2 className="text-lg font-semibold">Lịch sử giao dịch</h2><p className="text-xs text-muted-foreground">Wallet ledger do backend trả về</p></div></div>

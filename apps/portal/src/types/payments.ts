@@ -17,10 +17,17 @@ export interface PayoutDestinationDto {
   account_name: string;
 }
 
+export interface WalletPayoutDestinationDto {
+  is_configured: boolean;
+  bank_code: string | null;
+  account_name: string | null;
+  account_number_masked: string | null;
+  updated_at: ISODateTime | null;
+}
+
 export interface WalletWithdrawalDto {
   amount: number;
   reason: string;
-  payout_destination: PayoutDestinationDto;
   idempotency_key: string;
 }
 
