@@ -5,18 +5,20 @@ import type {
   AuthLoginDto,
   AuthLogoutDto,
   AuthRefreshDto,
-  AuthTokenResponse,
 } from "@/types/backend-api";
 
-export interface AdminAuthSession extends AuthTokenResponse {
+export interface AdminAuthSession {
   user: ApiUser;
+  roles?: string[];
+  email_verified?: boolean;
+  expires_in?: number;
 }
 
 export const login = (body: AuthLoginDto) =>
   backendPost<AdminAuthSession, AuthLoginDto>("/auth/login", body);
 
-export const refreshToken = (body: AuthRefreshDto) =>
-  backendPost<AuthTokenResponse, AuthRefreshDto>("/auth/refresh", body);
+export const refreshToken = (body: AuthRefreshDto = {}) =>
+  backendPost<{ success: boolean; expires_in?: number }, AuthRefreshDto>("/auth/refresh", body);
 
 export const logout = (body: AuthLogoutDto = {}) =>
   backendPost<ApiObject, AuthLogoutDto>("/auth/logout", body);

@@ -1,24 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { io } from "socket.io-client";
 import {
-  getBackendAccessToken,
-  getBackendAccessTokenExpiry,
-  getBackendSubject,
   expireBackendSession,
   refreshBackendAccessToken,
 } from "@/lib/backend-api";
-import { syncReadCursor } from "@/services/messages";
+import { sessionUser, type SessionUser } from "@/lib/session";
+import { parseChatRealtimeEvent, syncReadCursor } from "@/services/messages";
 import { notificationSocketNamespace } from "@/services/notifications";
 import { notificationKeys } from "@/queries/useNotifications";
 import { bookingKeys } from "@/queries/useBookings";
 import { dashboardKeys } from "@/queries/useDashboard";
-import { messageKeys } from "@/queries/useMessages";
-
-interface ChatRealtimeEvent {
-  event?: string;
-  payload?: { channel_id?: string; user_id?: string; last_read_seq?: number };
-}
+import {
+  applyChatMessageToCache,
+  messageKeys,
+  type ChatMessageChange,
+} from "@/queries/useMessages";
+import type { Conversation } from "@/types";
 
 interface NotificationRealtimeEvent {
   type?: string;
@@ -27,22 +25,48 @@ interface NotificationRealtimeEvent {
 
 export function useNotificationRealtime() {
   const queryClient = useQueryClient();
-  const [token, setToken] = useState(getBackendAccessToken);
+  const [session, setSession] = useState<SessionUser | null>(() => sessionUser);
+  const hasEverConnected = useRef(false);
+  const failedInitialConnection = useRef(false);
+  const subjectRef = useRef(sessionUser?.keycloakId ?? null);
 
   useEffect(() => {
-    const updateToken = () => setToken(getBackendAccessToken());
-    window.addEventListener("lens:access-token-changed", updateToken);
-    return () => window.removeEventListener("lens:access-token-changed", updateToken);
-  }, []);
+    const updateSession = () => {
+      const nextSession = sessionUser ? { ...sessionUser } : null;
+      const nextSubject = nextSession?.keycloakId ?? null;
+      const previousSubject = subjectRef.current;
+      if (previousSubject && previousSubject !== nextSubject) {
+        queryClient.removeQueries({ queryKey: messageKeys.user(previousSubject) });
+      }
+      subjectRef.current = nextSubject;
+      setSession(nextSession);
+    };
+    const updateExpiry = (event: Event) => {
+      const expiresAt = (event as CustomEvent<{ expiresAt?: unknown }>).detail?.expiresAt;
+      if (typeof expiresAt !== "number") return;
+      setSession((current) => current ? { ...current, accessTokenExpiresAt: expiresAt } : current);
+    };
+    const expireSession = () => setSession(null);
+    window.addEventListener("lens:session-updated", updateSession);
+    window.addEventListener("lens:backend-session-refreshed", updateExpiry);
+    window.addEventListener("lens:auth-session-expired", expireSession);
+    return () => {
+      window.removeEventListener("lens:session-updated", updateSession);
+      window.removeEventListener("lens:backend-session-refreshed", updateExpiry);
+      window.removeEventListener("lens:auth-session-expired", expireSession);
+    };
+  }, [queryClient]);
 
   useEffect(() => {
-    if (!token) return;
-    const expiresAt = getBackendAccessTokenExpiry(token);
+    if (!session) return;
+    const expiresAt = session.accessTokenExpiresAt;
     const refreshTimer = expiresAt
       ? window.setTimeout(
           () => {
             void refreshBackendAccessToken()
-              .then((nextToken) => { if (!nextToken) expireBackendSession(); })
+              .then((nextExpiresAt) => {
+                if (!nextExpiresAt) expireBackendSession();
+              })
               .catch(() => undefined);
           },
           Math.max(0, expiresAt - Date.now() - 45_000),
@@ -50,10 +74,25 @@ export function useNotificationRealtime() {
       : undefined;
     const socket = io(notificationSocketNamespace(), {
       path: "/api/v1/socket.io",
-      auth: { token },
+      withCredentials: true,
+      transports: ["websocket"],
     });
-    let conversationsRefreshTimer: number | undefined;
-    const threadRefreshTimers = new Map<string, number>();
+    const seenEventIds = new Set<string>();
+    const aggregateVersions = new Map<string, number>();
+
+    socket.on("connect_error", () => {
+      failedInitialConnection.current = true;
+    });
+
+    socket.on("connect", () => {
+      const needsSync = hasEverConnected.current || failedInitialConnection.current;
+      hasEverConnected.current = true;
+      failedInitialConnection.current = false;
+      if (!needsSync) return;
+      if (socket.recovered) return;
+      void queryClient.invalidateQueries({ queryKey: messageKeys.user() });
+    });
+
     socket.on("notification", (event: NotificationRealtimeEvent) => {
       void queryClient.invalidateQueries({ queryKey: notificationKeys.inbox });
       if (event.type === "payment_success" && typeof event.data?.booking_id === "string") {
@@ -61,37 +100,58 @@ export function useNotificationRealtime() {
         void queryClient.invalidateQueries({ queryKey: dashboardKeys.incoming });
       }
     });
-    socket.on("chat.event", (event: ChatRealtimeEvent) => {
-      if (conversationsRefreshTimer !== undefined) {
-        window.clearTimeout(conversationsRefreshTimer);
+    socket.on("chat.event", (rawEvent: unknown) => {
+      const event = parseChatRealtimeEvent(rawEvent);
+      if (!event) return;
+
+      if (event.eventId) {
+        if (seenEventIds.has(event.eventId)) return;
+        seenEventIds.add(event.eventId);
+        if (seenEventIds.size > 1_000) {
+          const oldest = seenEventIds.values().next().value;
+          if (oldest) seenEventIds.delete(oldest);
+        }
       }
-      conversationsRefreshTimer = window.setTimeout(() => {
-        void queryClient.invalidateQueries({ queryKey: messageKeys.conversations });
-        conversationsRefreshTimer = undefined;
-      }, 750);
-      const channelId = event.payload?.channel_id;
-      if (channelId) {
-        const previousTimer = threadRefreshTimers.get(channelId);
-        if (previousTimer !== undefined) window.clearTimeout(previousTimer);
-        threadRefreshTimers.set(channelId, window.setTimeout(() => {
-          void queryClient.invalidateQueries({ queryKey: messageKeys.thread(channelId) });
-          threadRefreshTimers.delete(channelId);
-        }, 300));
+
+      if (event.aggregateVersion !== undefined) {
+        const lastVersion = aggregateVersions.get(event.channelId) ?? 0;
+        if (event.aggregateVersion <= lastVersion) return;
+        aggregateVersions.set(event.channelId, event.aggregateVersion);
       }
-      if (
-        event.event === "READ_CURSOR" &&
-        channelId &&
-        event.payload?.user_id === getBackendSubject() &&
-        typeof event.payload.last_read_seq === "number"
-      ) {
-        syncReadCursor(channelId, event.payload.last_read_seq);
+
+      if (event.kind === "read-cursor") {
+        if (event.userId === session?.keycloakId) {
+          syncReadCursor(event.channelId, event.lastReadSequence);
+          queryClient.setQueryData<Conversation[]>(messageKeys.conversations(), (current) =>
+            current?.map((conversation) =>
+              conversation.id === event.channelId
+                ? { ...conversation, unreadCount: 0 }
+                : conversation,
+            ),
+          );
+        }
+        return;
+      }
+
+      const change: ChatMessageChange =
+        event.event === "NEW_MESSAGE"
+          ? "created"
+          : event.event === "UPDATED_MESSAGE"
+            ? "updated"
+            : "recalled";
+      const knownChannel = applyChatMessageToCache(
+        queryClient,
+        event.channelId,
+        event.message,
+        change,
+      );
+      if (!knownChannel) {
+        void queryClient.invalidateQueries({ queryKey: messageKeys.conversations() });
       }
     });
     return () => {
       if (refreshTimer !== undefined) window.clearTimeout(refreshTimer);
-      if (conversationsRefreshTimer !== undefined) window.clearTimeout(conversationsRefreshTimer);
-      for (const timer of threadRefreshTimers.values()) window.clearTimeout(timer);
       socket.disconnect();
     };
-  }, [queryClient, token]);
+  }, [queryClient, session]);
 }

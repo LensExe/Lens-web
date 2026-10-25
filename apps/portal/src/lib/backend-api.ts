@@ -12,104 +12,135 @@ export function normalizeBackendBaseURL(value?: string): string {
 }
 
 export const backendBaseURL = normalizeBackendBaseURL(import.meta.env.VITE_BACKEND_API_URL);
+const AUTH_MODE_HEADER = "X-Lens-Auth-Mode";
+const CSRF_HEADER = "X-CSRF-Token";
+const CSRF_COOKIE = "csrf_token";
+const SESSION_COOKIE = "lens.portal.session";
+const LEGACY_TOKEN_KEY = "lens.auth.tokens.v1";
+let legacySubject: string | null = null;
+
 export const backendApi = axios.create({
   baseURL: backendBaseURL,
-  headers: { "Content-Type": "application/json" },
+  withCredentials: true,
+  headers: {
+    "Content-Type": "application/json",
+    [AUTH_MODE_HEADER]: "cookie",
+  },
 });
 
-const TOKEN_KEY = "lens.auth.tokens.v1";
-interface StoredTokens {
-  accessToken?: string;
-  refreshToken?: string;
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const prefix = `${name}=`;
+  const entry = document.cookie.split(";").map((part) => part.trim())
+    .find((part) => part.startsWith(prefix));
+  if (!entry) return null;
+  try {
+    return decodeURIComponent(entry.slice(prefix.length));
+  } catch {
+    return entry.slice(prefix.length);
+  }
 }
 
-function readTokens(): StoredTokens | null {
+function clearCookie(name: string): void {
+  if (typeof document === "undefined") return;
+  document.cookie = `${name}=; Max-Age=0; Path=/; SameSite=Strict${
+    window.location.protocol === "https:" ? "; Secure" : ""
+  }`;
+}
+
+function readLegacyRefreshToken(): string | null {
   try {
-    const value = JSON.parse(localStorage.getItem(TOKEN_KEY) ?? "null") as Partial<StoredTokens> | null;
-    if (!value) return null;
-    const accessToken = typeof value.accessToken === "string" && value.accessToken
-      ? value.accessToken
-      : undefined;
-    const refreshToken = typeof value.refreshToken === "string" && value.refreshToken
-      ? value.refreshToken
-      : undefined;
-    return accessToken || refreshToken ? { accessToken, refreshToken } : null;
+    const stored = JSON.parse(localStorage.getItem(LEGACY_TOKEN_KEY) ?? "null") as {
+      accessToken?: unknown;
+      refreshToken?: unknown;
+    } | null;
+    if (typeof stored?.accessToken === "string") {
+      try {
+        const payload = stored.accessToken.split(".")[1];
+        if (payload) {
+          const normalized = payload.replaceAll("-", "+").replaceAll("_", "/");
+          const claims = JSON.parse(atob(normalized)) as { sub?: unknown };
+          if (typeof claims.sub === "string") legacySubject = claims.sub;
+        }
+      } catch {
+        legacySubject = null;
+      }
+    }
+    localStorage.removeItem(LEGACY_TOKEN_KEY);
+    return typeof stored?.refreshToken === "string" && stored.refreshToken
+      ? stored.refreshToken
+      : null;
   } catch {
+    try {
+      localStorage.removeItem(LEGACY_TOKEN_KEY);
+    } catch {
+      /* Storage may be blocked. */
+    }
     return null;
   }
 }
 
-let inMemoryTokens: StoredTokens | null = readTokens();
-let refreshPromise: Promise<string | null> | null = null;
+export function getLegacyBackendSubject(): string | null {
+  return legacySubject;
+}
+
+type ApiResponse<T> = T | ApiEnvelope<T>;
+
+function isApiEnvelope<T>(value: ApiResponse<T>): value is ApiEnvelope<T> {
+  return typeof value === "object" && value !== null && "success" in value && "data" in value;
+}
+
+function unwrapPayload<T>(payload: ApiResponse<T>): T {
+  return isApiEnvelope(payload) ? payload.data : payload;
+}
+
+function notifySessionRefresh(expiresAt: number): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("lens:backend-session-refreshed", {
+      detail: { expiresAt },
+    }));
+  }
+}
+
+function expiryFromResponse(data: ApiResponse<{ expires_in?: unknown }>): number {
+  const expiresIn = Number(unwrapPayload(data).expires_in);
+  const expiresAt = Date.now() + (Number.isFinite(expiresIn) && expiresIn > 0 ? expiresIn * 1_000 : 60_000);
+  notifySessionRefresh(expiresAt);
+  return expiresAt;
+}
+
+function refreshHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { [AUTH_MODE_HEADER]: "cookie" };
+  const csrfToken = readCookie(CSRF_COOKIE);
+  if (csrfToken) headers[CSRF_HEADER] = csrfToken;
+  return headers;
+}
+
+async function exchangeRefreshCookie(refreshToken?: string): Promise<number> {
+  const { data } = await axios.post<ApiResponse<{ expires_in?: unknown }>>(
+    `${backendBaseURL}/auth/refresh`,
+    refreshToken ? { refresh_token: refreshToken } : {},
+    {
+      withCredentials: true,
+      headers: { "Content-Type": "application/json", ...refreshHeaders() },
+    },
+  );
+  return expiryFromResponse(data);
+}
+
+const legacyRefreshToken = readLegacyRefreshToken();
+let legacyRefreshExpiresAt: number | null = null;
+const legacySessionMigration: Promise<boolean> = legacyRefreshToken
+  ? exchangeRefreshCookie(legacyRefreshToken)
+      .then((expiresAt) => {
+        legacyRefreshExpiresAt = expiresAt;
+        return true;
+      })
+      .catch(() => false)
+  : Promise.resolve(false);
+
+let refreshPromise: Promise<number | null> | null = null;
 let loginRedirectStarted = false;
-
-/** Persist or clear Keycloak tokens used by authenticated endpoints. */
-export function setBackendTokens(tokens: StoredTokens | null): void {
-  inMemoryTokens = tokens;
-  if (tokens) loginRedirectStarted = false;
-  try {
-    if (tokens) localStorage.setItem(TOKEN_KEY, JSON.stringify(tokens));
-    else localStorage.removeItem(TOKEN_KEY);
-  } catch {
-    /* The current tab can still continue with the in-memory access token. */
-  }
-  if (typeof window !== "undefined") window.dispatchEvent(new Event("lens:access-token-changed"));
-}
-
-export function getBackendAccessToken(): string | null {
-  return inMemoryTokens?.accessToken ?? readTokens()?.accessToken ?? null;
-}
-
-export function getBackendSubject(): string | null {
-  const token = getBackendAccessToken();
-  try {
-    const payload = token?.split(".")[1];
-    if (!payload) return null;
-    const normalized = payload.replaceAll("-", "+").replaceAll("_", "/");
-    const claims = JSON.parse(atob(normalized)) as { sub?: unknown };
-    return typeof claims.sub === "string" ? claims.sub : null;
-  } catch {
-    return null;
-  }
-}
-
-export function getBackendAccessTokenExpiry(token = getBackendAccessToken()): number | null {
-  try {
-    const payload = token?.split(".")[1];
-    if (!payload) return null;
-    const normalized = payload.replaceAll("-", "+").replaceAll("_", "/");
-    const claims = JSON.parse(atob(normalized)) as { exp?: unknown };
-    return typeof claims.exp === "number" ? claims.exp * 1000 : null;
-  } catch {
-    return null;
-  }
-}
-
-/** Read Keycloak's email verification claim from an access token. */
-export function isEmailVerifiedToken(token: string): boolean {
-  try {
-    const payload = token.split(".")[1];
-    if (!payload) return false;
-    const normalized = payload.replaceAll("-", "+").replaceAll("_", "/");
-    const claims = JSON.parse(atob(normalized)) as { email_verified?: boolean };
-    return claims.email_verified === true;
-  } catch {
-    return false;
-  }
-}
-
-/** Read the current access token's email verification claim. */
-export function getCurrentEmailVerificationStatus(): boolean {
-  const token = inMemoryTokens?.accessToken ?? readTokens()?.accessToken;
-  return token ? isEmailVerifiedToken(token) : false;
-}
-
-backendApi.interceptors.request.use((config) => {
-  const token = inMemoryTokens?.accessToken ?? readTokens()?.accessToken;
-  if (token) config.headers.set("Authorization", `Bearer ${token}`);
-  else config.headers.delete("Authorization");
-  return config;
-});
 
 type RetriableConfig = InternalAxiosRequestConfig & { _lensRetried?: boolean };
 
@@ -118,6 +149,7 @@ function isPublicAuthRequest(url?: string): boolean {
     "/auth/login",
     "/auth/register",
     "/auth/refresh",
+    "/auth/logout",
     "/auth/forgot-password/",
     "/keycloak/google/login",
     "/keycloak/google/exchange",
@@ -125,12 +157,19 @@ function isPublicAuthRequest(url?: string): boolean {
 }
 
 function expireSessionAndRedirect(): void {
-  setBackendTokens(null);
+  clearCookie(SESSION_COOKIE);
   try {
     localStorage.removeItem("lens.session.v1");
     localStorage.removeItem("lens.session.role");
   } catch {
-    /* The access token is still cleared in memory when storage is unavailable. */
+    /* Ignore storage cleanup errors. */
+  }
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("lens:auth-session-expired"));
+    void axios.post(`${backendBaseURL}/auth/logout`, {}, {
+      withCredentials: true,
+      headers: { "Content-Type": "application/json", ...refreshHeaders() },
+    }).catch(() => undefined);
   }
 
   if (typeof window === "undefined" || window.location.pathname === "/login" || loginRedirectStarted) {
@@ -145,33 +184,15 @@ export function expireBackendSession(): void {
 }
 
 function hasStoredPortalSession(): boolean {
-  try {
-    return localStorage.getItem("lens.session.v1") !== null;
-  } catch {
-    return false;
-  }
+  return readCookie(SESSION_COOKIE) !== null;
 }
 
-/** Refresh and rotate the stored Keycloak token pair once for concurrent callers. */
-export function refreshBackendAccessToken(): Promise<string | null> {
-  const tokens = inMemoryTokens ?? readTokens();
-  if (!tokens?.refreshToken) return Promise.resolve(null);
-
-  refreshPromise ??= axios
-    .post<ApiResponse<{ access_token: string; refresh_token: string }>>(
-      `${backendApi.defaults.baseURL ?? ""}/auth/refresh`,
-      { refresh_token: tokens.refreshToken },
-    )
-    .then(({ data }) => {
-      const payload = unwrapPayload(data);
-      if (typeof payload.access_token !== "string" || !payload.access_token ||
-          typeof payload.refresh_token !== "string" || !payload.refresh_token) {
-        throw new Error("Refresh endpoint returned an invalid token response");
-      }
-      const next = { accessToken: payload.access_token, refreshToken: payload.refresh_token };
-      setBackendTokens(next);
-      return next.accessToken;
-    })
+/** Refresh the HttpOnly cookie pair and return the new access-token expiry time. */
+export function refreshBackendAccessToken(): Promise<number | null> {
+  refreshPromise ??= legacySessionMigration
+    .then((migrated) => migrated && legacyRefreshExpiresAt
+      ? legacyRefreshExpiresAt
+      : exchangeRefreshCookie())
     .catch((error: unknown) => {
       if (axios.isAxiosError(error) && (error.response?.status === 400 || error.response?.status === 401)) {
         return null;
@@ -185,50 +206,43 @@ export function refreshBackendAccessToken(): Promise<string | null> {
   return refreshPromise;
 }
 
+backendApi.interceptors.request.use((config) => {
+  config.withCredentials = true;
+  config.headers.set(AUTH_MODE_HEADER, "cookie");
+  config.headers.delete("Authorization");
+  const csrfToken = readCookie(CSRF_COOKIE);
+  if (csrfToken) config.headers.set(CSRF_HEADER, csrfToken);
+  else config.headers.delete(CSRF_HEADER);
+  return config;
+});
+
 backendApi.interceptors.response.use(undefined, async (error: unknown) => {
   if (!axios.isAxiosError(error) || error.response?.status !== 401) throw error;
   const config = error.config as RetriableConfig | undefined;
-  const tokens = inMemoryTokens ?? readTokens();
   if (!config || isPublicAuthRequest(config.url)) throw error;
-
-  const hadAccessToken = String(config.headers.get("Authorization") ?? "").startsWith("Bearer ");
-  // A retried 401 can mean missing audience/role or an endpoint permission
-  // issue. The refresh already succeeded, so keep the session and surface that
-  // service error instead of sending the user through login again.
   if (config._lensRetried) throw error;
-  if (!tokens?.refreshToken) {
-    if (hadAccessToken || hasStoredPortalSession()) expireSessionAndRedirect();
-    throw error;
-  }
 
   config._lensRetried = true;
-  let accessToken: string | null;
+  let expiresAt: number | null;
   try {
-    accessToken = await refreshBackendAccessToken();
+    expiresAt = await refreshBackendAccessToken();
   } catch {
-    // A network outage or 5xx from Core/Keycloak must not erase a valid session.
+    // Keep the current UI session when the identity provider is temporarily unavailable.
     throw error;
   }
-  if (!accessToken) {
-    expireSessionAndRedirect();
+  if (!expiresAt) {
+    if (hasStoredPortalSession()) expireSessionAndRedirect();
     throw error;
   }
-  config.headers.set("Authorization", `Bearer ${accessToken}`);
   return backendApi.request(config);
 });
 
-type ApiResponse<T> = T | ApiEnvelope<T>;
-
-function isApiEnvelope<T>(value: ApiResponse<T>): value is ApiEnvelope<T> {
-  return typeof value === "object" && value !== null && "success" in value && "data" in value;
-}
-
-function unwrapPayload<T>(payload: ApiResponse<T>): T {
-  return isApiEnvelope(payload) ? payload.data : payload;
-}
-
 async function unwrap<T>(request: Promise<{ data: ApiResponse<T> }>): Promise<T> {
   return unwrapPayload((await request).data);
+}
+
+export async function logoutBackendSession(): Promise<void> {
+  await backendApi.post("/auth/logout", {}).catch(() => undefined);
 }
 
 export function backendGet<T>(
@@ -238,10 +252,7 @@ export function backendGet<T>(
   return unwrap(backendApi.get<ApiResponse<T>>(path, { params }));
 }
 
-export function backendPost<T, Body = undefined>(
-  path: string,
-  body?: Body,
-): Promise<T> {
+export function backendPost<T, Body = undefined>(path: string, body?: Body): Promise<T> {
   return unwrap(backendApi.post<ApiResponse<T>>(path, body));
 }
 

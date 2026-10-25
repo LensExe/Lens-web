@@ -24,7 +24,10 @@ export function SidebarUserCard() {
         </div>
         <a
           href={LANDING_URL}
-          onClick={clearSession}
+          onClick={(event) => {
+            event.preventDefault();
+            void clearSession().finally(() => window.location.assign(LANDING_URL));
+          }}
           aria-label="Đăng xuất"
           title="Đăng xuất"
           className="focus-ring flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"

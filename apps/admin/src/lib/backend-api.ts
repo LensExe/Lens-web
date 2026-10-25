@@ -10,148 +10,43 @@ function normalizeBackendBaseURL(value?: string): string {
   return `${base}/api/v1`;
 }
 
+const backendBaseURL = normalizeBackendBaseURL(import.meta.env.VITE_BACKEND_API_URL);
+const AUTH_MODE_HEADER = "X-Lens-Auth-Mode";
+const CSRF_HEADER = "X-CSRF-Token";
+const CSRF_COOKIE = "csrf_token";
+const SESSION_COOKIE = "lens.admin.session";
+const LEGACY_ACCESS_TOKEN_KEY = "lens.admin.access-token";
+const LEGACY_REFRESH_TOKEN_KEY = "lens.admin.refresh-token";
+const LEGACY_SESSION_KEY = "lens.admin.session";
+
 export const backendApi = axios.create({
-  baseURL: normalizeBackendBaseURL(import.meta.env.VITE_BACKEND_API_URL),
-  headers: { "Content-Type": "application/json" },
+  baseURL: backendBaseURL,
+  withCredentials: true,
+  headers: {
+    "Content-Type": "application/json",
+    [AUTH_MODE_HEADER]: "cookie",
+  },
 });
 
-const TOKEN_KEY = "lens.admin.access-token";
-const REFRESH_KEY = "lens.admin.refresh-token";
-let accessToken: string | null = (() => {
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const prefix = `${name}=`;
+  const entry = document.cookie.split(";").map((part) => part.trim())
+    .find((part) => part.startsWith(prefix));
+  if (!entry) return null;
   try {
-    return localStorage.getItem(TOKEN_KEY);
+    return decodeURIComponent(entry.slice(prefix.length));
   } catch {
-    return null;
-  }
-})();
-let refreshToken: string | null = (() => {
-  try {
-    return localStorage.getItem(REFRESH_KEY);
-  } catch {
-    return null;
-  }
-})();
-let refreshPromise: Promise<string | null> | null = null;
-let loginRedirectStarted = false;
-
-export function setBackendTokens(
-  tokens: { accessToken: string; refreshToken: string } | null,
-): void {
-  if (tokens) loginRedirectStarted = false;
-  accessToken = tokens?.accessToken ?? null;
-  refreshToken = tokens?.refreshToken ?? null;
-  try {
-    if (tokens) {
-      localStorage.setItem(TOKEN_KEY, tokens.accessToken);
-      localStorage.setItem(REFRESH_KEY, tokens.refreshToken);
-    } else {
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(REFRESH_KEY);
-      localStorage.removeItem("lens.admin.session");
-    }
-  } catch {
-    /* Keep the current tab authenticated when storage is unavailable. */
+    return entry.slice(prefix.length);
   }
 }
 
-backendApi.interceptors.request.use((config) => {
-  if (accessToken) config.headers.set("Authorization", `Bearer ${accessToken}`);
-  else config.headers.delete("Authorization");
-  return config;
-});
-
-type RetriableConfig = InternalAxiosRequestConfig & { _lensRetried?: boolean };
-
-function isPublicAuthRequest(url?: string): boolean {
-  return !!url && [
-    "/auth/login",
-    "/auth/register",
-    "/auth/refresh",
-    "/auth/forgot-password/",
-    "/keycloak/google/login",
-    "/keycloak/google/exchange",
-  ].some((path) => url.includes(path));
+function clearCookie(name: string): void {
+  if (typeof document === "undefined") return;
+  document.cookie = `${name}=; Max-Age=0; Path=/; SameSite=Strict${
+    window.location.protocol === "https:" ? "; Secure" : ""
+  }`;
 }
-
-function expireSessionAndRedirect(): void {
-  setBackendTokens(null);
-  if (typeof window === "undefined" || window.location.pathname === "/login" || loginRedirectStarted) {
-    return;
-  }
-  loginRedirectStarted = true;
-  window.location.replace("/login");
-}
-
-function hasStoredAdminSession(): boolean {
-  try {
-    return localStorage.getItem("lens.admin.session") !== null;
-  } catch {
-    return false;
-  }
-}
-
-/** Refresh and rotate the stored Keycloak token pair once for concurrent callers. */
-export function refreshBackendAccessToken(): Promise<string | null> {
-  if (!refreshToken) return Promise.resolve(null);
-
-  refreshPromise ??= axios
-    .post<ApiResponse<{ access_token: string; refresh_token: string }>>(
-      `${backendApi.defaults.baseURL ?? ""}/auth/refresh`,
-      { refresh_token: refreshToken },
-      { headers: { "Content-Type": "application/json" } },
-    )
-    .then(({ data }) => {
-      const payload = unwrapPayload(data);
-      if (typeof payload.access_token !== "string" || !payload.access_token ||
-          typeof payload.refresh_token !== "string" || !payload.refresh_token) {
-        throw new Error("Refresh endpoint returned an invalid token response");
-      }
-      const next = { accessToken: payload.access_token, refreshToken: payload.refresh_token };
-      setBackendTokens(next);
-      return next.accessToken;
-    })
-    .catch((error: unknown) => {
-      if (axios.isAxiosError(error) && (error.response?.status === 400 || error.response?.status === 401)) {
-        return null;
-      }
-      throw error;
-    })
-    .finally(() => {
-      refreshPromise = null;
-    });
-
-  return refreshPromise;
-}
-
-backendApi.interceptors.response.use(undefined, async (error: unknown) => {
-  if (!axios.isAxiosError(error) || error.response?.status !== 401) throw error;
-  const config = error.config as RetriableConfig | undefined;
-  if (!config || isPublicAuthRequest(config.url)) throw error;
-
-  const hasAccessToken = String(config.headers.get("Authorization") ?? "").startsWith("Bearer ");
-  // A second 401 after refresh is an authorization/configuration failure, not
-  // proof that the refresh token expired. Leave the admin session intact.
-  if (config._lensRetried) throw error;
-  if (!refreshToken) {
-    if (hasAccessToken || hasStoredAdminSession()) expireSessionAndRedirect();
-    throw error;
-  }
-
-  config._lensRetried = true;
-  let nextAccessToken: string | null;
-  try {
-    nextAccessToken = await refreshBackendAccessToken();
-  } catch {
-    // Preserve the session if Core/Keycloak is temporarily unavailable.
-    throw error;
-  }
-  if (!nextAccessToken) {
-    expireSessionAndRedirect();
-    throw error;
-  }
-  config.headers.set("Authorization", `Bearer ${nextAccessToken}`);
-  return backendApi.request(config);
-});
 
 type ApiResponse<T> = T | ApiEnvelope<T>;
 
@@ -162,6 +57,145 @@ function isApiEnvelope<T>(value: ApiResponse<T>): value is ApiEnvelope<T> {
 function unwrapPayload<T>(payload: ApiResponse<T>): T {
   return isApiEnvelope(payload) ? payload.data : payload;
 }
+
+function readLegacyRefreshToken(): string | null {
+  try {
+    const directToken = localStorage.getItem(LEGACY_REFRESH_TOKEN_KEY);
+    const legacySession = JSON.parse(localStorage.getItem(LEGACY_SESSION_KEY) ?? "null") as {
+      refreshToken?: unknown;
+    } | null;
+    localStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
+    localStorage.removeItem(LEGACY_REFRESH_TOKEN_KEY);
+    return directToken || (typeof legacySession?.refreshToken === "string"
+      ? legacySession.refreshToken
+      : null);
+  } catch {
+    try {
+      localStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
+      localStorage.removeItem(LEGACY_REFRESH_TOKEN_KEY);
+    } catch {
+      /* Storage may be blocked. */
+    }
+    return null;
+  }
+}
+
+function refreshHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { [AUTH_MODE_HEADER]: "cookie" };
+  const csrfToken = readCookie(CSRF_COOKIE);
+  if (csrfToken) headers[CSRF_HEADER] = csrfToken;
+  return headers;
+}
+
+async function exchangeRefreshCookie(refreshToken?: string): Promise<void> {
+  await axios.post(
+    `${backendBaseURL}/auth/refresh`,
+    refreshToken ? { refresh_token: refreshToken } : {},
+    {
+      withCredentials: true,
+      headers: { "Content-Type": "application/json", ...refreshHeaders() },
+    },
+  );
+}
+
+const legacyRefreshToken = readLegacyRefreshToken();
+const legacySessionMigration: Promise<boolean> = legacyRefreshToken
+  ? exchangeRefreshCookie(legacyRefreshToken).then(() => true).catch(() => false)
+  : Promise.resolve(false);
+
+let refreshPromise: Promise<boolean> | null = null;
+let loginRedirectStarted = false;
+
+type RetriableConfig = InternalAxiosRequestConfig & { _lensRetried?: boolean };
+
+function isPublicAuthRequest(url?: string): boolean {
+  return !!url && [
+    "/auth/login",
+    "/auth/register",
+    "/auth/refresh",
+    "/auth/logout",
+    "/auth/forgot-password/",
+    "/keycloak/google/login",
+    "/keycloak/google/exchange",
+  ].some((path) => url.includes(path));
+}
+
+function expireSessionAndRedirect(): void {
+  clearCookie(SESSION_COOKIE);
+  try {
+    localStorage.removeItem(LEGACY_SESSION_KEY);
+  } catch {
+    /* Ignore storage cleanup errors. */
+  }
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("lens:auth-session-expired"));
+    void axios.post(`${backendBaseURL}/auth/logout`, {}, {
+      withCredentials: true,
+      headers: { "Content-Type": "application/json", ...refreshHeaders() },
+    }).catch(() => undefined);
+  }
+
+  if (typeof window === "undefined" || window.location.pathname === "/login" || loginRedirectStarted) {
+    return;
+  }
+  loginRedirectStarted = true;
+  window.location.replace("/login");
+}
+
+function hasStoredAdminSession(): boolean {
+  return readCookie(SESSION_COOKIE) !== null;
+}
+
+export async function logoutBackendSession(): Promise<void> {
+  await backendApi.post("/auth/logout", {}).catch(() => undefined);
+}
+
+/** Refresh the access and refresh cookies without exposing either token to JavaScript. */
+export function refreshBackendAccessToken(): Promise<boolean> {
+  refreshPromise ??= legacySessionMigration
+    .then((migrated) => migrated || exchangeRefreshCookie().then(() => true))
+    .catch((error: unknown) => {
+      if (axios.isAxiosError(error) && (error.response?.status === 400 || error.response?.status === 401)) {
+        return false;
+      }
+      throw error;
+    })
+    .finally(() => {
+      refreshPromise = null;
+    });
+  return refreshPromise;
+}
+
+backendApi.interceptors.request.use((config) => {
+  config.withCredentials = true;
+  config.headers.set(AUTH_MODE_HEADER, "cookie");
+  config.headers.delete("Authorization");
+  const csrfToken = readCookie(CSRF_COOKIE);
+  if (csrfToken) config.headers.set(CSRF_HEADER, csrfToken);
+  else config.headers.delete(CSRF_HEADER);
+  return config;
+});
+
+backendApi.interceptors.response.use(undefined, async (error: unknown) => {
+  if (!axios.isAxiosError(error) || error.response?.status !== 401) throw error;
+  const config = error.config as RetriableConfig | undefined;
+  if (!config || isPublicAuthRequest(config.url)) throw error;
+  if (config._lensRetried) throw error;
+
+  config._lensRetried = true;
+  let refreshed: boolean;
+  try {
+    refreshed = await refreshBackendAccessToken();
+  } catch {
+    // Keep the session UI intact while the identity provider is temporarily unavailable.
+    throw error;
+  }
+  if (!refreshed) {
+    if (hasStoredAdminSession()) expireSessionAndRedirect();
+    throw error;
+  }
+  return backendApi.request(config);
+});
 
 async function unwrap<T>(request: Promise<{ data: ApiResponse<T> }>): Promise<T> {
   return unwrapPayload((await request).data);

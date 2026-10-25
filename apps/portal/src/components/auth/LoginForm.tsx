@@ -32,7 +32,7 @@ export function LoginForm() {
   const onSubmit = (values: LoginValues) => {
     login.mutate(values, {
       onSuccess: (user) => {
-        saveSession(user.user, { accessToken: user.accessToken, refreshToken: user.refreshToken });
+        saveSession(user.user, user.expiresIn);
         window.location.replace(portalHomeFor(user.user.role, redirect));
       },
     });

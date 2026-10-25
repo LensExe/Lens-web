@@ -14,7 +14,7 @@ export interface AuthLoginDto {
 }
 
 export interface AuthRefreshDto {
-  refresh_token: string;
+  refresh_token?: string;
 }
 
 export interface AuthLogoutDto {
