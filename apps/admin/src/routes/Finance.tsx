@@ -382,11 +382,11 @@ export function Finance() {
             value: filter,
             onChange: setFilter,
             items: [
+              { value: "all", label: "Tất cả", count: withdrawals.length },
               { value: "pending", label: "Chờ duyệt", count: countOf("pending") },
               { value: "approved", label: "Đã duyệt", count: countOf("approved") },
               { value: "processing", label: "Đang chuyển", count: countOf("processing") },
               { value: "rejected", label: "Từ chối", count: countOf("rejected") },
-              { value: "all", label: "Tất cả", count: withdrawals.length },
             ],
           }}
           toolbar={
