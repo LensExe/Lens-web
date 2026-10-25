@@ -190,6 +190,7 @@ export interface User {
 // ── Authentication (UI phase — mock backend) ────────────────────────────────
 export interface AuthUser {
   id: string;
+  keycloakId?: string;
   name: string;
   email: string;
   avatar: string;
@@ -500,6 +501,9 @@ export interface Conversation {
   lastMessage: string;
   /** ISO datetime of the most recent message. */
   lastMessageAt: string;
+  /** Last Chat Service message metadata used to dedupe realtime updates. */
+  lastMessageId?: string;
+  lastMessageSequence?: number;
   /** Unread messages from the other participant. */
   unreadCount: number;
   /** Whether the photographer's AI assistant is answering this thread. Only a

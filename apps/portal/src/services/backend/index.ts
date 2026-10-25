@@ -1,4 +1,4 @@
-export { backendApi, setBackendTokens } from "@/lib/backend-api";
+export { backendApi } from "@/lib/backend-api";
 export type * from "@/types/auth";
 export type * from "@/types/bookings";
 export type * from "@/types/booking-plans";

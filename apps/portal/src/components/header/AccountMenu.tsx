@@ -130,7 +130,10 @@ export function AccountMenu() {
         <div className="border-t border-border p-1.5">
           <a
             href={LANDING_URL}
-            onClick={clearSession}
+            onClick={(event) => {
+              event.preventDefault();
+              void clearSession().finally(() => window.location.assign(LANDING_URL));
+            }}
             className={cn(itemClass, "text-destructive hover:text-destructive")}
           >
             <LogOut className="size-4" />

@@ -8,8 +8,8 @@ export function AdminUserCard() {
   const navigate = useNavigate();
   const admin = getAdminSession();
 
-  const signOut = () => {
-    clearAdminSession();
+  const signOut = async () => {
+    await clearAdminSession();
     navigate("/login", { replace: true });
   };
 

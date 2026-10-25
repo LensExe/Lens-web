@@ -32,10 +32,7 @@ export function GoogleAuthCallback() {
         } catch {
           /* Use the role home when session storage is unavailable. */
         }
-        saveSession(result.user, {
-          accessToken: result.accessToken,
-          refreshToken: result.refreshToken,
-        });
+        saveSession(result.user, result.expiresIn);
         window.location.replace(portalHomeFor(result.user.role, redirect));
       })
       .catch((reason: unknown) => {

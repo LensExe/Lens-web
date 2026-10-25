@@ -1,43 +1,21 @@
 import { avatar } from "@lens/ui";
-import { isEmailVerifiedToken } from "@/lib/backend-api";
 import { authApi, type AuthSession } from "@/services/backend";
 import { mapBackendRole } from "@/lib/session";
 import type { AuthUser, LoginInput, SignupInput } from "@/types";
 
 export interface PortalAuthResult {
   user: AuthUser;
-  accessToken: string;
-  refreshToken: string;
+  expiresIn?: number;
 }
 
 /** Temporary redirect target kept while the browser is away at Google/Keycloak. */
 export const GOOGLE_REDIRECT_STORAGE_KEY = "lens.auth.google.redirect";
 
-function tokenRoles(token: string): string[] {
-  try {
-    const payload = token.split(".")[1];
-    if (!payload) return [];
-    const normalized = payload.replaceAll("-", "+").replaceAll("_", "/");
-    const claims = JSON.parse(atob(normalized)) as {
-      realm_access?: { roles?: string[] };
-      resource_access?: Record<string, { roles?: string[] }>;
-      roles?: string[];
-    };
-    return [
-      ...(claims.realm_access?.roles ?? []),
-      ...(claims.roles ?? []),
-      ...Object.values(claims.resource_access ?? {}).flatMap((item) => item.roles ?? []),
-    ];
-  } catch {
-    return [];
-  }
-}
-
 function toPortalAuthResult(session: AuthSession): PortalAuthResult {
   const raw = session.user as AuthSession["user"] & { role?: string; roles?: string[] };
   const role =
     mapBackendRole(raw.role) ??
-    [...(raw.roles ?? []), ...tokenRoles(session.access_token)].map(mapBackendRole).find(Boolean);
+    [...(raw.roles ?? []), ...(session.roles ?? [])].map(mapBackendRole).find(Boolean);
   if (!role) {
     throw new Error("Backend không trả role customer/photographer cho tài khoản này.");
   }
@@ -45,14 +23,14 @@ function toPortalAuthResult(session: AuthSession): PortalAuthResult {
   return {
     user: {
       id: raw.id,
+      keycloakId: raw.keycloak_id,
       name,
       email: raw.email,
       avatar: raw.avatar_url || avatar(raw.id),
       role,
-      emailVerified: isEmailVerifiedToken(session.access_token),
+      emailVerified: session.email_verified === true,
     },
-    accessToken: session.access_token,
-    refreshToken: session.refresh_token,
+    expiresIn: session.expires_in,
   };
 }
 

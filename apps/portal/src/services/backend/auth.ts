@@ -9,13 +9,15 @@ import type {
   AuthOtpDto,
   AuthRefreshDto,
   AuthRegisterDto,
-  AuthTokenResponse,
   AuthResetPasswordDto,
   GoogleExchangeQueryDto,
 } from "@/types/auth";
 
-export interface AuthSession extends AuthTokenResponse {
+export interface AuthSession {
   user: ApiUser;
+  roles?: string[];
+  email_verified?: boolean;
+  expires_in?: number;
 }
 
 export const register = (body: AuthRegisterDto) =>
@@ -24,8 +26,8 @@ export const register = (body: AuthRegisterDto) =>
 export const login = (body: AuthLoginDto) =>
   backendPost<AuthSession, AuthLoginDto>("/auth/login", body);
 
-export const refreshToken = (body: AuthRefreshDto) =>
-  backendPost<AuthTokenResponse, AuthRefreshDto>("/auth/refresh", body);
+export const refreshToken = (body: AuthRefreshDto = {}) =>
+  backendPost<{ success: boolean; expires_in?: number }, AuthRefreshDto>("/auth/refresh", body);
 
 export const logout = (body: AuthLogoutDto = {}) =>
   backendPost<ApiObject, AuthLogoutDto>("/auth/logout", body);

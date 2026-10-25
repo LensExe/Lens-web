@@ -251,8 +251,6 @@ export interface AdminSession {
   name: string;
   email: string;
   avatar: string;
-  accessToken?: string;
-  refreshToken?: string;
 }
 
 export interface AdminLoginInput {
