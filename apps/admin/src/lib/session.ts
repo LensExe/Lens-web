@@ -62,7 +62,7 @@ function getAdminSession(): AdminSession | null {
     }
   }
 
-  let legacy: AdminSession | null = null;
+  let legacy: AdminSession | null;
   try {
     legacy = normalizeSession(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null"));
   } catch {
