@@ -82,7 +82,7 @@ function removeSessionCookie(): void {
 }
 
 function readLegacySession(): SessionUser | null {
-  let legacy: SessionUser | null = null;
+  let legacy: SessionUser | null;
   try {
     legacy = normalizeSession(JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY) ?? "null"));
     if (legacy && !legacy.keycloakId) {
