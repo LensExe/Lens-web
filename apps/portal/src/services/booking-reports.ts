@@ -30,19 +30,17 @@ function toReceipt(value: unknown): BookingReportReceipt {
 /** Load the newest customer report attached to a booking, if any. */
 export async function getLatestBookingReport(bookingId: string): Promise<BookingReportReceipt | null> {
   let offset = 0;
-  let total = 0;
 
-  do {
+  while (true) {
     const page = await moderationApi.listMyReports({ limit: PAGE_SIZE, offset });
     const match = page.items.find((item) => {
       const row = item as ApiObject;
       return row.target_type === "booking" && row.target_id === bookingId;
     });
     if (match) return toReceipt(match);
-    if (page.items.length === 0) break;
+    if (page.items.length === 0 || offset + page.items.length >= page.total) break;
     offset += page.items.length;
-    total = page.total;
-  } while (offset < total);
+  }
 
   return null;
 }
