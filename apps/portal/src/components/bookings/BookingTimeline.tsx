@@ -7,9 +7,11 @@ import { STEPS, resolveStep } from "@/components/bookings/booking-timeline-utils
 export function BookingTimeline({
   status,
   backendStatus,
+  galleryPublishedAt,
 }: {
   status: BookingStatus;
   backendStatus?: BackendBookingStatus;
+  galleryPublishedAt?: string | null;
 }) {
   if (status === "cancelled") {
     return (
@@ -25,7 +27,7 @@ export function BookingTimeline({
     );
   }
 
-  const currentStep = resolveStep(status, backendStatus);
+  const currentStep = resolveStep(status, backendStatus, galleryPublishedAt);
   const isCompleted = status === "released";
   // For "released" all steps are done
   const doneThrough = isCompleted ? STEPS.length : currentStep;

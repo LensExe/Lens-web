@@ -39,7 +39,7 @@ export const sendNotification = (body: {
   userId: string;
   title: string;
   message: string;
-  type: "welcome" | "order_placed" | "payment_success" | "promotion_started";
+  type: "welcome" | "order_placed" | "payment_success" | "promotion_started" | "report_update";
   data?: Record<string, unknown>;
 }) => backendPost<ApiObject, typeof body>("/notifications", body);
 

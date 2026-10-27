@@ -27,6 +27,21 @@ export interface BookingCreateDto {
 
 export interface BookingReasonDto { reason: string }
 
+export type BookingReportCategory =
+  | "photo_quality"
+  | "missing_deliverables"
+  | "late_delivery"
+  | "photographer_conduct"
+  | "booking_mismatch"
+  | "payment_refund"
+  | "other";
+
+export interface BookingDisputeCommandDto {
+  booking_issue_type: BookingReportCategory;
+  reason: string;
+  evidence_media_ids: UUID[];
+}
+
 export interface ApiBooking {
   id: UUID;
   customer_id?: UUID;

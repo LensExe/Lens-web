@@ -37,6 +37,11 @@ export const BOOKING_STATUS_META: Record<BookingStatus, { label: string; classNa
 
 const formatHours = (h: number) => `${String(h).replace(".", ",")} giờ`;
 
+const GALLERY_READY_STATUS = {
+  label: "Đã giao ảnh",
+  className: "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-400",
+};
+
 /** Summary based on fields the backend booking-plan API stores. */
 export function packageSummary(
   p: Pick<PhotographerPackage, "photoCount" | "durationHours" | "deliveryDays">,
@@ -193,11 +198,18 @@ export function needsRemainingPayment(
 
 /** Status label shown to customers after the photographer marks the shoot as shot. */
 export function bookingStatusMeta(
-  booking: Pick<Booking, "status" | "backendStatus" | "paidAmount" | "price">,
+  booking: Pick<
+    Booking,
+    "status" | "backendStatus" | "paidAmount" | "price" | "galleryPublishedAt"
+  >,
 ): { label: string; className: string } {
-  return isPaymentDue(booking)
-    ? { label: "Chờ thanh toán", className: "bg-ember/10 text-ember" }
-    : BOOKING_STATUS_META[booking.status];
+  if (isPaymentDue(booking)) {
+    return { label: "Chờ thanh toán", className: "bg-ember/10 text-ember" };
+  }
+  if (booking.status === "held" && booking.galleryPublishedAt) {
+    return GALLERY_READY_STATUS;
+  }
+  return BOOKING_STATUS_META[booking.status];
 }
 
 // ── Cancellation policy ─────────────────────────────────────────────────────

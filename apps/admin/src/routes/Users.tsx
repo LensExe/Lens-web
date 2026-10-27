@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import {
+  ArrowRight,
   Ban,
   Camera,
   Download,
@@ -11,6 +12,7 @@ import {
   Users as UsersIcon,
 } from "lucide-react";
 import { Button, Input, PageContainer, PageHeader, toast } from "@lens/ui";
+import { useNavigate } from "react-router-dom";
 import {
   getCoreRowModel,
   getPaginationRowModel,
@@ -92,6 +94,7 @@ export function Users() {
   // TanStack Table keeps mutable state on the table instance; the React
   // Compiler's memoization breaks its updates (sorting/pagination no-op).
   "use no memo";
+  const navigate = useNavigate();
   const { data: users = [], isLoading } = useUsers();
   const setStatus = useSetUserStatus();
   const [filter, setFilter] = useState<Filter>("all");
@@ -155,7 +158,12 @@ export function Users() {
       {
         accessorKey: "name",
         header: ({ column }) => <ColumnHeader column={column} title="Người dùng" />,
-        cell: ({ row }) => <UserCell name={row.original.name} avatar={row.original.avatar} sub={row.original.email} />,
+        cell: ({ row }) => (
+          <div className="flex min-w-0 items-center gap-3">
+            <UserCell name={row.original.name} avatar={row.original.avatar} sub={row.original.email} />
+            <ArrowRight className="ml-auto size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+          </div>
+        ),
         meta: { headerClassName: "min-w-64", cellClassName: "min-w-64" },
       },
       {
@@ -261,7 +269,7 @@ export function Users() {
       <PageHeader
         className="mb-8"
         title="Người dùng"
-        description="Tài khoản khách hàng và nhiếp ảnh gia trên nền tảng Lens."
+        description="Tài khoản khách hàng và nhiếp ảnh gia trên Lens. Chọn một dòng để xem hồ sơ và lịch sử booking."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" className="h-10 rounded-xl" onClick={exportCsv} disabled={data.length === 0}>
@@ -291,6 +299,7 @@ export function Users() {
           table={table}
           recordCount={data.length}
           isLoading={isLoading}
+          onRowClick={(user) => navigate(`/users/${user.id}`)}
           toolbarClassName="md:w-[34rem]"
           className="rounded-2xl border-border/70 shadow-sm [&>div:first-child]:bg-transparent [&>div:first-child]:px-6 [&>div:first-child]:pb-5 [&>div:first-child]:pt-5 [&_th]:uppercase [&_th]:tracking-wide [&_td]:py-5"
           tabs={{

@@ -216,33 +216,40 @@ function BookingPaymentStatus({ booking }: { booking: Booking }) {
   const depositPaid = hasPaidDeposit(booking);
   if (!waitingForConfirmation && !depositPaid) return null;
   const paidInFull = (booking.paidAmount ?? 0) >= booking.price;
+  const galleryPublished = Boolean(booking.galleryPublishedAt);
   const title = waitingForConfirmation
     ? "Đã đặt cọc · chờ xác nhận"
-    : paidInFull
-      ? "Đã thanh toán đủ"
-      : paymentDue
-        ? "Chờ thanh toán"
-        : booking.status === "held"
-          ? "Buổi chụp đang thực hiện"
-          : "Đã đặt cọc " + formatPrice(booking.depositAmount);
+    : galleryPublished
+      ? "Đã giao ảnh"
+      : paidInFull
+        ? "Đã thanh toán đủ"
+        : paymentDue
+          ? "Chờ thanh toán"
+          : booking.status === "held"
+            ? "Buổi chụp đang thực hiện"
+            : "Đã đặt cọc " + formatPrice(booking.depositAmount);
   const detail = waitingForConfirmation
     ? "Đã thanh toán tiền cọc. Chờ nhiếp ảnh gia xác nhận yêu cầu."
     : paymentDue
       ? "Photographer đã đánh dấu đã chụp. Thanh toán phần còn lại để tiếp tục."
-      : booking.status === "confirmed"
-        ? "Thanh toán phần còn lại để khóa lịch chụp."
-        : booking.status === "held"
-          ? "Nhiếp ảnh gia đang thực hiện buổi chụp và cập nhật ảnh trong gallery."
-          : "Buổi chụp đã hoàn tất và giao dịch đã được xử lý.";
+      : galleryPublished
+        ? "Nhiếp ảnh gia đã giao gallery. Kiểm tra ảnh và xác nhận đã nhận ảnh."
+        : booking.status === "confirmed"
+          ? "Thanh toán phần còn lại để khóa lịch chụp."
+          : booking.status === "held"
+            ? "Nhiếp ảnh gia đang thực hiện buổi chụp và cập nhật ảnh trong gallery."
+            : "Buổi chụp đã hoàn tất và giao dịch đã được xử lý.";
   const badge = waitingForConfirmation
     ? "Chờ xác nhận"
     : paymentDue
       ? "Còn lại " + formatPrice(remainingAmount(booking))
-      : booking.status === "confirmed"
-        ? "Còn lại " + formatPrice(remainingAmount(booking))
-        : booking.status === "held"
-          ? "Đang bảo vệ"
-          : "Hoàn tất";
+      : galleryPublished
+        ? "Chờ xác nhận"
+        : booking.status === "confirmed"
+          ? "Còn lại " + formatPrice(remainingAmount(booking))
+          : booking.status === "held"
+            ? "Đang bảo vệ"
+            : "Hoàn tất";
 
   return (
     <div

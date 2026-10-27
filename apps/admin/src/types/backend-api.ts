@@ -208,6 +208,7 @@ export interface CustomerAdminQueryDto extends PageQueryDto {
 }
 
 export interface BookingAdminQueryDto extends PageQueryDto {
+  user_id?: UUID;
   status?:
     | "pending"
     | "accepted"
@@ -227,6 +228,55 @@ export interface ReportListQueryDto extends PageQueryDto {
 export interface ReportResolveDto {
   status: "resolved" | "rejected" | "escalated";
   resolution: string;
+}
+
+export type ModerationReportStatus = "open" | "resolved" | "rejected" | "escalated";
+export type ModerationReportTargetType =
+  "user" | "booking" | "photographer" | "portfolio" | "feedback";
+
+export interface AdminReportEvidenceData {
+  id: UUID;
+  status: string;
+  content_type: string;
+  file_size: number;
+  visibility: string;
+  thumbnail_url?: string | null;
+  preview_url?: string | null;
+  download_url?: string | null;
+  expires_in?: number | null;
+}
+
+export interface AdminReportHistoryData {
+  id: UUID;
+  report_id: UUID;
+  event_type: string;
+  from_status?: ModerationReportStatus | null;
+  to_status: ModerationReportStatus;
+  actor_user_id?: UUID | null;
+  actor_role: "user" | "admin" | "system";
+  note?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminReportData {
+  id: UUID;
+  user_id: UUID;
+  target_type: ModerationReportTargetType;
+  target_id: UUID;
+  booking_issue_type?: string | null;
+  reason: string;
+  status: ModerationReportStatus;
+  resolution?: string | null;
+  resolved_by?: UUID | null;
+  evidence_media_ids?: UUID[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminReportDetailData extends AdminReportData {
+  evidence: AdminReportEvidenceData[];
+  history: AdminReportHistoryData[];
 }
 
 export interface ReviewAdminQueryDto extends PageQueryDto {

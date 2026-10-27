@@ -210,7 +210,9 @@ export function RequestCard({
               {backendStatus === "shot" && (
                 <>
                   <p className="text-xs text-muted-foreground">
-                    Buổi chụp hoàn tất · tải ảnh lên để giao cho khách
+                    {booking.galleryPublishedAt
+                      ? "Gallery đã giao · chờ khách xác nhận đã nhận ảnh"
+                      : "Buổi chụp hoàn tất · tải ảnh lên để giao cho khách"}
                   </p>
                   <span
                     className={cn(
@@ -243,7 +245,8 @@ export function RequestCard({
             {backendStatus === "shot" && (
               <Button asChild variant="outline" size="sm" className="rounded-lg">
                 <Link to={`/dashboard/bookings/${booking.id}/gallery`}>
-                  <Images className="size-3.5" /> Giao ảnh
+                  <Images className="size-3.5" />
+                  {booking.galleryPublishedAt ? "Xem ảnh" : "Giao ảnh"}
                 </Link>
               </Button>
             )}
@@ -368,7 +371,9 @@ export function RequestCard({
               <>
                 <p className="flex items-start gap-2 text-sm text-muted-foreground">
                   <Images className="mt-0.5 size-4 shrink-0" />
-                  Buổi chụp hoàn tất. Tải ảnh lên và giao gallery cho khách.
+                  {booking.galleryPublishedAt
+                    ? "Gallery đã giao. Chờ khách xác nhận đã nhận ảnh."
+                    : "Buổi chụp hoàn tất. Tải ảnh lên và giao gallery cho khách."}
                 </p>
                 <span
                   className={cn(
@@ -407,7 +412,7 @@ export function RequestCard({
             <Button asChild variant="outline" size="sm" className="shrink-0 rounded-full">
               <Link to={`/dashboard/bookings/${booking.id}/gallery`}>
                 <Images className="size-4" />
-                Giao ảnh
+                {booking.galleryPublishedAt ? "Xem ảnh" : "Giao ảnh"}
               </Link>
             </Button>
           )}

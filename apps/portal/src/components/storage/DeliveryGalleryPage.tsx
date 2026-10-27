@@ -2,6 +2,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Check, CreditCard, Loader2 } from "lucide-react";
 import { Button, formatPrice, toast, PageContainer } from "@lens/ui";
 import { GalleryPanel } from "@/components/storage/GalleryPanel";
+import { BookingReportPanel } from "@/components/bookings/BookingReportPanel";
 import { useConfirmReceipt, useMyBookings } from "@/queries/useBookings";
 import { useIncomingBookings } from "@/queries/useDashboard";
 import { useGallery } from "@/queries/useStorage";
@@ -95,6 +96,11 @@ export function DeliveryGalleryPage({ mode }: { mode: "photographer" | "client" 
           required={booking?.packageSnapshot?.photoCount}
         />
       </div>
+      {mode === "client" && booking && (
+        <div className="mt-4">
+          <BookingReportPanel booking={booking} />
+        </div>
+      )}
     </PageContainer>
   );
 }

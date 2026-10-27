@@ -2,6 +2,7 @@ import { backendGet, backendPost } from "@/lib/backend-api";
 import type { ApiItems, ApiObject, ApiPage } from "@/types/common";
 import type {
   ApiBooking,
+  BookingDisputeCommandDto,
   BookingCreateDto,
   BookingListQueryDto,
   BookingReasonDto,
@@ -41,8 +42,8 @@ export const confirmBookingReceipt = (bookingId: string) =>
 export const completeBookingShoot = (bookingId: string) =>
   backendPost<ApiBooking>(`/bookings/${encodeURIComponent(bookingId)}/complete-shoot`);
 
-export const disputeBooking = (bookingId: string, body: BookingReasonDto) =>
-  backendPost<ApiObject, BookingReasonDto>(`/bookings/${encodeURIComponent(bookingId)}/dispute`, body);
+export const disputeBooking = (bookingId: string, body: BookingDisputeCommandDto) =>
+  backendPost<ApiObject, BookingDisputeCommandDto>(`/bookings/${encodeURIComponent(bookingId)}/dispute`, body);
 
 export const rejectBooking = (bookingId: string, body: BookingReasonDto) =>
   backendPost<ApiBooking, BookingReasonDto>(`/bookings/${encodeURIComponent(bookingId)}/reject`, body);

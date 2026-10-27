@@ -364,6 +364,16 @@ export interface WalletTransaction {
   frozenDelta?: number;
   status: "completed" | "pending";
   bookingId?: string;
+  transactionCode?: string;
+  transactionStatus?: string;
+  paymentGateway?: string;
+  booking?: {
+    id: string;
+    status: string;
+    from: string;
+    to: string;
+    packageName: string | null;
+  };
   /** ISO datetime string. */
   createdAt: string;
   note: string;
