@@ -8,6 +8,7 @@ const TYPE_LABEL: Record<string, string> = {
   order_placed: "Đặt lịch",
   payment_success: "Thanh toán",
   promotion_started: "Ưu đãi",
+  report_update: "Báo cáo",
 };
 
 export function NotificationsMenu() {

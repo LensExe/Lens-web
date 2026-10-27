@@ -59,6 +59,7 @@ const PhotographerAssistant = page(
 );
 const Messages = page(() => import("@/routes/shared/Messages"), "Messages");
 const Wallet = page(() => import("@/routes/shared/Wallet"), "Wallet");
+const WalletPreview = page(() => import("@/routes/shared/WalletPreview"), "WalletPreview");
 const SettingsLayout = page(
   () => import("@/routes/shared/settings/SettingsLayout"),
   "SettingsLayout",
@@ -96,6 +97,7 @@ function App() {
   return (
     <div className="portal-theme min-h-dvh bg-background text-foreground">
       <Routes>
+        {import.meta.env.DEV && <Route path="/__preview/wallet" element={<WalletPreview />} />}
         {/* Authentication lives in the portal; landing redirects here. */}
         <Route element={<AuthLayout />}>
           <Route path="login" element={<Login />} />

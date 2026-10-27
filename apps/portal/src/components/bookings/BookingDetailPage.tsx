@@ -34,6 +34,7 @@ import { BookingTimeline } from "@/components/bookings/BookingTimeline";
 import { timelineStepNumber } from "@/components/bookings/booking-timeline-utils";
 import { GalleryPanel } from "@/components/storage/GalleryPanel";
 import { CancelBookingDialog } from "@/components/bookings/CancelBookingDialog";
+import { BookingReportPanel } from "@/components/bookings/BookingReportPanel";
 import { MessageButton } from "@/components/profile/MessageButton";
 import { useConfirmReceipt, useMyBookings } from "@/queries/useBookings";
 import {
@@ -182,7 +183,7 @@ function BookingSummary({
               isPaymentDue(booking)
                 ? "Chờ thanh toán"
                 : booking.status === "held"
-                  ? "Đang thực hiện"
+                  ? status.label
                   : undefined
             }
           />
@@ -463,6 +464,8 @@ export function BookingDetailPage({ mode }: { mode: "client" | "photographer" })
             </section>
           )}
 
+          {isClient && <BookingReportPanel booking={booking} />}
+
           {showActionCard && (
             <BookingActions
               booking={booking}
@@ -496,10 +499,20 @@ export function BookingDetailPage({ mode }: { mode: "client" | "photographer" })
             <div className="mb-4 flex items-center justify-between gap-2">
               <h2 className="text-sm font-semibold">Tiến trình giao dịch</h2>
               <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                Bước {timelineStepNumber(booking.status, booking.backendStatus)}/6
+                Bước{" "}
+                {timelineStepNumber(
+                  booking.status,
+                  booking.backendStatus,
+                  booking.galleryPublishedAt,
+                )}
+                /6
               </span>
             </div>
-            <BookingTimeline status={booking.status} backendStatus={booking.backendStatus} />
+            <BookingTimeline
+              status={booking.status}
+              backendStatus={booking.backendStatus}
+              galleryPublishedAt={booking.galleryPublishedAt}
+            />
           </div>
         </aside>
       </div>
@@ -711,7 +724,11 @@ function BookingActions({
     return wrap(
       <PhotographerStatusPanel
         booking={booking}
-        description="Bạn đã đánh dấu đã chụp. Chờ khách thanh toán phần còn lại trước khi hoàn tất booking; bạn vẫn có thể giao gallery."
+        description={
+          booking.galleryPublishedAt
+            ? "Gallery đã được giao cho khách. Chờ khách kiểm tra và xác nhận đã nhận ảnh."
+            : "Bạn đã đánh dấu đã chụp. Chờ khách thanh toán phần còn lại trước khi hoàn tất booking; bạn vẫn có thể giao gallery."
+        }
         onUpdate={runStatusAction}
       />,
     );

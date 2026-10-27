@@ -21,9 +21,14 @@ export const STEPS: { key: string; title: string; desc: string }[] = [
  *   held + backend accepted    → step 2 (Chụp ảnh — ready to shoot)
  *   held + backend in_progress → step 2 (Chụp ảnh — shoot in progress)
  *   held + backend shot        → step 3 (Thanh toán — shot done, pay remaining)
+ *   held + backend shot + gallery published → step 4 (Giao ảnh — waiting for receipt)
  *   released / completed       → step 5 (Hoàn thành)
  */
-export function resolveStep(status: BookingStatus, backendStatus?: BackendBookingStatus): number {
+export function resolveStep(
+  status: BookingStatus,
+  backendStatus?: BackendBookingStatus,
+  galleryPublishedAt?: string | null,
+): number {
   switch (status) {
     case "pending":
       return 1; // deposit paid, waiting for photographer confirmation
@@ -34,7 +39,7 @@ export function resolveStep(status: BookingStatus, backendStatus?: BackendBookin
     case "held": {
       // Distinguish sub-steps within "held" using the backend status
       if (backendStatus === "in_progress") return 2;
-      if (backendStatus === "shot") return 3;
+      if (backendStatus === "shot") return galleryPublishedAt ? 4 : 3;
       // accepted → ready to shoot
       return 2;
     }
@@ -51,7 +56,8 @@ export function resolveStep(status: BookingStatus, backendStatus?: BackendBookin
 export function timelineStepNumber(
   status: BookingStatus,
   backendStatus?: BackendBookingStatus,
+  galleryPublishedAt?: string | null,
 ): number {
   if (status === "cancelled") return 0;
-  return resolveStep(status, backendStatus) + 1;
+  return resolveStep(status, backendStatus, galleryPublishedAt) + 1;
 }

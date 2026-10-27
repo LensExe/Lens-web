@@ -36,6 +36,25 @@ export interface ApplicationDecision {
 export type UserRole = "client" | "photographer";
 export type UserStatus = "active" | "suspended";
 
+export interface AdminCustomerProfileSummary {
+  id: string;
+  location: string;
+  description: string;
+  preferredStyles: string[];
+}
+
+export interface AdminPhotographerProfileSummary {
+  id: string;
+  location: string;
+  description: string;
+  styles: string[];
+  verificationStatus: string;
+  isAvailable: boolean;
+  careerStartYear?: number;
+  startingPrice: number;
+  portfolioCount: number;
+}
+
 export interface AdminUser {
   id: string;
   name: string;
@@ -47,6 +66,30 @@ export interface AdminUser {
   /** ISO date string the user joined. */
   joinedAt: string;
   bookingsCount?: number;
+  customerProfile?: AdminCustomerProfileSummary;
+  photographerProfile?: AdminPhotographerProfileSummary;
+}
+
+export interface AdminUserAccountDetail {
+  phoneNumber?: string;
+  gender?: string;
+  dob?: string;
+}
+
+export type AdminCustomerProfile = AdminCustomerProfileSummary;
+
+export interface AdminUserBooking {
+  id: string;
+  customerName: string;
+  customerAvatar?: string;
+  photographerName: string;
+  photographerAvatar?: string;
+  style: string;
+  date: string;
+  location: string;
+  price: number;
+  paidAmount: number;
+  status: "pending" | "accepted" | "rejected" | "cancelled" | "expired" | "in_progress" | "shot" | "completed";
 }
 
 /** Headline numbers + activity feed for the overview screen. */
