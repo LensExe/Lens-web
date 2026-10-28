@@ -1,5 +1,3 @@
-name: lens-web
-
 services:
   landing:
     image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_OWNER:-lensexe}/lens-landing:${IMAGE_TAG:-latest}
