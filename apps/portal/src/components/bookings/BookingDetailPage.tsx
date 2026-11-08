@@ -35,6 +35,7 @@ import { timelineStepNumber } from "@/components/bookings/booking-timeline-utils
 import { GalleryPanel } from "@/components/storage/GalleryPanel";
 import { CancelBookingDialog } from "@/components/bookings/CancelBookingDialog";
 import { BookingReportPanel } from "@/components/bookings/BookingReportPanel";
+import { PhotographerBookingReportPanel } from "@/components/bookings/PhotographerBookingReportPanel";
 import { MessageButton } from "@/components/profile/MessageButton";
 import { useConfirmReceipt, useMyBookings } from "@/queries/useBookings";
 import {
@@ -464,7 +465,11 @@ export function BookingDetailPage({ mode }: { mode: "client" | "photographer" })
             </section>
           )}
 
-          {isClient && <BookingReportPanel booking={booking} />}
+          {isClient ? (
+            <BookingReportPanel booking={booking} />
+          ) : (
+            <PhotographerBookingReportPanel booking={booking} />
+          )}
 
           {showActionCard && (
             <BookingActions

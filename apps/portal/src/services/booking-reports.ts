@@ -9,7 +9,7 @@ const MAX_EVIDENCE_COUNT = 5;
 const MAX_EVIDENCE_BYTES = 12 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
-const string = (value: unknown) => typeof value === "string" ? value : "";
+const string = (value: unknown) => (typeof value === "string" ? value : "");
 
 function toReceipt(value: unknown): BookingReportReceipt {
   const row = apiRecord(value);
@@ -17,9 +17,10 @@ function toReceipt(value: unknown): BookingReportReceipt {
     id: string(row.id),
     target_type: "booking",
     target_id: string(row.target_id),
-    booking_issue_type: typeof row.booking_issue_type === "string"
-      ? row.booking_issue_type as BookingReportCategory
-      : null,
+    booking_issue_type:
+      typeof row.booking_issue_type === "string"
+        ? (row.booking_issue_type as BookingReportCategory)
+        : null,
     reason: string(row.reason),
     status: string(row.status) as BookingReportReceipt["status"],
     created_at: string(row.created_at),
@@ -28,7 +29,9 @@ function toReceipt(value: unknown): BookingReportReceipt {
 }
 
 /** Load the newest customer report attached to a booking, if any. */
-export async function getLatestBookingReport(bookingId: string): Promise<BookingReportReceipt | null> {
+export async function getLatestBookingReport(
+  bookingId: string,
+): Promise<BookingReportReceipt | null> {
   let offset = 0;
 
   while (true) {
@@ -48,7 +51,7 @@ export async function getLatestBookingReport(bookingId: string): Promise<Booking
 /** Upload private evidence first, then create the booking dispute. */
 export async function createBookingReport(input: {
   bookingId: string;
-  category: BookingReportCategory;
+  category?: BookingReportCategory;
   reason: string;
   evidence: File[];
 }): Promise<BookingReportReceipt> {
@@ -68,9 +71,9 @@ export async function createBookingReport(input: {
   }
 
   const body: BookingDisputeCommandDto = {
-    booking_issue_type: input.category,
     reason: input.reason.trim(),
-    evidence_media_ids: evidenceMediaIds,
+    ...(input.category ? { booking_issue_type: input.category } : {}),
+    ...(evidenceMediaIds.length > 0 ? { evidence_media_ids: evidenceMediaIds } : {}),
   };
   return toReceipt(await bookingApi.disputeBooking(input.bookingId, body));
 }

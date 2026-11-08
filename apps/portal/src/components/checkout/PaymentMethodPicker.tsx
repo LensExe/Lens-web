@@ -8,15 +8,20 @@ export function PaymentMethodPicker({
   value,
   onChange,
   amount,
+  walletBalanceOverride,
 }: {
   value: PaymentMethod | null;
   onChange: (method: PaymentMethod) => void;
   amount: number;
+  walletBalanceOverride?: number;
 }) {
-  const wallet = useWalletSummary();
-  const walletBalance = wallet.data?.balance ?? 0;
+  const wallet = useWalletSummary(walletBalanceOverride === undefined);
+  const walletBalance = walletBalanceOverride ?? wallet.data?.balance ?? 0;
+  const walletLoading =
+    walletBalanceOverride === undefined && wallet.isLoading;
+  const hasWalletBalance = walletBalanceOverride !== undefined || wallet.data !== undefined;
   const enoughInWallet = walletBalance >= amount;
-  const walletUnavailable = wallet.isLoading || !wallet.data;
+  const walletUnavailable = walletLoading || !hasWalletBalance;
 
   useEffect(() => {
     if (value === "wallet" && (walletUnavailable || !enoughInWallet)) onChange("gateway");
@@ -33,9 +38,9 @@ export function PaymentMethodPicker({
     {
       id: "wallet" as const,
       label: "Ví Lens",
-      hint: wallet.isLoading
+      hint: walletLoading
         ? "Đang kiểm tra số dư ví..."
-        : !wallet.data
+        : !hasWalletBalance
           ? "Không thể kiểm tra số dư ví."
           : enoughInWallet
             ? `Số dư khả dụng: ${formatPrice(walletBalance)}.`

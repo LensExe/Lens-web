@@ -153,6 +153,7 @@ function isPublicAuthRequest(url?: string): boolean {
     "/auth/forgot-password/",
     "/keycloak/google/login",
     "/keycloak/google/exchange",
+    "/mobile-checkout/",
   ].some((path) => url.includes(path));
 }
 

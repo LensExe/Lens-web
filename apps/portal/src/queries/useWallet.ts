@@ -17,8 +17,8 @@ export const walletKeys = {
   payoutDestination: ["wallet", "payout-destination"] as const,
 };
 
-export function useWalletSummary() {
-  return useQuery({ queryKey: walletKeys.summary, queryFn: getWalletSummary });
+export function useWalletSummary(enabled = true) {
+  return useQuery({ queryKey: walletKeys.summary, queryFn: getWalletSummary, enabled });
 }
 
 export function useWalletTransactions() {
