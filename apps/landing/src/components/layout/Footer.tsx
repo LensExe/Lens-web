@@ -26,6 +26,7 @@ const columns: { title: string; links: FooterLink[] }[] = [
     links: [
       { label: "Liên hệ Lens", href: "mailto:hello@lens.vn" },
       { label: "Góp ý cho Lens", href: "mailto:hello@lens.vn?subject=Góp ý cho Lens" },
+      { label: "Chính sách quyền riêng tư", href: "/privacy-policy.html" },
     ],
   },
 ];
