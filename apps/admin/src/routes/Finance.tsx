@@ -93,6 +93,8 @@ function FinanceMetricCard({
 }
 
 export function Finance() {
+  "use no memo";
+
   // TanStack Table mutates in place; the React Compiler's memoization freezes it.
   "use no memo";
   const { data: serverWithdrawals, isLoading } = useWithdrawals();
@@ -257,6 +259,7 @@ export function Finance() {
     ]
   );
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack table instances are not compiler-memoizable.
   const table = useReactTable({
     data,
     columns,

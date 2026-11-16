@@ -56,6 +56,8 @@ const fold = (value: string) =>
 
 export function Reports() {
   "use no memo";
+
+  "use no memo";
   const navigate = useNavigate();
   const { data: reports = [], isLoading, isError } = useReports();
   const [filter, setFilter] = useState<Filter>("all");
@@ -164,6 +166,7 @@ export function Reports() {
     [],
   );
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack table instances are not compiler-memoizable.
   const table = useReactTable({
     data,
     columns,

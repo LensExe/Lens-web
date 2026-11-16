@@ -76,6 +76,8 @@ function csvCell(value: string | number) {
 }
 
 export function Photographers() {
+  "use no memo";
+
   // TanStack Table mutates its instance; React Compiler memoization would freeze sorting/pagination.
   "use no memo";
   const navigate = useNavigate();
@@ -180,6 +182,7 @@ export function Photographers() {
     []
   );
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack table instances are not compiler-memoizable.
   const table = useReactTable({
     data,
     columns,
