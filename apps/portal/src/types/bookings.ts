@@ -25,7 +25,9 @@ export interface BookingCreateDto {
   to: ISODateTime;
 }
 
-export interface BookingReasonDto { reason: string }
+export interface BookingReasonDto {
+  reason: string;
+}
 
 export type BookingReportCategory =
   | "photo_quality"
@@ -37,9 +39,9 @@ export type BookingReportCategory =
   | "other";
 
 export interface BookingDisputeCommandDto {
-  booking_issue_type: BookingReportCategory;
+  booking_issue_type?: BookingReportCategory;
   reason: string;
-  evidence_media_ids: UUID[];
+  evidence_media_ids?: UUID[];
 }
 
 export interface ApiBooking {
