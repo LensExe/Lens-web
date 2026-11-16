@@ -131,6 +131,8 @@ function StyleTags({ values }: { values: string[] }) {
 
 export function UserDetail() {
   "use no memo";
+
+  "use no memo";
   const { id = "" } = useParams();
   const usersQuery = useUsers();
   const accountQuery = useAdminUserAccount(id);
@@ -217,6 +219,7 @@ export function UserDetail() {
     [],
   );
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack table instances are not compiler-memoizable.
   const table = useReactTable({
     data: bookings,
     columns,

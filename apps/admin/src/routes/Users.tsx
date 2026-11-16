@@ -91,6 +91,8 @@ function MetricCard({
 }
 
 export function Users() {
+  "use no memo";
+
   // TanStack Table keeps mutable state on the table instance; the React
   // Compiler's memoization breaks its updates (sorting/pagination no-op).
   "use no memo";
@@ -236,6 +238,7 @@ export function Users() {
     [setStatus.isPending, setStatus.variables]
   );
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack table instances are not compiler-memoizable.
   const table = useReactTable({
     data,
     columns,
