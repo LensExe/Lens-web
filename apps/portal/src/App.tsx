@@ -14,6 +14,8 @@ import { Placeholder } from "@/components/Placeholder";
 import { Login } from "@/routes/Login";
 import { Signup } from "@/routes/Signup";
 import { GoogleAuthCallback } from "@/routes/GoogleAuthCallback";
+import { MobileCheckoutHandoff } from "@/routes/mobile-checkout/Handoff";
+import { MobileCheckout } from "@/routes/mobile-checkout/Checkout";
 
 // Signed-in pages are code-split per workspace, so a customer never downloads the
 // photographer studio (and vice versa). Public discovery pages stay eager.
@@ -97,6 +99,8 @@ function App() {
   return (
     <div className="portal-theme min-h-dvh bg-background text-foreground">
       <Routes>
+        <Route path="mobile-checkout/handoff" element={<MobileCheckoutHandoff />} />
+        <Route path="mobile-checkout" element={<MobileCheckout />} />
         {import.meta.env.DEV && <Route path="/__preview/wallet" element={<WalletPreview />} />}
         {/* Authentication lives in the portal; landing redirects here. */}
         <Route element={<AuthLayout />}>

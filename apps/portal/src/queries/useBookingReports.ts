@@ -17,11 +17,8 @@ export function useBookingReport(bookingId: string) {
 export function useCreateBookingReport(bookingId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: {
-      category: BookingReportCategory;
-      reason: string;
-      evidence: File[];
-    }) => createBookingReport({ bookingId, ...input }),
+    mutationFn: (input: { category?: BookingReportCategory; reason: string; evidence: File[] }) =>
+      createBookingReport({ bookingId, ...input }),
     onSuccess: (receipt) => {
       queryClient.setQueryData(bookingReportKeys.latest(bookingId), receipt);
       queryClient.invalidateQueries({ queryKey: bookingReportKeys.latest(bookingId) });
