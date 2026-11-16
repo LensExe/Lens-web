@@ -249,7 +249,12 @@ export function Finance() {
         meta: ACTIONS,
       },
     ],
-    [setStatus.isPending, setStatus.variables]
+    [
+      processPayout.isPending,
+      processPayout.variables?.id,
+      setStatus.isPending,
+      setStatus.variables,
+    ]
   );
 
   const table = useReactTable({
