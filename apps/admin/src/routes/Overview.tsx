@@ -120,7 +120,7 @@ export function Overview() {
           <StatCard
             icon={Wallet}
             value={formatPrice(data.paid_volume_vnd)}
-            label="Tổng thanh toán đã ghi nhận"
+            label="Tổng thu từ booking"
           />
         </div>
       ) : null}
