@@ -32,15 +32,12 @@ export function MobileCheckout() {
     queryFn: getMobileCheckoutContext,
     retry: false,
   });
-  const [paymentId, setPaymentId] = useState<string | null>(null);
+  const [createdPaymentId, setCreatedPaymentId] = useState<string | null>(null);
+  const paymentId = contextQuery.data?.payment_id ?? createdPaymentId;
   const [method, setMethod] = useState<CheckoutPaymentMethod | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string>();
   const autoReturnStarted = useRef(false);
-
-  useEffect(() => {
-    if (contextQuery.data?.payment_id) setPaymentId(contextQuery.data.payment_id);
-  }, [contextQuery.data?.payment_id]);
 
   const statusQuery = useQuery({
     queryKey: ["mobile-checkout", "payment-status", paymentId],
@@ -94,7 +91,7 @@ export function MobileCheckout() {
         // same booking intent rather than producing another charge attempt.
         idempotency_key: `mobile-checkout:${context.booking.id}:${context.payment_purpose}`,
       });
-      setPaymentId(result.id);
+      setCreatedPaymentId(result.id);
     } catch {
       setSubmitError(
         "Không thể tạo yêu cầu thanh toán. Nếu booking đã có yêu cầu thanh toán trước đó, phương thức đã chọn có thể không khớp với yêu cầu đang chờ.",

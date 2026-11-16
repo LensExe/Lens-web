@@ -8,21 +8,21 @@ export function MobileCheckoutHandoff() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const started = useRef(false);
-  const [error, setError] = useState<string>();
+  const [handoffError, setHandoffError] = useState<string>();
   const code = params.get("code") ?? "";
+  const error =
+    handoffError ??
+    (!code ? "Liên kết thanh toán thiếu mã xác thực. Hãy quay lại ứng dụng Lens và thử lại." : undefined);
 
   useEffect(() => {
     if (started.current) return;
     started.current = true;
-    if (!code) {
-      setError("Liên kết thanh toán thiếu mã xác thực. Hãy quay lại ứng dụng Lens và thử lại.");
-      return;
-    }
+    if (!code) return;
 
     void exchangeMobileCheckoutHandoff(code)
       .then(() => navigate("/mobile-checkout", { replace: true }))
       .catch(() => {
-        setError(
+        setHandoffError(
           "Mã chuyển thanh toán đã hết hạn hoặc đã được sử dụng. Hãy mở lại từ ứng dụng Lens.",
         );
       });

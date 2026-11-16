@@ -43,6 +43,8 @@ function csvCell(value: string | number) {
 }
 
 export function Bookings() {
+  "use no memo";
+
   // TanStack Table mutates in place; opt out of the React Compiler here.
   "use no memo";
   const { data: report, isLoading } = useAdminBookings();
@@ -166,6 +168,7 @@ export function Bookings() {
     []
   );
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack table instances are not compiler-memoizable.
   const table = useReactTable({
     data,
     columns,
