@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import {
   BadgeCheck,
   Ban,
@@ -415,7 +415,7 @@ export function SubscriptionPlans() {
       </div>
 
       <PlanEditorDialog
-        key={editingPlan?.id ?? "new-plan"}
+        key={`${editingPlan?.id ?? "new-plan"}-${editorOpen ? "open" : "closed"}`}
         open={editorOpen}
         plan={editingPlan}
         pending={isSaving}
@@ -452,12 +452,6 @@ function PlanEditorDialog({
 }) {
   const [draft, setDraft] = useState<PlanDraft>(() => plan ? featureDraft(plan) : emptyDraft());
   const [formError, setFormError] = useState("");
-
-  useEffect(() => {
-    if (!open) return;
-    setDraft(plan ? featureDraft(plan) : emptyDraft());
-    setFormError("");
-  }, [open, plan]);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
