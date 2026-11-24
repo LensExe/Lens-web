@@ -353,7 +353,7 @@ export interface WalletTransaction {
   userId: string;
   /** payout = earnings released to a photographer; refund = money back to a
    *  client; withdraw = cash-out request; topup = money added. */
-  type: "payout" | "refund" | "withdraw" | "topup" | "booking";
+  type: "payout" | "refund" | "withdraw" | "topup" | "booking" | "subscription";
   /** Signed display amount for older consumers; use the deltas to inspect each balance. */
   amount: number;
   /** Ledger event name, used to explain wallet holds and payouts in history. */

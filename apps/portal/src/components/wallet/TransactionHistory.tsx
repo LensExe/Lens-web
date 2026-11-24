@@ -3,6 +3,7 @@ import {
   ArrowUpRight,
   Banknote,
   CalendarDays,
+  CreditCard,
   Landmark,
   PlusCircle,
   ReceiptText,
@@ -19,6 +20,7 @@ const ICON: Record<WalletTransaction["type"], LucideIcon> = {
   withdraw: Landmark,
   topup: PlusCircle,
   booking: ReceiptText,
+  subscription: CreditCard,
 };
 const LABEL: Record<WalletTransaction["type"], string> = {
   payout: "Giải ngân",
@@ -26,9 +28,11 @@ const LABEL: Record<WalletTransaction["type"], string> = {
   withdraw: "Rút tiền",
   topup: "Nạp tiền",
   booking: "Thanh toán booking",
+  subscription: "Thanh toán gói thành viên",
 };
 const ENTRY_LABEL: Record<string, string> = {
   topup: "Nạp tiền vào số dư khả dụng",
+  subscription_payment: "Thanh toán gói thành viên bằng Ví Lens",
   booking_payment: "Thanh toán booking",
   booking_escrow_hold: "Tiền booking đang được giữ",
   booking_escrow_release: "Tiền booking về số dư khả dụng",

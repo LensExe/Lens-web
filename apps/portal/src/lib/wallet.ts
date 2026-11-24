@@ -56,4 +56,5 @@ export const WALLET_TX_LABEL: Record<WalletTransaction["type"], string> = {
   withdraw: "Rút tiền",
   topup: "Nạp tiền",
   booking: "Thanh toán lịch chụp",
+  subscription: "Thanh toán gói thành viên",
 };

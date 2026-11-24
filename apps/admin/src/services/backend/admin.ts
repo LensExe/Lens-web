@@ -9,6 +9,7 @@ import type {
   AdminQueueData,
   AdminStorageQueryDto,
   AdminStorageReportData,
+  AdminSubscriptionPlanData,
   ApiObject,
   ApiPage,
   BadgeUpdateDto,
@@ -28,6 +29,8 @@ import type {
   ReviewAdminQueryDto,
   ReviewHideDto,
   SubscriptionPaymentReviewDto,
+  SubscriptionPlanCreateDto,
+  SubscriptionPlanUpdateDto,
 } from "@/types/backend-api";
 
 export const getDashboard = () => backendGet<AdminDashboardData>("/admin/dashboard");
@@ -179,6 +182,21 @@ export const reconcileSubscriptionPayment = (
 ) =>
   backendPost<ApiObject, SubscriptionPaymentReviewDto>(
     `/admin/subscriptions/payments/${encodeURIComponent(paymentId)}/reconcile`,
+    body,
+  );
+
+export const listSubscriptionPlans = () =>
+  backendGet<{ items: AdminSubscriptionPlanData[] }>("/admin/subscriptions/plans");
+
+export const createSubscriptionPlan = (body: SubscriptionPlanCreateDto) =>
+  backendPost<AdminSubscriptionPlanData, SubscriptionPlanCreateDto>(
+    "/admin/subscriptions/plans",
+    body,
+  );
+
+export const updateSubscriptionPlan = (id: string, body: SubscriptionPlanUpdateDto) =>
+  backendPatch<AdminSubscriptionPlanData, SubscriptionPlanUpdateDto>(
+    `/admin/subscriptions/plans/${encodeURIComponent(id)}`,
     body,
   );
 

@@ -39,13 +39,15 @@ export async function getWalletTransactions(): Promise<WalletTransaction[]> {
       const type: WalletTransaction["type"] =
         entryType === "topup"
           ? "topup"
-          : entryType.startsWith("withdrawal")
-            ? "withdraw"
-            : entryType.startsWith("refund")
-              ? "refund"
-              : entryType === "booking_escrow_release"
-                ? "payout"
-                : "booking";
+          : entryType === "subscription_payment"
+            ? "subscription"
+            : entryType.startsWith("withdrawal")
+              ? "withdraw"
+              : entryType.startsWith("refund")
+                ? "refund"
+                : entryType === "booking_escrow_release"
+                  ? "payout"
+                  : "booking";
       const availableDelta = amount(entry.available_delta);
       const frozenDelta = amount(entry.frozen_delta);
       const delta = availableDelta || frozenDelta;

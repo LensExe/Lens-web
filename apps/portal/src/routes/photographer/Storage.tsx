@@ -2,30 +2,25 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowUpRight,
-  Check,
   CheckCircle2,
   CloudUpload,
-  CreditCard,
   Database,
   Images,
   Link2,
-  Loader2,
   QrCode,
   Search,
   ShieldCheck,
   Sparkles,
   UploadCloud,
 } from "lucide-react";
-import { Button, PageContainer, Skeleton, cn, formatPrice, toast } from "@lens/ui";
+import { Button, PageContainer, Skeleton, cn } from "@lens/ui";
 import { useMyGalleries } from "@/queries/useStorage";
-import {
-  useMySubscription,
-  useSubscribeToPlan,
-  useSubscriptionPlans,
-} from "@/queries/useSubscriptions";
+import { useMySubscription } from "@/queries/useSubscriptions";
 import { formatBytes } from "@/lib/storage";
-import type { ApiObject } from "@/types/common";
-import type { ApiSubscriptionPlan, SubscriptionPlanFeatureValue } from "@/types/subscriptions";
+import type {
+  ApiSubscriptionPlanSnapshot,
+  SubscriptionPlanFeatureValue,
+} from "@/types/subscriptions";
 import type { ShootGallery } from "@/types";
 
 type GalleryFilter = "all" | "published" | "draft";
@@ -84,51 +79,27 @@ function GalleryRow({ gallery }: { gallery: ShootGallery }) {
   );
 }
 
-function objectValue(value: unknown): ApiObject | null {
-  return typeof value === "object" && value !== null ? (value as ApiObject) : null;
-}
-
-function subscriptionPlanId(subscription: ApiObject | undefined) {
-  if (!subscription) return "";
-
-  for (const key of ["photographer_plan_id", "plan_id", "subscription_plan_id"]) {
-    if (typeof subscription[key] === "string") return subscription[key] as string;
-  }
-
-  for (const key of ["plan", "photographer_plan", "subscription_plan"]) {
-    const plan = objectValue(subscription[key]);
-    if (typeof plan?.id === "string") return plan.id;
-  }
-  return "";
-}
-
 function featureLabel(feature: SubscriptionPlanFeatureValue) {
   if (typeof feature === "string") return feature;
   return feature.value ? `${feature.name}: ${feature.value}` : feature.name;
 }
 
-function billingLabel(cycle: number) {
-  if (cycle === 12) return "/năm";
-  if (cycle === 1) return "/tháng";
-  return `/${cycle} tháng`;
-}
-
-function planFeatureText(plan: ApiSubscriptionPlan | undefined) {
+function planFeatureText(plan: ApiSubscriptionPlanSnapshot | undefined) {
   if (!plan) return "";
   const features = Array.isArray(plan.features) ? plan.features : [];
   return [plan.description ?? "", ...features.map(featureLabel)].join(" ");
 }
 
-function planMetric(plan: ApiSubscriptionPlan | undefined, unit: "GB" | "ngày") {
+function planMetric(plan: ApiSubscriptionPlanSnapshot | undefined, unit: "GB" | "ngày") {
   const match = planFeatureText(plan).match(new RegExp(`(\\d+(?:[.,]\\d+)?)\\s*${unit}`, "i"));
   return match ? `${match[1]} ${unit}` : "Theo gói";
 }
 
 function StorageOverview({ galleries }: { galleries: ShootGallery[] }) {
   const subscriptionQuery = useMySubscription();
-  const plansQuery = useSubscriptionPlans();
-  const activePlanId = subscriptionPlanId(subscriptionQuery.data);
-  const activePlan = plansQuery.data?.find((plan) => plan.id === activePlanId);
+  const subscription = subscriptionQuery.data?.subscription;
+  const activePlan =
+    subscription?.status === "active" ? (subscription.plan_snapshot ?? undefined) : undefined;
   const published = galleries.filter((gallery) => Boolean(gallery.publishedAt));
   const drafts = galleries.length - published.length;
   const sizeBytes = galleries.reduce((total, gallery) => total + gallery.sizeBytes, 0);
@@ -149,7 +120,11 @@ function StorageOverview({ galleries }: { galleries: ShootGallery[] }) {
             </h1>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-medium text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
               <span className="size-1.5 rounded-full bg-amber-500" />
-              {activePlan ? `${activePlan.name} · Đang hoạt động` : "Chưa chọn gói"}
+              {activePlan
+                ? `${activePlan.name} · Đang hoạt động`
+                : subscription?.status === "pending"
+                  ? "Chờ thanh toán"
+                  : "Chưa chọn gói"}
             </span>
           </div>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
@@ -164,9 +139,9 @@ function StorageOverview({ galleries }: { galleries: ShootGallery[] }) {
             </Link>
           </Button>
           <Button asChild className="rounded-xl bg-ember text-white hover:bg-ember/90">
-            <a href="#storage-plans">
-              <Sparkles className="size-4" /> Nâng cấp dung lượng
-            </a>
+            <Link to="/dashboard/subscription">
+              <Sparkles className="size-4" /> Quản lý gói
+            </Link>
           </Button>
         </div>
       </div>
@@ -230,167 +205,6 @@ function StorageOverview({ galleries }: { galleries: ShootGallery[] }) {
   );
 }
 
-function SubscriptionPlans() {
-  const plansQuery = useSubscriptionPlans();
-  const subscriptionQuery = useMySubscription();
-  const subscribe = useSubscribeToPlan();
-  const [selectedPlanId, setSelectedPlanId] = useState("");
-  const plans = plansQuery.data ?? [];
-  const activePlanId = subscriptionPlanId(subscriptionQuery.data);
-  const chosenPlanId = selectedPlanId || activePlanId;
-
-  const submit = (planId: string) => {
-    if (!planId || planId === activePlanId || subscribe.isPending) return;
-    setSelectedPlanId(planId);
-    subscribe.mutate(planId, {
-      onSuccess: () => toast.success("Đã ghi nhận lựa chọn gói lưu trữ"),
-      onError: () => toast.error("Không thể đăng ký gói. Vui lòng thử lại sau."),
-    });
-  };
-
-  return (
-    <section className="mt-4 rounded-2xl border border-border bg-card p-4 shadow-xs sm:p-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight sm:text-xl">
-            <CreditCard className="size-5 text-ember" /> Gói lưu trữ chuyên nghiệp
-          </h2>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Chọn gói phù hợp với nhu cầu lưu trữ ảnh và hỗ trợ công việc lâu dài của bạn.
-          </p>
-        </div>
-        <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-ember/20 bg-ember/[0.06] px-3 py-1.5 text-xs font-medium text-ember">
-          <Check className="size-3.5" /> Tiết kiệm 20% khi đăng ký theo năm
-        </span>
-      </div>
-
-      {plansQuery.isLoading ? (
-        <div className="mt-4 overflow-x-auto pb-2">
-          <div className="flex min-w-[840px] gap-4">
-            {[0, 1, 2].map((item) => (
-              <Skeleton key={item} className="h-52 min-w-[250px] flex-1 rounded-2xl" />
-            ))}
-          </div>
-        </div>
-      ) : plansQuery.isError ? (
-        <p className="mt-4 rounded-xl border border-destructive/25 bg-destructive/5 p-4 text-sm text-destructive">
-          Không thể tải danh sách gói lưu trữ. Hãy thử tải lại trang.
-        </p>
-      ) : plans.length === 0 ? (
-        <p className="mt-4 rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-          Hiện chưa có gói lưu trữ nào để đăng ký.
-        </p>
-      ) : (
-        <>
-          <div className="mt-6 overflow-x-auto pb-2 pt-5">
-            <div className="flex min-w-[840px] items-stretch gap-4">
-              {plans.map((plan: ApiSubscriptionPlan, index) => {
-                const selected = chosenPlanId === plan.id;
-                const active = activePlanId === plan.id;
-                const popular = index === 1;
-                const isFree = plan.price <= 0;
-                const features = Array.isArray(plan.features) ? plan.features : [];
-                return (
-                  <div
-                    key={plan.id}
-                    className={cn(
-                      "relative flex min-h-[380px] min-w-[250px] flex-1 flex-col rounded-2xl border p-4 transition-all sm:p-5",
-                      selected
-                        ? "border-ember bg-ember/[0.035] shadow-md ring-1 ring-ember/25"
-                        : "border-border/80 bg-background hover:-translate-y-0.5 hover:border-foreground/25 hover:shadow-sm",
-                      popular && "-mt-2 pt-7",
-                    )}
-                  >
-                    {popular && (
-                      <span className="absolute inset-x-1/2 top-0 flex w-max -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-full bg-ember px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm">
-                        <CreditCard className="size-3" /> Gói được ưa chuộng
-                      </span>
-                    )}
-                    <label className="flex flex-1 cursor-pointer flex-col">
-                      <input
-                        type="radio"
-                        name="storage-plan"
-                        value={plan.id}
-                        checked={selected}
-                        onChange={() => setSelectedPlanId(plan.id)}
-                        className="sr-only"
-                      />
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className={cn("font-semibold", popular && "text-ember")}>
-                            {plan.name}
-                          </p>
-                          {popular && (
-                            <span className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-                              Best Value
-                            </span>
-                          )}
-                        </div>
-                        {active && (
-                          <span className="shrink-0 rounded-full bg-muted px-2 py-1 text-[10px] font-medium text-muted-foreground">
-                            Đang dùng
-                          </span>
-                        )}
-                      </div>
-                      <p className="mt-4 flex items-baseline gap-1">
-                        <span className="text-2xl font-bold tracking-tight">
-                          {formatPrice(plan.price)}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {billingLabel(plan.billing_cycle)}
-                        </span>
-                      </p>
-                      {plan.description && (
-                        <p className="mt-2 min-h-10 text-xs leading-relaxed text-muted-foreground">
-                          {plan.description}
-                        </p>
-                      )}
-                      {features.length > 0 && (
-                        <ul className="mt-4 space-y-2 border-t border-border/70 pt-4 text-xs text-muted-foreground">
-                          {features.map((feature, featureIndex) => (
-                            <li key={`${plan.id}-feature-${featureIndex}`} className="flex gap-2">
-                              <Check className="mt-0.5 size-3.5 shrink-0 text-lagoon" />
-                              <span>{featureLabel(feature)}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </label>
-                    <Button
-                      type="button"
-                      variant={popular ? "default" : "outline"}
-                      className={cn(
-                        "mt-5 w-full rounded-xl text-xs",
-                        index === 2 &&
-                          !active &&
-                          "border-foreground bg-foreground text-background hover:bg-foreground/90 hover:text-background",
-                        active && "border-ember bg-ember text-white hover:bg-ember/90",
-                      )}
-                      disabled={active || isFree || subscribe.isPending}
-                      onClick={() => submit(plan.id)}
-                    >
-                      {subscribe.isPending && chosenPlanId === plan.id && (
-                        <Loader2 className="size-4 animate-spin" />
-                      )}
-                      {active ? "Đang kích hoạt" : isFree ? "Gói mặc định" : "Nâng cấp gói"}
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          <div className="mt-4 flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-muted-foreground">
-              Chọn thẻ gói để xem quyền lợi. Đăng ký gói sẽ chuyển sang bước thanh toán của hệ
-              thống.
-            </p>
-          </div>
-        </>
-      )}
-    </section>
-  );
-}
-
 export function PhotographerStorage() {
   const [filter, setFilter] = useState<GalleryFilter>("all");
   const query = useMyGalleries();
@@ -408,10 +222,6 @@ export function PhotographerStorage() {
   return (
     <PageContainer className="max-w-[1200px] py-6 md:py-8">
       <StorageOverview galleries={galleries} />
-
-      <div id="storage-plans">
-        <SubscriptionPlans />
-      </div>
 
       <section className="mt-8 rounded-2xl border border-border bg-card p-4 shadow-xs sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
