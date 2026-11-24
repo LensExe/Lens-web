@@ -323,6 +323,43 @@ export interface SubscriptionPaymentReviewDto {
   provider_reference?: string;
 }
 
+export interface SubscriptionPlanFeatureDto {
+  code: string;
+  name: string;
+  kind?: "quota";
+  unit?: "bytes" | "portfolios";
+  value: string;
+}
+
+export type SubscriptionPlanFeatureValueDto = SubscriptionPlanFeatureDto | string;
+
+export interface AdminSubscriptionPlanData {
+  id: UUID;
+  code: string;
+  name: string;
+  description: string | null;
+  price: number;
+  is_active: boolean;
+  is_default: boolean;
+  billing_cycle: number;
+  features: SubscriptionPlanFeatureValueDto[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubscriptionPlanCreateDto {
+  code: string;
+  name: string;
+  description: string | null;
+  price: number;
+  billing_cycle: number;
+  features: SubscriptionPlanFeatureValueDto[];
+  is_active: boolean;
+  is_default: boolean;
+}
+
+export type SubscriptionPlanUpdateDto = Partial<SubscriptionPlanCreateDto>;
+
 export interface RankUpdateDto {
   name?: string;
   min_completed?: number;

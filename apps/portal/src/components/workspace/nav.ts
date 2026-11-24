@@ -3,6 +3,7 @@ import {
   Bot,
   CalendarCheck,
   CalendarDays,
+  CreditCard,
   Compass,
   HardDrive,
   ImageIcon,
@@ -49,7 +50,12 @@ export const CLIENT_LINKS: ClientLink[] = [
     icon: CalendarCheck,
     match: (p) => p.startsWith("/client/bookings"),
   },
-  { to: "/client/reviews", label: "Đánh giá", icon: Star, match: (p) => p.startsWith("/client/reviews") },
+  {
+    to: "/client/reviews",
+    label: "Đánh giá",
+    icon: Star,
+    match: (p) => p.startsWith("/client/reviews"),
+  },
 ];
 
 // Photographers run a studio with many tools — a grouped sidebar.
@@ -71,6 +77,7 @@ export const STUDIO_NAV: NavGroup[] = [
       { to: "/dashboard/portfolio", label: "Hồ sơ năng lực", icon: ImageIcon },
       { to: "/dashboard/packages", label: "Gói dịch vụ", icon: Package },
       { to: "/dashboard/storage", label: "Lưu trữ ảnh", icon: HardDrive },
+      { to: "/dashboard/subscription", label: "Gói thành viên", icon: CreditCard },
     ],
   },
   {

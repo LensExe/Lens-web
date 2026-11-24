@@ -4,6 +4,7 @@ import {
   BarChart3,
   Bell,
   CalendarRange,
+  CreditCard,
   HardDrive,
   LayoutDashboard,
   UserCheck,
@@ -50,6 +51,7 @@ export const NAV_GROUPS: AdminNavGroup[] = [
         icon: Wallet,
         badge: "pendingWithdrawals",
       },
+      { to: "/subscription-plans", label: "Gói subscription", icon: CreditCard },
       {
         to: "/storage",
         label: "Lưu trữ ảnh",

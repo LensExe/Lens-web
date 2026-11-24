@@ -55,6 +55,10 @@ const PhotographerStorage = page(
   () => import("@/routes/photographer/Storage"),
   "PhotographerStorage",
 );
+const PhotographerSubscription = page(
+  () => import("@/routes/photographer/Subscription"),
+  "PhotographerSubscription",
+);
 const PhotographerAssistant = page(
   () => import("@/routes/photographer/Assistant"),
   "PhotographerAssistant",
@@ -154,6 +158,7 @@ function App() {
               <Route path="dashboard/availability" element={<PhotographerAvailability />} />
               <Route path="dashboard/achievements" element={<PhotographerAchievements />} />
               <Route path="dashboard/storage" element={<PhotographerStorage />} />
+              <Route path="dashboard/subscription" element={<PhotographerSubscription />} />
               <Route path="dashboard/assistant" element={<PhotographerAssistant />} />
               <Route path="dashboard/bookings" element={<PhotographerBookings />} />
               <Route

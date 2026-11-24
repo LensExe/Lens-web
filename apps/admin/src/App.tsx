@@ -10,6 +10,7 @@ import { UserDetail } from "@/routes/UserDetail";
 import { Reports } from "@/routes/Reports";
 import { ReportDetail } from "@/routes/ReportDetail";
 import { Finance } from "@/routes/Finance";
+import { SubscriptionPlans } from "@/routes/SubscriptionPlans";
 import { Bookings } from "@/routes/Bookings";
 import { BookingDetail } from "@/routes/BookingDetail";
 import { Storage } from "@/routes/Storage";
@@ -36,6 +37,7 @@ function App() {
         <Route path="users" element={<Users />} />
         <Route path="users/:id" element={<UserDetail />} />
         <Route path="finance" element={<Finance />} />
+        <Route path="subscription-plans" element={<SubscriptionPlans />} />
         <Route path="bookings" element={<Bookings />} />
         <Route path="bookings/:id" element={<BookingDetail />} />
         <Route path="notifications" element={<Notifications />} />

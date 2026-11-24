@@ -8,7 +8,10 @@ export interface PaymentIdempotencyDto {
   payment_method?: PaymentMethod;
 }
 
-export interface WalletTopUpDto { amount: number; idempotency_key: string }
+export interface WalletTopUpDto {
+  amount: number;
+  idempotency_key: string;
+}
 export type WalletLedgerQueryDto = PageQueryDto;
 
 export interface PayoutDestinationDto {
@@ -47,12 +50,20 @@ export interface PaymentWebhookDto {
   signature: string;
 }
 
-export interface SePayWebhookDto { payload: Record<string, unknown> }
+export interface SePayWebhookDto {
+  payload: Record<string, unknown>;
+}
 
 export interface ApiPayment {
   id: UUID;
   amount?: number;
   status?: string;
+  payment_gateway?: string;
+  qr_code?: string | null;
+  checkout_url?: string | null;
+  checkout_expires_at?: ISODateTime | null;
+  checkout_expired?: boolean;
+  checkout_review_required_at?: ISODateTime | null;
   [key: string]: unknown;
 }
 
